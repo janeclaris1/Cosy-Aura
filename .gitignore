@@ -26,6 +26,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+hostinger.env
+.env.hostinger
+.env.import
 
 # local MongoDB data (scripts/start-local-mongo.ts)
 .mongo-data/
