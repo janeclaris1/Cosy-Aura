@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Hostinger / Node hosting: self-contained server build
+  output: "standalone",
   // Expose publishable key to the browser even if only STRIPE_PUBLISHABLE_KEY is set
   env: {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
