@@ -1,0 +1,51 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# local MongoDB data (scripts/start-local-mongo.ts)
+.mongo-data/
+
+# cursor
+.cursor/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+backups/
+
+# local scratch / caches
+tmp-cdnim/
+scripts/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Legacy watch assets (not used by Cosy Aura)
+public/images/watches/

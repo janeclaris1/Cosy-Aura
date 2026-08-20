@@ -1,0 +1,90 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAdminApi } from "@/lib/admin";
+import { syncFragranceCountryStocks } from "@/lib/sync-country-stock";
+
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
+
+  const body = await req.json();
+
+  const fragrance = await prisma.fragrance.update({
+    where: { id: params.id },
+    data: {
+      brandId: body.brandId,
+      model: body.model,
+      reference: body.reference,
+      description: body.description,
+      conditionReport: body.conditionReport,
+      price: body.price,
+      condition: body.condition,
+      year: body.year,
+      fragranceFamily: body.fragranceFamily,
+      bottleMaterial: body.bottleMaterial,
+      bottleDetail: body.bottleDetail || null,
+      bottleSize: body.bottleSize,
+      capType: body.capType,
+      liquidColor: body.liquidColor || null,
+      longevity: body.longevity || null,
+      bottleShape: body.bottleShape || null,
+      concentration: body.concentration,
+      topNotes: body.topNotes || [],
+      heartNotes: body.heartNotes || [],
+      baseNotes: body.baseNotes || [],
+      sillage: body.sillage,
+      sustainabilityScore: body.sustainabilityScore ?? 3,
+      isVegan: body.isVegan ?? false,
+      isCrueltyFree: body.isCrueltyFree ?? true,
+      sampleAvailable: body.sampleAvailable ?? false,
+      gender: body.gender,
+      collection: body.collection || null,
+      stock: body.stock ?? 0,
+      rating: body.rating ?? null,
+      featured: body.featured,
+      category: body.category || null,
+    },
+  });
+
+  if (body.countryStocks) {
+    await syncFragranceCountryStocks(params.id, body.countryStocks);
+  }
+
+  if (body.imageUrl) {
+    await prisma.fragranceImage.deleteMany({ where: { fragranceId: params.id } });
+    await prisma.fragranceImage.create({
+      data: {
+        fragranceId: params.id,
+        url: body.imageUrl,
+        isPrimary: true,
+        sortOrder: 0,
+      },
+    });
+  }
+
+  return NextResponse.json(fragrance);
+}
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  const { error } = await requireAdminApi();
+  if (error) return error;
+
+  const orderItems = await prisma.orderItem.count({
+    where: { fragranceId: params.id },
+  });
+  if (orderItems > 0) {
+    return NextResponse.json(
+      { error: "Cannot delete a fragrance that appears in orders" },
+      { status: 400 }
+    );
+  }
+
+  await prisma.fragrance.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}

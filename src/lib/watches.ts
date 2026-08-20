@@ -1,0 +1,36 @@
+/** @deprecated Re-export from fragrances for gradual migration */
+export {
+  FRAGRANCE_PAGE_SIZE as WATCH_PAGE_SIZE,
+  FRAGRANCE_PAGE_SIZE,
+  getFragrances as getWatches,
+  getFragrances,
+  getFeaturedFragrances as getFeaturedWatches,
+  getFeaturedFragrances,
+  getLatestFragrances as getLatestWatches,
+  getLatestFragrances,
+  getRandomFragrances as getRandomWatches,
+  getRandomFragrances,
+  getFragranceBySlug as getWatchBySlug,
+  getFragranceBySlug,
+  getFragrancesByBrand as getWatchesByBrand,
+  getFragrancesByBrand,
+  getAllBrands,
+  getFilterOptions,
+  getBrandBySlug,
+  getRelatedFragrances as getRelatedWatches,
+  getRelatedFragrances,
+  getAllFragranceSlugs as getAllWatchSlugs,
+  getAllFragranceSlugs,
+  getDashboardStats,
+  parseFragranceListFilters as parseWatchListFilters,
+  parseFragranceListFilters,
+  isRealisticBottleSize,
+  isRealisticYear,
+} from "./fragrances";
+
+export type {
+  FragranceWithRelations as WatchWithRelations,
+  FragranceWithRelations,
+  FragranceListFilters as WatchListFilters,
+  FragranceListFilters,
+} from "./fragrances";
