@@ -158,6 +158,7 @@ export function ProductToolbar({
 
   useEffect(() => {
     if (!open) return;
+    const openId = open;
 
     function onPointerDown(e: MouseEvent) {
       const target = e.target as Node;
@@ -168,7 +169,7 @@ export function ProductToolbar({
     }
 
     function onReposition() {
-      updateMenuPos(open);
+      updateMenuPos(openId);
     }
 
     document.addEventListener("mousedown", onPointerDown);
