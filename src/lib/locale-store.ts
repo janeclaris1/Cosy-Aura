@@ -1,8 +1,10 @@
 "use client";
 
+import { useContext } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
+  isUiLang,
   localeForCountry,
   type UiLang,
 } from "@/lib/geo-locale";
@@ -11,6 +13,10 @@ import { writeLocaleCookie, type LocaleCookie } from "@/lib/locale-cookie";
 import { setMoneyDisplay } from "@/lib/money-display";
 import { translate } from "@/lib/i18n";
 import { useCartStore } from "@/lib/store";
+import {
+  LocaleHydratedContext,
+  LocaleSsrContext,
+} from "@/components/locale/locale-context";
 
 type LocaleState = {
   country: string | null;
@@ -60,29 +66,41 @@ function persistPrefs(state: Pick<LocaleState, "language" | "currency" | "locale
 }
 
 export function initialLocaleFromCookie(cookie: LocaleCookie | null | undefined): Partial<LocaleState> {
-  if (!cookie) return {};
+  if (!cookie || !isUiLang(cookie.language)) return {};
   return {
     language: cookie.language,
     currency: cookie.currency,
     locale: cookie.locale,
     country: cookie.country,
+    rates: {
+      GHS: 1,
+      [cookie.currency]: cookie.rate > 0 ? cookie.rate : 1,
+    },
     ready: true,
   };
 }
 
+/** Prefer cookie/window snapshot so first paint matches geo language (avoids EN flash). */
+function bootFromWindow(): Partial<LocaleState> {
+  if (typeof window === "undefined") return {};
+  return initialLocaleFromCookie(window.__CA_LOC);
+}
+
+const boot = bootFromWindow();
+
 export const useLocaleStore = create<LocaleState>()(
   persist(
     (set, get) => ({
-      country: null,
-      locale: "en-GH",
-      language: "en",
-      currency: "GHS",
-      rates: { GHS: 1 },
+      country: boot.country ?? null,
+      locale: boot.locale ?? "en-GH",
+      language: boot.language ?? "en",
+      currency: boot.currency ?? "GHS",
+      rates: boot.rates ?? { GHS: 1 },
       nonAfricaMarkupEnabled: false,
       nonAfricaMarkupUsd: 10,
       userOverrideLang: false,
       userOverrideCurrency: false,
-      ready: false,
+      ready: boot.ready ?? false,
 
       applyDetected: (next) => {
         const current = get();
@@ -111,7 +129,7 @@ export const useLocaleStore = create<LocaleState>()(
       setStorePricing: (config) => {
         set({
           nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
-          nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
+          nonAfricaMarkupUsd: Number(config.nonAfricaMarkupUsd) || 10,
         });
       },
 
@@ -161,18 +179,27 @@ export const useLocaleStore = create<LocaleState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
+        state.ready = true;
         setMoneyDisplay({ locale: state.locale, rates: state.rates });
         useCartStore.getState().setCurrency(state.currency);
         if (typeof document !== "undefined") {
           document.documentElement.lang = state.locale || state.language;
         }
+        persistPrefs(state);
       },
     }
   )
 );
 
+export function useUiLanguage(): UiLang {
+  const ssrLanguage = useContext(LocaleSsrContext);
+  const hydrated = useContext(LocaleHydratedContext);
+  const storeLanguage = useLocaleStore((s) => s.language);
+  return hydrated ? storeLanguage : ssrLanguage;
+}
+
 export function useT() {
-  const language = useLocaleStore((s) => s.language);
+  const language = useUiLanguage();
   return (key: string, vars?: Record<string, string | number>) =>
     translate(language, key, vars);
 }

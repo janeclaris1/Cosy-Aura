@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getStoreConfig,
-  resolveWhatsAppCheckoutNumber,
-} from "@/lib/store-config";
+import { getCountryCommerceConfig } from "@/lib/branches";
+import { getStoreConfig } from "@/lib/store-config";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,11 +8,17 @@ export async function GET(req: Request) {
     .trim()
     .toUpperCase();
 
-  const config = await getStoreConfig();
-  const resolved = resolveWhatsAppCheckoutNumber(config, country || null);
+  const [store, commerce] = await Promise.all([
+    getStoreConfig(),
+    getCountryCommerceConfig(country || null),
+  ]);
 
   return NextResponse.json({
-    masterEnabled: config.whatsappCheckoutEnabled,
-    ...resolved,
+    masterEnabled: store.whatsappCheckoutEnabled,
+    enabled: Boolean(commerce?.whatsappEnabled),
+    country: commerce?.country || country || null,
+    phone: commerce?.whatsappPhone || null,
+    waMeUrl: commerce?.waMeUrl || null,
+    branchName: commerce?.branchName || null,
   });
 }

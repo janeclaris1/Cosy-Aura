@@ -14,10 +14,9 @@ export function TopUtilityBar() {
   ] as const;
 
   return (
-    <div className="bg-accent border-b border-wf-border text-[12px] sm:text-[13px] text-espresso">
+    <div className="bg-[#02033f] text-[12px] sm:text-[13px] text-white/90">
       <div className="max-w-7xl mx-auto px-4 h-9 sm:h-10 flex items-center justify-between gap-4">
         <ul className="flex items-center gap-4 sm:gap-8 min-w-0 overflow-x-auto scrollbar-thin">
-          {/* WhatsApp button */}
           <li className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
@@ -40,29 +39,29 @@ export function TopUtilityBar() {
               key={label}
               className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
-              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-primary" strokeWidth={1.75} />
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 text-[#FFD200]" strokeWidth={1.75} />
               <span>{label}</span>
             </li>
           ))}
         </ul>
 
-        <div className="hidden md:flex items-center gap-3 shrink-0 text-mocha">
+        <div className="hidden md:flex items-center gap-3 shrink-0 text-white/80">
           <a
             href="mailto:support@cosyaura.com"
-            className="font-semibold hover:text-highlight transition-colors duration-organic ease-organic"
+            className="font-semibold text-white hover:text-[#FFD200] transition-colors duration-organic ease-organic"
           >
             support@cosyaura.com
           </a>
-          <span className="text-wf-border" aria-hidden>
+          <span className="text-white/30" aria-hidden>
             |
           </span>
-          <Link href="/faq" className="hover:text-highlight transition-colors duration-organic ease-organic">
+          <Link href="/faq" className="hover:text-[#FFD200] transition-colors duration-organic ease-organic">
             {t("util.help")}
           </Link>
-          <span className="text-wf-border" aria-hidden>
+          <span className="text-white/30" aria-hidden>
             |
           </span>
-          <Link href="/contact" className="hover:text-highlight transition-colors duration-organic ease-organic">
+          <Link href="/contact" className="hover:text-[#FFD200] transition-colors duration-organic ease-organic">
             {t("util.contact")}
           </Link>
         </div>

@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { ensureUniqueBlogSlug } from "@/lib/blog";
 
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("content.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const existing = await prisma.blogPost.findUnique({ where: { id: params.id } });
   if (!existing) {
@@ -53,16 +55,38 @@ export async function PUT(
     },
   });
 
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "content.post.update",
+    entityType: "BlogPost",
+    entityId: post.id,
+    summary: `Updated post “${post.title}”`,
+    req,
+  });
+
   return NextResponse.json(post);
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("content.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const existing = await prisma.blogPost.findUnique({
+    where: { id: params.id },
+    select: { title: true },
+  });
   await prisma.blogPost.delete({ where: { id: params.id } });
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "content.post.delete",
+    entityType: "BlogPost",
+    entityId: params.id,
+    summary: `Deleted post “${existing?.title || params.id}”`,
+    req,
+  });
   return NextResponse.json({ ok: true });
 }

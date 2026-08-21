@@ -1,13 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { resolveShippingMethodLabel } from "@/lib/shipping-methods";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
 import { ResendOrderEmailButton } from "@/components/admin/ResendOrderEmailButton";
 import { OrderTrackingForm } from "@/components/admin/OrderTrackingForm";
+import { OrderFulfillmentBranchSelect } from "@/components/admin/OrderFulfillmentBranchSelect";
 import { resolveTrackingUrl } from "@/lib/order-tracking";
 import { deliveryDateIso, formatDeliveryDateLabel } from "@/lib/delivery-dates";
 import { receiptToken } from "@/lib/order-receipt";
@@ -17,7 +18,7 @@ export default async function AdminOrderDetailPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdminPage();
+  const ctx = await requireAdminPage("orders.read");
 
   const order = await prisma.order.findUnique({
     where: { id: params.id },
@@ -33,10 +34,20 @@ export default async function AdminOrderDetailPage({
         },
       },
       user: true,
+      fulfillmentBranch: true,
     },
   });
 
   if (!order) notFound();
+
+  const scope = orderBranchWhere(ctx);
+  if (scope) {
+    const allowed = await prisma.order.findFirst({
+      where: { id: order.id, ...(scope as object) },
+      select: { id: true },
+    });
+    if (!allowed) notFound();
+  }
 
   const shippingLabel = await resolveShippingMethodLabel(order.shippingMethod);
   const deliveryIso = deliveryDateIso(order.deliveryDate);
@@ -68,6 +79,12 @@ export default async function AdminOrderDetailPage({
           >
             Download PDF receipt
           </a>
+          <Link
+            href={`/admin/orders/${order.id}/pack-slip`}
+            className="text-sm text-gold hover:underline"
+          >
+            Pack slip
+          </Link>
           <span className="text-sm text-wf-gray">Status</span>
           <OrderStatusSelect orderId={order.id} status={order.status} />
         </div>
@@ -191,6 +208,12 @@ export default async function AdminOrderDetailPage({
                 {order.shippingCountry && (
                   <span className="block">{order.shippingCountry}</span>
                 )}
+                {order.fulfillmentBranch && (
+                  <span className="block mt-2 text-wf-black">
+                    Fulfilment: {order.fulfillmentBranch.name} (
+                    {order.fulfillmentBranch.country})
+                  </span>
+                )}
                 {deliveryLabel && (
                   <span className="block mt-2 text-wf-black">
                     Delivery: {deliveryLabel}
@@ -202,6 +225,14 @@ export default async function AdminOrderDetailPage({
                 Shipping details appear after checkout completes.
               </p>
             )}
+
+            <div className="mb-4 pb-4 border-b border-wf-border">
+              <OrderFulfillmentBranchSelect
+                orderId={order.id}
+                currentBranchId={order.fulfillmentBranchId}
+                shippingCountry={order.shippingCountry}
+              />
+            </div>
 
             {(order.trackingNumber || resolveTrackingUrl(order)) && (
               <div className="text-sm mb-4 pb-4 border-b border-wf-border space-y-1">

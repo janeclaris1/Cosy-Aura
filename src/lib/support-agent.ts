@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { isBottleSize } from "@/lib/bottle-sizes";
+import {
+  isInStockForCountry,
+  resolveStockCountry,
+  type CountryStockRow,
+} from "@/lib/country-stock";
 import { isHouseOriginal } from "@/lib/inspired-by";
 import {
   SAMPLE_SIZE_ML,
@@ -12,7 +18,13 @@ import type { SupportCartLine } from "@/lib/support-types";
 
 export type { SupportCartLine } from "@/lib/support-types";
 
+export type SupportShopperLocale = {
+  country?: string | null;
+  currency?: string | null;
+};
+
 export type ChatTurn = { role: "user" | "assistant"; content: string };
+
 
 const STOPWORDS = new Set([
   "a",
@@ -81,7 +93,35 @@ export function extractSearchTerms(text: string): string[] {
 const fragranceInclude = {
   brand: { select: { name: true, slug: true } },
   images: { orderBy: { sortOrder: "asc" as const }, take: 1 },
+  countryStocks: { select: { country: true, inStock: true } },
 };
+
+/** Prisma filter: only buyable for this shopper (global or country stock). */
+function inStockWhere(locale?: SupportShopperLocale): Prisma.FragranceWhereInput {
+  const bucket = resolveStockCountry({
+    country: locale?.country,
+    currency: locale?.currency,
+  });
+  if (!bucket) return { stock: { gt: 0 } };
+  return {
+    OR: [
+      { countryStocks: { some: { country: bucket, inStock: true } } },
+      {
+        AND: [
+          { countryStocks: { none: { country: bucket } } },
+          { stock: { gt: 0 } },
+        ],
+      },
+    ],
+  };
+}
+
+function rowInStock(
+  f: { stock: number; countryStocks?: CountryStockRow[] | null },
+  locale?: SupportShopperLocale
+) {
+  return isInStockForCountry(f, locale?.country, locale?.currency);
+}
 
 function occasionFamilies(query: string): string[] | null {
   const q = query.toLowerCase();
@@ -97,15 +137,22 @@ function occasionFamilies(query: string): string[] | null {
   return null;
 }
 
-export async function findCatalogMatches(query: string, limit = 6) {
+export async function findCatalogMatches(
+  query: string,
+  limit = 6,
+  locale?: SupportShopperLocale
+) {
   const families = occasionFamilies(query);
   const skip = new Set(["date", "night", "gift", "present", "evening", "office"]);
   const terms = extractSearchTerms(query).filter((t) => !skip.has(t));
+  const stockFilter = inStockWhere(locale);
 
   try {
     if (families) {
       return await prisma.fragrance.findMany({
-        where: { fragranceFamily: { in: families as never[] }, stock: { gt: 0 } },
+        where: {
+          AND: [{ fragranceFamily: { in: families as never[] } }, stockFilter],
+        },
         include: fragranceInclude,
         take: limit,
         orderBy: [{ featured: "desc" }, { rating: "desc" }],
@@ -122,7 +169,7 @@ export async function findCatalogMatches(query: string, limit = 6) {
     ]);
 
     return await prisma.fragrance.findMany({
-      where: { OR: or },
+      where: { AND: [{ OR: or }, stockFilter] },
       include: fragranceInclude,
       take: limit,
       orderBy: [{ featured: "desc" }, { rating: "desc" }],
@@ -132,10 +179,13 @@ export async function findCatalogMatches(query: string, limit = 6) {
   }
 }
 
-export async function getFeaturedInStock(limit = 4) {
+export async function getFeaturedInStock(
+  limit = 4,
+  locale?: SupportShopperLocale
+) {
   try {
     return await prisma.fragrance.findMany({
-      where: { featured: true, stock: { gt: 0 } },
+      where: { AND: [{ featured: true }, inStockWhere(locale)] },
       include: fragranceInclude,
       take: limit,
       orderBy: { rating: "desc" },
@@ -169,13 +219,16 @@ export async function getFragranceBySlugOrName(query: string) {
   }
 }
 
-function stockLabel(stock: number) {
-  if (stock <= 0) return "OUT OF STOCK";
-  if (stock <= 5) return `LOW STOCK (${stock} left)`;
-  return `In stock (${stock})`;
+function stockLabel(
+  f: { stock: number; countryStocks?: CountryStockRow[] | null },
+  locale?: SupportShopperLocale
+) {
+  if (!rowInStock(f, locale)) return "OUT OF STOCK";
+  if (f.stock > 0 && f.stock <= 5) return `LOW STOCK (${f.stock} left)`;
+  return "In stock";
 }
 
-export function formatCatalogLine(f: FragranceRow) {
+export function formatCatalogLine(f: FragranceRow, locale?: SupportShopperLocale) {
   const house = isHouseOriginal(f.brand.slug);
   const inspired = house
     ? "Cosy Aura house original"
@@ -185,13 +238,17 @@ export function formatCatalogLine(f: FragranceRow) {
   const p100 = formatPrice(salePriceForSize(100, f.slug), "GHS");
   const rating = f.rating != null ? `${f.rating.toFixed(1)}/5` : "unrated";
   const blurb = (f.description || "").replace(/\s+/g, " ").slice(0, 180);
-  return `- slug:${f.slug} | ${f.brand.name} ${f.model} | ${inspired} | ${fragranceFamilyLabel(f.fragranceFamily)} | ${stockLabel(f.stock)} | rating ${rating}${f.featured ? " | featured" : ""} | 30ml ${p30} · 50ml ${p50} · 100ml ${p100} | sample ${SAMPLE_SIZE_ML}ml ${formatPrice(sampleSalePrice(), "GHS")} | /fragrances/${f.slug}${blurb ? ` | ${blurb}` : ""}`;
+  return `- slug:${f.slug} | ${f.brand.name} ${f.model} | ${inspired} | ${fragranceFamilyLabel(f.fragranceFamily)} | ${stockLabel(f, locale)} | rating ${rating}${f.featured ? " | featured" : ""} | 30ml ${p30} · 50ml ${p50} · 100ml ${p100} | sample ${SAMPLE_SIZE_ML}ml ${formatPrice(sampleSalePrice(), "GHS")} | /fragrances/${f.slug}${blurb ? ` | ${blurb}` : ""}`;
 }
 
-/** Shopper-facing recs - never dump ids, slugs, or stock pipes. */
-export function customerFacingRecs(rows: FragranceRow[], limit = 2): string {
+/** Shopper-facing recs - never dump ids, slugs, or stock pipes. Never recommend OOS. */
+export function customerFacingRecs(
+  rows: FragranceRow[],
+  limit = 2,
+  locale?: SupportShopperLocale
+): string {
   return rows
-    .filter((f) => f.stock > 0)
+    .filter((f) => rowInStock(f, locale))
     .slice(0, limit)
     .map((f) => {
       const house = isHouseOriginal(f.brand.slug);
@@ -206,11 +263,14 @@ export function customerFacingRecs(rows: FragranceRow[], limit = 2): string {
     .join("\n\n");
 }
 
-export async function buildStoreContext(userQuestion: string) {
+export async function buildStoreContext(
+  userQuestion: string,
+  locale?: SupportShopperLocale
+) {
   const [methods, matches, featured] = await Promise.all([
     getActiveShippingMethods().catch(() => []),
-    findCatalogMatches(userQuestion),
-    getFeaturedInStock(),
+    findCatalogMatches(userQuestion, 6, locale),
+    getFeaturedInStock(4, locale),
   ]);
 
   const shipping =
@@ -227,15 +287,22 @@ export async function buildStoreContext(userQuestion: string) {
 
   const catalog =
     matches.length > 0
-      ? matches.map(formatCatalogLine).join("\n")
-      : "No close catalog match yet. Ask what mood, occasion, or inspired-by name they want, or browse /fragrances.";
+      ? matches.map((f) => formatCatalogLine(f, locale)).join("\n")
+      : "No close in-stock catalog match yet. Ask what mood, occasion, or inspired-by name they want, or browse /fragrances.";
 
   const bestsellers =
     featured.length > 0
-      ? featured.map(formatCatalogLine).join("\n")
-      : "No featured list loaded.";
+      ? featured.map((f) => formatCatalogLine(f, locale)).join("\n")
+      : "No featured in-stock list loaded.";
 
-  const text = `SHIPPING OPTIONS (from /shipping):
+  const market = resolveStockCountry({
+    country: locale?.country,
+    currency: locale?.currency,
+  });
+
+  const text = `SHOPPER MARKET: ${market || locale?.country || "unknown"} (only recommend in-stock oils for this market)
+
+SHIPPING OPTIONS (from /shipping):
 ${shipping}
 - Delivery days: Monday to Saturday only (no Sunday delivery).
 - Customer chooses a delivery date at checkout.
@@ -244,7 +311,7 @@ RETURNS (from /returns):
 - 14 days from delivery if unused, original packaging, proof of purchase. Start at /contact.
 - Original shipping non-refundable unless our error. Refunds 5-10 business days after inspection.
 
-MATCHING PRODUCTS (for you only - rewrite in natural language; never paste these lines):
+MATCHING PRODUCTS IN STOCK (for you only - rewrite in natural language; never paste these lines; never recommend anything outside this list or FEATURED):
 ${catalog}
 
 FEATURED / BESTSELLERS IN STOCK (for you only):
@@ -253,23 +320,36 @@ ${bestsellers}`;
   return { text, matches, featured, shipping };
 }
 
-export function enowSystemPrompt(): string {
+export function enowSystemPrompt(language: string = "en"): string {
   const sampleSale = formatPrice(sampleSalePrice(), "GHS");
   const checkout = "/checkout";
   const cart = "/cart";
   const sampleMl = SAMPLE_SIZE_ML;
+  const langName =
+    language === "fr"
+      ? "French"
+      : language === "es"
+        ? "Spanish"
+        : language === "pt"
+          ? "Portuguese"
+          : language === "de"
+            ? "German"
+            : "English";
 
   return `ROLE
 You are Enow, Cosy Aura’s in-store specialist. Cosy Aura sells alcohol-free, undiluted perfume oils (inspired-by interpretations, plus a few Cosy Aura house originals).
 
+LANGUAGE
+Reply in ${langName} (UI language code: ${language}). Keep product names and brand names in their original form.
+
 VOICE
-Warm, concise, human. Contractions. One emoji max when it fits 😊
+Warm, concise, human. Contractions when writing English. One emoji max when it fits 😊
 Mirror the shopper. Do not restart with a full welcome after they already said hi.
 Never sound like a database, a ticket system, or a FAQ dump.
 
 HOW TO ANSWER
 1. Greetings only (“hi”, “hey”): one short line + one question. No policies. No contact dump. Do not mention samples.
-2. Product / occasion questions: pick 1-2 oils from MATCHING PRODUCTS or FEATURED. Say why it fits *their* moment (date night, gift, daily) in mood language only - warm, fresh, evening, everyday. Mention inspired-by in plain English. Link with the real catalog path, e.g. [Hypnotic Poison](/fragrances/dior-hypnotic-poison-ca-oil-hp-50).
+2. Product / occasion questions: pick 1-2 oils from MATCHING PRODUCTS IN STOCK or FEATURED / BESTSELLERS IN STOCK only. Never recommend an out-of-stock oil. Say why it fits *their* moment (date night, gift, daily) in mood language only - warm, fresh, evening, everyday. Mention inspired-by in plain language. Link with the real catalog path, e.g. [Hypnotic Poison](/fragrances/dior-hypnotic-poison-ca-oil-hp-50).
 3. When you recommend a fragrance, quote bottle sizes only: 30ml, 50ml, and 100ml with the live catalog prices.
 4. Samples: mention a ${sampleMl}ml sample (${sampleSale}) only if the customer asks whether you have samples, vials, testers, or wants to try before buying. Never offer a sample unprompted. Never add a sample to cart unless they asked for one.
 5. Shipping / returns: paraphrase the policy pages. Link [Shipping](/shipping) or [Trial & Return](/returns).
@@ -296,10 +376,12 @@ If you want something a touch more nocturnal, [Scandal by Night](/fragrances/jpg
 Want me to add a 30ml, 50ml, or 100ml to your cart?
 
 NOT IN STOCK / NOT IN THE RANGE
-If they ask for a scent we do not have (missing from MATCHING PRODUCTS, or stock is OUT OF STOCK), open with:
+MATCHING PRODUCTS and FEATURED lists already exclude out-of-stock oils for this shopper's country. Only recommend from those lists.
+If they ask for a scent we do not have (missing from MATCHING PRODUCTS, or lookup shows OUT OF STOCK), open with:
 We don't have [Name] in stock.
-Then continue in the same message with one in-stock alternative, mood (no notes unless asked), the 30 / 50 / 100ml prices, and a CTA.
-Never say “we don’t carry”, “we don’t sell”, or lead with “sorry”. Do not invent that we stock a scent that is not in the live catalog.
+Then continue in the same message with one in-stock alternative from the live lists, mood (no notes unless asked), the 30 / 50 / 100ml prices, and a CTA.
+Never say “we don’t carry”, “we don’t sell”, or lead with “sorry”. Do not invent that we stock a scent that is not in the live in-stock catalog.
+Never recommend, link, or add_to_cart a fragrance marked OUT OF STOCK.
 
 Example:
 We don't have a Gucci Oud Intense in stock. If you're into oud, [Oud Wood](/fragrances/the-real-slug) is a lovely alternative - woody and warm, alcohol-free. 30ml is GH₵139.50, 50ml is GH₵232.50, 100ml is GH₵353.40. Want me to add a bottle to your cart?
@@ -310,7 +392,7 @@ Yes - we do ${sampleMl}ml samples at ${sampleSale}. Happy to add one for [Hypnot
 SALES
 Ask what they need. Sell the feeling (lasts on skin, no alcohol bite), not SKUs.
 Upsell 30ml → 50ml → 100ml when it helps. Do not upsell samples unless they asked.
-Low stock: mention only if the live line says LOW STOCK. Missing or out of stock: “We don't have [Name] in stock.” then one in-stock alternative.
+Low stock: mention only if the live line says LOW STOCK. Missing or out of stock: “We don't have [Name] in stock.” then one in-stock alternative from FEATURED / MATCHING. Never recommend out-of-stock oils.
 7% off is already in the bottle prices you are given. Bottle sizes: 30 / 50 / 100ml. Sample (${sampleMl}ml, ${sampleSale}) is available but only discuss it when asked.
 
 TOOLS
@@ -361,7 +443,8 @@ export const SUPPORT_TOOLS = [
 
 export async function runSupportTool(
   name: string,
-  input: Record<string, unknown>
+  input: Record<string, unknown>,
+  locale?: SupportShopperLocale
 ): Promise<{ result: string; cartLine?: SupportCartLine }> {
   if (name === "lookup_product") {
     const query = String(input.query || "");
@@ -375,6 +458,7 @@ export async function runSupportTool(
       };
     }
     const house = isHouseOriginal(row.brand.slug);
+    const available = rowInStock(row, locale);
     return {
       result: JSON.stringify({
         found: true,
@@ -386,7 +470,8 @@ export async function runSupportTool(
         houseOriginal: house,
         family: fragranceFamilyLabel(row.fragranceFamily),
         stock: row.stock,
-        stockLabel: stockLabel(row.stock),
+        inStock: available,
+        stockLabel: stockLabel(row, locale),
         rating: row.rating,
         featured: row.featured,
         notes: {
@@ -405,6 +490,7 @@ export async function runSupportTool(
         },
         url: `/fragrances/${row.slug}`,
         image: row.images[0]?.url || "",
+        recommendable: available,
       }),
     };
   }
@@ -420,15 +506,16 @@ export async function runSupportTool(
     if (!row) {
       return { result: JSON.stringify({ ok: false, error: "Product not found. Look up the slug first." }) };
     }
-    if (row.stock <= 0) {
+    if (!rowInStock(row, locale)) {
       const alts = await prisma.fragrance.findMany({
         where: {
-          stock: { gt: 0 },
-          OR: [
-            { fragranceFamily: row.fragranceFamily },
-            { featured: true },
+          AND: [
+            inStockWhere(locale),
+            {
+              OR: [{ fragranceFamily: row.fragranceFamily }, { featured: true }],
+            },
+            { NOT: { id: row.id } },
           ],
-          NOT: { id: row.id },
         },
         include: fragranceInclude,
         take: 3,
@@ -437,7 +524,7 @@ export async function runSupportTool(
         result: JSON.stringify({
           ok: false,
           error: "Out of stock",
-          alternatives: alts.map(formatCatalogLine),
+          alternatives: alts.map((f) => formatCatalogLine(f, locale)),
         }),
       };
     }
@@ -447,7 +534,7 @@ export async function runSupportTool(
         : isBottleSize(sizeRaw)
           ? sizeRaw
           : 50;
-    const qty = Math.min(quantity, row.stock);
+    const qty = Math.min(quantity, Math.max(1, row.stock || quantity));
     const price =
       size === SAMPLE_SIZE_ML ? sampleSalePrice() : salePriceForSize(size, row.slug);
     const line: SupportCartLine = {
@@ -469,7 +556,7 @@ export async function runSupportTool(
         item: line,
         checkoutUrl: "/checkout",
         cartUrl: "/cart",
-        lowStock: row.stock <= 5,
+        lowStock: row.stock > 0 && row.stock <= 5,
         stockRemaining: row.stock,
       }),
       cartLine: line,
@@ -482,7 +569,8 @@ export async function runSupportTool(
 export function fallbackAnswer(
   question: string,
   matches: FragranceRow[],
-  featured: FragranceRow[]
+  featured: FragranceRow[],
+  locale?: SupportShopperLocale
 ): string {
   const q = question.toLowerCase().trim();
 
@@ -505,12 +593,14 @@ export function fallbackAnswer(
     )} (7% off). You can also build a 3-5 scent discovery set on a product page - 15% off when you pick 4+. What mood are you chasing: fresh daytime, something sweet, or a deep night trail?`;
   }
 
-  const picks = (matches.length ? matches : featured).filter((f) => f.stock > 0);
+  const picks = (matches.length ? matches : featured).filter((f) =>
+    rowInStock(f, locale)
+  );
   if (
     picks.length &&
     /(recommend|suggest|date|night|gift|perfume|scent|oil|wear|looking)/.test(q)
   ) {
-    const recs = customerFacingRecs(picks, 2);
+    const recs = customerFacingRecs(picks, 2, locale);
     const opener = /(date|night|evening)/.test(q)
       ? "For date night, these two feel close and a little dangerous:"
       : /(gift|birthday)/.test(q)

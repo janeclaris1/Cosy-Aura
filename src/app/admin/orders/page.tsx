@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
@@ -10,12 +10,14 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: { status?: string; q?: string };
 }) {
-  await requireAdminPage();
+  const ctx = await requireAdminPage("orders.read");
 
   const status = searchParams.status;
   const q = searchParams.q?.trim();
 
-  const where: Prisma.OrderWhereInput = {};
+  const where: Prisma.OrderWhereInput = {
+    ...(orderBranchWhere(ctx) as Prisma.OrderWhereInput),
+  };
   if (status) where.status = status as OrderStatus;
   if (q) where.email = { contains: q, mode: "insensitive" };
 
@@ -23,6 +25,7 @@ export default async function AdminOrdersPage({
     where,
     include: {
       items: { include: { fragrance: { include: { brand: true } } } },
+      fulfillmentBranch: { select: { name: true, country: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -40,7 +43,15 @@ export default async function AdminOrdersPage({
 
   return (
     <div>
-      <h1 className="font-playfair text-3xl mb-6">Orders</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h1 className="font-playfair text-3xl">Orders</h1>
+        <a
+          href="/api/admin/reports/export?kind=orders"
+          className="btn-outline text-sm py-2 px-4"
+        >
+          Export CSV
+        </a>
+      </div>
 
       <form className="mb-4" action="/admin/orders" method="get">
         {status && <input type="hidden" name="status" value={status} />}
@@ -86,6 +97,7 @@ export default async function AdminOrdersPage({
             <tr>
               <th className="text-left p-3 font-medium">Order</th>
               <th className="text-left p-3 font-medium">Customer</th>
+              <th className="text-left p-3 font-medium">Branch</th>
               <th className="text-left p-3 font-medium">Items</th>
               <th className="text-left p-3 font-medium">Total</th>
               <th className="text-left p-3 font-medium">Status</th>
@@ -104,6 +116,11 @@ export default async function AdminOrdersPage({
                   </Link>
                 </td>
                 <td className="p-3">{order.email}</td>
+                <td className="p-3 text-xs text-wf-gray">
+                  {order.fulfillmentBranch
+                    ? `${order.fulfillmentBranch.name} (${order.fulfillmentBranch.country})`
+                    : "—"}
+                </td>
                 <td className="p-3">
                   {order.items.map((item) => (
                     <span key={item.id} className="block text-wf-gray text-xs">
@@ -122,7 +139,7 @@ export default async function AdminOrdersPage({
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-wf-gray">
+                <td colSpan={7} className="p-6 text-center text-wf-gray">
                   No orders yet
                 </td>
               </tr>

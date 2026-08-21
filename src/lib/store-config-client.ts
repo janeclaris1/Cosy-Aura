@@ -12,6 +12,16 @@ export type WhatsAppCustomerDetails = {
   region?: string;
 };
 
+export type WhatsAppFulfillment = {
+  courier?: string;
+  deliveryFeeLabel?: string;
+  deliveryDateLabel?: string;
+  paymentMethod?: string;
+  orderTotalLabel?: string;
+  payNowLabel?: string;
+  balanceOnDeliveryLabel?: string;
+};
+
 export function buildWhatsAppOrderMessage(input: {
   kind: "cart" | "product";
   country?: string | null;
@@ -25,6 +35,7 @@ export function buildWhatsAppOrderMessage(input: {
   totalLabel?: string;
   customerName?: string;
   customer?: WhatsAppCustomerDetails;
+  fulfillment?: WhatsAppFulfillment;
 }): string {
   const header =
     input.kind === "cart"
@@ -37,11 +48,34 @@ export function buildWhatsAppOrderMessage(input: {
     return `${i + 1}. ${brand}${line.model}${size} × ${line.quantity}${price}`;
   });
   const parts = [header, "", ...lines];
-  if (input.totalLabel) {
-    parts.push("", `Total: ${input.totalLabel}`);
+
+  const fulfillment = input.fulfillment;
+  const orderTotal = fulfillment?.orderTotalLabel || input.totalLabel;
+  if (orderTotal) {
+    parts.push("", `Order total: ${orderTotal}`);
   }
   if (input.country) {
     parts.push(`Country: ${input.country}`);
+  }
+
+  if (fulfillment) {
+    parts.push("", "Delivery & payment:");
+    if (fulfillment.courier) parts.push(`Courier: ${fulfillment.courier}`);
+    if (fulfillment.deliveryFeeLabel) {
+      parts.push(`Delivery fee: ${fulfillment.deliveryFeeLabel}`);
+    }
+    if (fulfillment.deliveryDateLabel) {
+      parts.push(`Delivery date: ${fulfillment.deliveryDateLabel}`);
+    }
+    if (fulfillment.paymentMethod) {
+      parts.push(`Payment method: ${fulfillment.paymentMethod}`);
+    }
+    if (fulfillment.payNowLabel) {
+      parts.push(`Pay now: ${fulfillment.payNowLabel}`);
+    }
+    if (fulfillment.balanceOnDeliveryLabel) {
+      parts.push(`Balance on delivery: ${fulfillment.balanceOnDeliveryLabel}`);
+    }
   }
 
   const customer = input.customer || {};

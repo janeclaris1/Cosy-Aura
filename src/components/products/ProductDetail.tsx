@@ -28,6 +28,7 @@ import {
 } from "@/lib/inspired-by";
 import { CompareToggle } from "@/components/perfume/CompareToggle";
 import { isInStockForCountry } from "@/lib/country-stock";
+import { emptySizeStock, type SizeStockMap } from "@/lib/size-stock";
 import { WhatsAppToCheckoutButton } from "@/components/checkout/WhatsAppOrderButton";
 import { VirtualNose } from "@/components/perfume/VirtualNose";
 import { ScentMemoryPanel } from "@/components/perfume/ScentMemoryPanel";
@@ -359,7 +360,7 @@ export function ProductSpecsAccordion({
         className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
         aria-expanded={open}
       >
-        <span className="font-playfair text-lg">Product details</span>
+        <span className="font-playfair text-lg">{t("product.details")}</span>
         <ChevronDown
           className={cn(
             "w-4 h-4 shrink-0 text-wf-gray transition-transform duration-organic ease-organic",
@@ -493,6 +494,36 @@ export function ProductInfo({
   const [internalSize, setInternalSize] = useState<BottleSize>(catalogSize);
   const selectedSize = selectedSizeProp ?? internalSize;
   const setSelectedSize = onSizeChange ?? setInternalSize;
+  const [sizeStock, setSizeStock] = useState<SizeStockMap>(emptySizeStock());
+  const [sizeStockLoaded, setSizeStockLoaded] = useState(false);
+  const country = useLocaleStore((s) => s.country);
+  const currency = useLocaleStore((s) => s.currency);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/store/size-stock?fragranceId=${encodeURIComponent(fragrance.id)}&country=${encodeURIComponent(country || "")}`
+        );
+        const data = await res.json();
+        if (!cancelled && res.ok && data.quantities) {
+          setSizeStock({
+            30: Number(data.quantities[30] || 0),
+            50: Number(data.quantities[50] || 0),
+            100: Number(data.quantities[100] || 0),
+          });
+        }
+      } catch {
+        /* keep zeros */
+      } finally {
+        if (!cancelled) setSizeStockLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fragrance.id, country]);
   const baseDisplayPrice = priceForBottleSize(
     fragrance.price,
     fragrance.bottleSize || 100,
@@ -503,8 +534,6 @@ export function ProductInfo({
   const regionalSale = useRegionalPrice(baseDisplayPrice);
   const displayPrice = member.apply(regionalSale);
   const addItem = useCartStore((s) => s.addItem);
-  const currency = useLocaleStore((s) => s.currency);
-  const country = useLocaleStore((s) => s.country);
   useLocaleStore((s) => s.rates);
   const t = useT();
   const { toggleItem, hasItem } = useWishlistStore();
@@ -518,11 +547,21 @@ export function ProductInfo({
   const regionalSampleList = useRegionalPrice(SAMPLE_LIST_GHS);
   const regionalPrice30 = member.apply(useRegionalPrice(salePriceForSize(30, fragrance.slug)));
   const compareCount = usePremiumStore((s) => s.compare.length);
-  const inStock = isInStockForCountry(
+  const countryInStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
     country,
     currency
   );
+  const selectedSizeInStock =
+    !sizeStockLoaded || sizeStock[selectedSize] > 0;
+  const inStock = countryInStock && selectedSizeInStock;
+
+  useEffect(() => {
+    if (!sizeStockLoaded) return;
+    if (sizeStock[selectedSize] > 0) return;
+    const firstAvailable = BOTTLE_SIZES.find((s) => sizeStock[s] > 0);
+    if (firstAvailable) setSelectedSize(firstAvailable);
+  }, [sizeStockLoaded, sizeStock, selectedSize, setSelectedSize]);
 
   function handleAddToCart() {
     if (!inStock) return;
@@ -640,25 +679,32 @@ export function ProductInfo({
           {t("pdp.size")}
         </p>
         <div className="flex flex-wrap gap-2">
-          {BOTTLE_SIZES.map((size) => (
+          {BOTTLE_SIZES.map((size) => {
+            const sizeAvailable = !sizeStockLoaded || sizeStock[size] > 0;
+            return (
             <button
               key={size}
               type="button"
-              onClick={() => setSelectedSize(size)}
+              onClick={() => sizeAvailable && setSelectedSize(size)}
+              disabled={!sizeAvailable}
               className={cn(
                 "min-w-[4.75rem] px-4 py-2.5 text-sm border transition-colors duration-organic ease-organic",
                 selectedSize === size
                   ? "border-espresso bg-espresso text-ivory"
-                  : "border-wf-border bg-ivory text-espresso hover:border-espresso"
+                  : "border-wf-border bg-ivory text-espresso hover:border-espresso",
+                !sizeAvailable && "opacity-40 cursor-not-allowed hover:border-wf-border"
               )}
               aria-pressed={selectedSize === size}
             >
               {size} ml
               <span className="block text-[10px] mt-0.5 font-normal opacity-80">
-                {formatPrice(sizeSalePrices[size], currency)}
+                {sizeAvailable
+                  ? formatPrice(sizeSalePrices[size], currency)
+                  : t("pdp.outOfStock")}
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -700,13 +746,13 @@ export function ProductInfo({
       {inStock ? (
         <div className="mb-6">
           <WhatsAppToCheckoutButton
-            label="Order on WhatsApp"
+            label={t("product.orderWhatsApp")}
             onPrepareCart={handleAddToCart}
           />
         </div>
       ) : (
         <p className="mb-6 text-sm text-mocha">
-          Currently out of stock for your location.
+          {t("product.outOfStockLocation")}
         </p>
       )}
 
@@ -747,15 +793,15 @@ export function ProductInfo({
       <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 text-[12px] uppercase tracking-[0.1em] text-mocha">
         <div className="flex items-center gap-2">
           <Shield className="w-3.5 h-3.5 text-espresso" />
-          <span>Secure Payment</span>
+          <span>{t("product.securePayment")}</span>
         </div>
         <div className="flex items-center gap-2">
           <Truck className="w-3.5 h-3.5 text-espresso" />
-          <span>Fast Shipping</span>
+          <span>{t("product.fastShipping")}</span>
         </div>
         <div className="flex items-center gap-2">
           <RotateCcw className="w-3.5 h-3.5 text-espresso" />
-          <span>14-Day Returns</span>
+          <span>{t("product.returns14")}</span>
         </div>
       </div>
 

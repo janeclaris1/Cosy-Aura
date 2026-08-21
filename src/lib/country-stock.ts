@@ -15,6 +15,7 @@ const CEMAC_TO_CM = new Set(["CM", "GA", "CG", "TD", "CF", "GQ"]);
 export type CountryStockRow = {
   country: string;
   inStock: boolean;
+  quantity?: number;
 };
 
 /** Map shopper ISO country → inventory bucket we manage. */
@@ -59,7 +60,11 @@ export function isInStockForCountry(
     const row = fragrance.countryStocks.find(
       (s) => s.country.toUpperCase() === bucket
     );
-    if (row) return row.inStock;
+    if (row) {
+      if (!row.inStock) return false;
+      if (typeof row.quantity === "number") return row.quantity > 0;
+      return true;
+    }
   }
   return Number(fragrance.stock) > 0;
 }

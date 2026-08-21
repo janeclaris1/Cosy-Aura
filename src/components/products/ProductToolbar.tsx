@@ -157,9 +157,9 @@ export function ProductToolbar({
     active: boolean;
     hidden?: boolean;
   }[] = [
-    { id: "brands", label: "Brands", active: Boolean(activeBrand), hidden: Boolean(brandSlug) },
-    { id: "bottleSize", label: "Bottle Size", active: activeBottleSizes.length > 0 },
-    { id: "price", label: "Price", active: hasPrice },
+    { id: "brands", label: t("plp.brands"), active: Boolean(activeBrand), hidden: Boolean(brandSlug) },
+    { id: "bottleSize", label: t("plp.bottleSize"), active: activeBottleSizes.length > 0 },
+    { id: "price", label: t("nav.price"), active: hasPrice },
     {
       id: "fragranceFamily",
       label: t("pdp.family"),
@@ -170,7 +170,7 @@ export function ProductToolbar({
       label: t("pdp.concentration"),
       active: activeValues("concentration").length > 0,
     },
-    { id: "gender", label: "Gender", active: activeValues("gender").length > 0 },
+    { id: "gender", label: t("plp.gender"), active: activeValues("gender").length > 0 },
   ];
 
   return (
@@ -486,7 +486,7 @@ export function ProductToolbar({
                       )
                     }
                   />
-                  Sample available
+                  {t("plp.sampleAvailable")}
                 </label>
               </MoreFilterGroup>
 

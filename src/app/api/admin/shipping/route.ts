@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { parseShippingMethodInput } from "@/lib/shipping-methods";
 
 export async function GET() {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("shipping.write");
   if (error) return error;
 
   const methods = await prisma.shippingMethod.findMany({
@@ -15,8 +16,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("shipping.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = parseShippingMethodInput(body);
@@ -35,5 +37,13 @@ export async function POST(req: Request) {
   }
 
   const method = await prisma.shippingMethod.create({ data: parsed.data });
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "shipping.create",
+    entityType: "ShippingMethod",
+    entityId: method.id,
+    summary: `Created shipping method ${method.name}`,
+    req,
+  });
   return NextResponse.json(method);
 }

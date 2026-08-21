@@ -188,7 +188,7 @@ export function ProductCard({
         <div className="mt-2 px-0.5" onClick={(e) => e.stopPropagation()}>
           <WhatsAppToCheckoutButton
             compact
-            label="Order on WhatsApp"
+            label={t("product.orderWhatsApp")}
             onPrepareCart={() =>
               addItem({
                 fragranceId: fragrance.id,
@@ -202,9 +202,7 @@ export function ProductCard({
             }
           />
         </div>
-      ) : (
-        <p className="mt-2 text-[11px] text-mocha text-center">Unavailable in your region</p>
-      )}
+      ) : null}
     </div>
   );
 }

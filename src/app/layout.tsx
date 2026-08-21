@@ -60,7 +60,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1c1917",
+  themeColor: "#03045e",
 };
 
 export default async function RootLayout({
@@ -110,7 +110,7 @@ export default async function RootLayout({
       <body>
         <GoogleAnalytics />
         <MetaPixel />
-        <Providers>
+        <Providers initialLocale={loc}>
           {isMaintenance ? (
             children
           ) : (

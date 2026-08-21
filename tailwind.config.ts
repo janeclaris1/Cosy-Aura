@@ -10,8 +10,8 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#1c1917",
-          light: "#3f3a35",
+          DEFAULT: "#03045e",
+          light: "#0077b6",
         },
         secondary: {
           DEFAULT: "#d4d4d4",
@@ -22,22 +22,30 @@ const config: Config = {
           cream: "#ffffff",
         },
         highlight: {
-          DEFAULT: "#a67c52",
-          light: "#c4a574",
+          DEFAULT: "#03045e",
+          light: "#0077b6",
         },
         surface: "#ffffff",
         ivory: "#ffffff",
-        espresso: "#1c1917",
+        espresso: "#03045e",
         mocha: "#6b6b6b",
         success: "#6f9a76",
-        warning: "#c4a574",
+        warning: "#0077b6",
         error: "#b56b6b",
         gold: {
-          DEFAULT: "#a67c52",
-          light: "#c4a574",
+          DEFAULT: "#03045e",
+          light: "#0077b6",
+        },
+        signal: {
+          DEFAULT: "#FFD200",
+          dark: "#E6BC00",
+        },
+        navy: {
+          DEFAULT: "#03045e",
+          deep: "#02033f",
         },
         wf: {
-          black: "#1c1917",
+          black: "#03045e",
           gray: "#6b6b6b",
           border: "#e8e8e8",
           light: "#ffffff",

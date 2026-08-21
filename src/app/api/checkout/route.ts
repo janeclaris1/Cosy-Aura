@@ -105,10 +105,16 @@ export async function POST(req: Request) {
         deliveryDate,
         items: {
           create: pricedItems.map(
-            (item: { fragranceId: string; price: number; quantity: number }) => ({
+            (item: {
+              fragranceId: string;
+              price: number;
+              quantity: number;
+              bottleSize?: number;
+            }) => ({
               fragranceId: item.fragranceId,
               price: item.price,
               quantity: item.quantity,
+              bottleSize: item.bottleSize ?? 50,
             })
           ),
         },

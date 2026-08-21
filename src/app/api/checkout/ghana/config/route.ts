@@ -6,6 +6,7 @@ import {
 } from "@/lib/ghana-delivery";
 import { dawuroboPartnerPayerEnabled } from "@/lib/dawurobo";
 import { getShaqexpressRegions, shaqexpressConfigured } from "@/lib/shaqexpress";
+import { getCountryCommerceConfig } from "@/lib/branches";
 
 const FALLBACK_REGIONS = [
   { id: 1, name: "Greater Accra" },
@@ -27,7 +28,9 @@ const FALLBACK_REGIONS = [
 ];
 
 export async function GET() {
-  const dawurobo = dawuroboAvailable();
+  const commerce = await getCountryCommerceConfig("GH");
+  const dawurobo =
+    dawuroboAvailable() && (commerce?.dawuroboEnabled ?? true);
   const shaqApi = shaqexpressConfigured();
   let regions = FALLBACK_REGIONS;
 
@@ -39,17 +42,26 @@ export async function GET() {
     }
   }
 
-  // ShaQ Express is always offered — flat fee with no API key needed for display.
-  // Dawurobo is offered in Accra when its credentials are present.
-  const shaqOffered = true;
+  const shaqOffered = commerce?.shaqexpressEnabled ?? true;
 
   return NextResponse.json({
-    // Always enabled: ShaQ flat fee works without API credentials
     enabled: true,
     nextDayOnly: true,
     regions,
     defaultRegion: "Greater Accra",
     partnerPayerEnabled: dawuroboPartnerPayerEnabled() || shaqApi,
+    codEnabled: commerce?.codEnabled ?? true,
+    pickupEnabled: commerce?.pickupEnabled ?? false,
+    pickup: commerce?.pickupEnabled
+      ? {
+          branchName: commerce.branchName,
+          address: commerce.address,
+          city: commerce.city,
+          phone: commerce.phone,
+          openingHours: commerce.openingHours,
+          notes: commerce.deliveryNotes,
+        }
+      : null,
     providers: {
       dawurobo: {
         available: dawurobo,

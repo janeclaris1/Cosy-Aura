@@ -266,7 +266,7 @@ function NoteList({
           <li key={`${tier}-${source}`}>
             <button
               type="button"
-              className="text-left transition-colors duration-organic ease-organic hover:text-[#a67c52]"
+              className="text-left transition-colors duration-organic ease-organic hover:text-[#03045e]"
               onMouseEnter={() => onHover({ note, text: blurbFor(source, tier) })}
               onMouseLeave={() => onHover(null)}
               onFocus={() => onHover({ note, text: blurbFor(source, tier) })}

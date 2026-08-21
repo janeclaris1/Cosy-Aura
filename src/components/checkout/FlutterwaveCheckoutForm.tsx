@@ -2,20 +2,20 @@
 
 import { RegionalCheckoutForm, type RegionalCartItem } from "@/components/checkout/RegionalCheckoutForm";
 import { CEMAC_COUNTRIES, cemacCountryName, type CemacCountry } from "@/lib/flutterwave";
+import { useT } from "@/lib/locale-store";
 
 export function FlutterwaveCheckoutForm({
   country,
   onCountryChange,
   items,
   subtotal,
-  onBack,
 }: {
   country: CemacCountry;
   onCountryChange: (code: CemacCountry) => void;
   items: RegionalCartItem[];
   subtotal: number;
-  onBack: () => void;
 }) {
+  const t = useT();
   return (
     <RegionalCheckoutForm
       country={country}
@@ -23,12 +23,11 @@ export function FlutterwaveCheckoutForm({
       countryOptions={CEMAC_COUNTRIES}
       items={items}
       subtotal={subtotal}
-      onBack={onBack}
       endpoint="/api/checkout/flutterwave"
       providerLabel="Flutterwave"
-      hint={`Cards and mobile money (Orange / MTN) for CEMAC. Shipping to ${cemacCountryName(country)}. Charged in XAF.`}
+      hint={t("checkout.flutterwaveHint", { country: cemacCountryName(country) })}
       phonePlaceholder="6XX XXX XXX"
-      submitLabel="Continue to Flutterwave"
+      submitLabel={t("checkout.continueFlutterwave")}
     />
   );
 }

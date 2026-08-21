@@ -1,17 +1,17 @@
 export const BRAND_COLORS = {
-  primary: "#1c1917",
-  primaryLight: "#3f3a35",
+  primary: "#03045e",
+  primaryLight: "#0077b6",
   secondary: "#d4d4d4",
   secondaryLight: "#ececec",
   accent: "#ffffff",
-  highlight: "#a67c52",
-  highlightLight: "#c4a574",
+  highlight: "#03045e",
+  highlightLight: "#0077b6",
   background: "#ffffff",
   surface: "#ffffff",
-  text: "#1c1917",
+  text: "#03045e",
   textSecondary: "#6b6b6b",
   success: "#6f9a76",
-  warning: "#c4a574",
+  warning: "#0077b6",
   error: "#b56b6b",
 } as const;
 

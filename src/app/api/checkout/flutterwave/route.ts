@@ -12,6 +12,8 @@ import {
 import { parseDeliveryDate } from "@/lib/delivery-dates";
 import { cartLinesTotal, getCheckoutMemberContext, priceCartLines } from "@/lib/checkout-pricing";
 import { fetchRatesFromGhs, shippingUsdToGhs } from "@/lib/fx";
+import { resolveFulfillmentBranchId } from "@/lib/branches";
+import { assertCartSizeStockAvailable } from "@/lib/size-stock-server";
 
 export async function POST(req: Request) {
   try {
@@ -52,6 +54,20 @@ export async function POST(req: Request) {
     if (!isCemacCountry(country)) {
       return NextResponse.json(
         { error: "Flutterwave checkout is only available for CEMAC countries" },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await assertCartSizeStockAvailable(items, country);
+    } catch (stockErr) {
+      return NextResponse.json(
+        {
+          error:
+            stockErr instanceof Error
+              ? stockErr.message
+              : "One or more items are out of stock",
+        },
         { status: 400 }
       );
     }
@@ -100,6 +116,8 @@ export async function POST(req: Request) {
     const total = itemsTotal + shippingGhs;
     const charge = flutterwaveCharge(total, fx.rates);
 
+    const fulfillmentBranchId = await resolveFulfillmentBranchId(country);
+
     const order = await prisma.order.create({
       data: {
         email: customerEmail,
@@ -115,11 +133,15 @@ export async function POST(req: Request) {
         shippingCountry: country,
         deliveryDate,
         paymentProvider: "flutterwave",
+        ...(fulfillmentBranchId
+          ? { fulfillmentBranch: { connect: { id: fulfillmentBranchId } } }
+          : {}),
         items: {
           create: pricedItems.map((item) => ({
             fragranceId: item.fragranceId,
             price: item.price,
             quantity: item.quantity,
+            bottleSize: item.bottleSize ?? 50,
           })),
         },
       },

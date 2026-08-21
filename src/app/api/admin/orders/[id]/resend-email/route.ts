@@ -10,7 +10,7 @@ export async function POST(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("orders.write");
   if (error) return error;
 
   let order = await prisma.order.findUnique({ where: { id: params.id } });

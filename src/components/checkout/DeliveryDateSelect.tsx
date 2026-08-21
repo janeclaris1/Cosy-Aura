@@ -7,6 +7,7 @@ import {
   formatDeliveryDateLabel,
   listUpcomingDeliveryDates,
 } from "@/lib/delivery-dates";
+import { useT } from "@/lib/locale-store";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -32,6 +33,7 @@ export function DeliveryDateSelect({
   /** When true, only the next delivery weekday is offered (no multi-day calendar). */
   nextDayOnly?: boolean;
 }) {
+  const t = useT();
   const defaultIso = useMemo(() => earliestDeliveryIso(), []);
   const options = useMemo(
     () => listUpcomingDeliveryDates(nextDayOnly ? 1 : 21),
@@ -94,12 +96,12 @@ export function DeliveryDateSelect({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm text-espresso">
-            {nextDayOnly ? "Next-day delivery" : "Delivery"}{" "}
+            {t("checkout.delivery")}{" "}
             <span className="font-medium">{formatDeliveryDateLabel(selected)}</span>
           </p>
-          <p className="text-xs text-wf-gray mt-0.5">
-            {"Monday to Saturday"}
-          </p>
+          {!nextDayOnly ? (
+            <p className="text-xs text-wf-gray mt-0.5">{t("checkout.weekdays")}</p>
+          ) : null}
         </div>
         {!nextDayOnly && (
           <button

@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { shippingUsdToGhs } from "@/lib/fx";
-import { earliestDeliveryIso } from "@/lib/delivery-dates";
+import { earliestDeliveryIso, formatDeliveryDateLabel } from "@/lib/delivery-dates";
 import { isBottleSize } from "@/lib/bottle-sizes";
 import { DeliveryDateSelect } from "@/components/checkout/DeliveryDateSelect";
 import { WhatsAppOrderButton } from "@/components/checkout/WhatsAppOrderButton";
 import { useWhatsAppCheckoutConfig } from "@/lib/whatsapp-checkout-client";
+import type { WhatsAppFulfillment } from "@/lib/store-config-client";
 
 type Method = {
   id: string;
@@ -35,6 +36,16 @@ type GhanaDeliveryConfig = {
   nextDayOnly: boolean;
   regions: GhanaRegion[];
   defaultRegion: string;
+  codEnabled?: boolean;
+  pickupEnabled?: boolean;
+  pickup?: {
+    branchName: string | null;
+    address: string | null;
+    city: string | null;
+    phone: string | null;
+    openingHours: string | null;
+    notes: string | null;
+  } | null;
   providers?: {
     dawurobo?: {
       available: boolean;
@@ -58,12 +69,12 @@ type GhanaDeliveryConfig = {
   };
 };
 
-type CourierChoice = "dawurobo" | "shaqexpress";
+type CourierChoice = "dawurobo" | "shaqexpress" | "pickup";
 
 type DeliveryPayer = "partner" | "recipient" | "cod";
 
 type DeliveryEstimate = {
-  provider: CourierChoice;
+  provider: "dawurobo" | "shaqexpress";
   amountGhs: number;
   label: string;
   liveRate?: boolean;
@@ -87,7 +98,7 @@ export function RegionalCheckoutForm({
   countryOptions?: ReadonlyArray<{ code: string; name: string }>;
   items: RegionalCartItem[];
   subtotal: number;
-  onBack: () => void;
+  onBack?: () => void;
   endpoint: string;
   providerLabel: string;
   hint: string;
@@ -131,6 +142,9 @@ export function RegionalCheckoutForm({
   const dawuroboOk = Boolean(ghanaDelivery?.providers?.dawurobo?.available) && isAccraRegion;
   // ShaQ Express: Accra (alongside Dawurobo) and all other Ghana regions
   const shaqOk = Boolean(ghanaDelivery?.providers?.shaqexpress?.available);
+  const codEnabled = ghanaDelivery?.codEnabled !== false;
+  const pickupInfo = ghanaDelivery?.pickupEnabled ? ghanaDelivery.pickup : null;
+  const pickupOk = Boolean(ghanaDelivery?.pickupEnabled);
   const regionDeliveryFeeGhs =
     ghanaDelivery?.deliveryFees != null
       ? isAccraRegion
@@ -141,58 +155,104 @@ export function RegionalCheckoutForm({
         : 84;
   const shaqFeeGhs = regionDeliveryFeeGhs;
   const activeCourier: CourierChoice | null =
-    courierChoice &&
-    ((courierChoice === "dawurobo" && dawuroboOk) ||
-      (courierChoice === "shaqexpress" && shaqOk))
-      ? courierChoice
-      : !isAccraRegion && shaqOk
-        ? "shaqexpress"
-        : dawuroboOk
-          ? "dawurobo"
-          : shaqOk
-            ? "shaqexpress"
-            : null;
+    courierChoice === "pickup" && pickupOk
+      ? "pickup"
+      : courierChoice &&
+          ((courierChoice === "dawurobo" && dawuroboOk) ||
+            (courierChoice === "shaqexpress" && shaqOk))
+        ? courierChoice
+        : !isAccraRegion && shaqOk
+          ? "shaqexpress"
+          : dawuroboOk
+            ? "dawurobo"
+            : shaqOk
+              ? "shaqexpress"
+              : pickupOk
+                ? "pickup"
+                : null;
   const estimateGhs =
-    estimate?.provider === activeCourier ? (estimate.amountGhs ?? null) : null;
+    activeCourier === "dawurobo" || activeCourier === "shaqexpress"
+      ? estimate?.provider === activeCourier
+        ? (estimate.amountGhs ?? null)
+        : null
+      : null;
   /** Prepaid delivery: Dawurobo live rate when chosen; ShaQ flat fee otherwise. */
   const prepaidDeliveryGhs =
-    activeCourier === "dawurobo"
-      ? estimateGhs != null
-        ? estimateGhs
-        : dawuroboQuoteGhs != null
-          ? dawuroboQuoteGhs
-          : 0
-      : activeCourier === "shaqexpress"
+    activeCourier === "pickup"
+      ? 0
+      : activeCourier === "dawurobo"
         ? estimateGhs != null
           ? estimateGhs
-          : shaqFeeGhs
-        : 0;
+          : dawuroboQuoteGhs != null
+            ? dawuroboQuoteGhs
+            : 0
+        : activeCourier === "shaqexpress"
+          ? estimateGhs != null
+            ? estimateGhs
+            : shaqFeeGhs
+          : 0;
   const shippingGhs = useGhanaCourier
     ? deliveryPayer === "recipient"
       ? 0
       : prepaidDeliveryGhs
     : flatShippingGhs;
-  const productDueOnDelivery = useGhanaCourier && deliveryPayer === "cod" ? subtotal : 0;
   const total =
     useGhanaCourier && deliveryPayer === "cod" ? prepaidDeliveryGhs : subtotal + shippingGhs;
-  const courierAgency =
-    activeCourier === "dawurobo"
-      ? "Dawurobo"
-      : activeCourier === "shaqexpress"
-        ? "ShaQ Express"
-        : "Courier";
   const dawuroboDisplayGhs =
     activeCourier === "dawurobo" && estimateGhs != null
       ? estimateGhs
       : dawuroboQuoteGhs;
-  const cheaperCourier: CourierChoice | null =
-    dawuroboOk && shaqOk && dawuroboDisplayGhs != null && dawuroboDisplayGhs > 0
-      ? dawuroboDisplayGhs < shaqFeeGhs
-        ? "dawurobo"
-        : shaqFeeGhs < dawuroboDisplayGhs
-          ? "shaqexpress"
-          : null
-      : null;
+
+  const orderTotalGhs = useGhanaCourier
+    ? subtotal + prepaidDeliveryGhs
+    : subtotal + flatShippingGhs;
+  const payNowGhs = total;
+  const balanceOnDeliveryGhs = useGhanaCourier
+    ? deliveryPayer === "recipient"
+      ? prepaidDeliveryGhs
+      : deliveryPayer === "cod"
+        ? subtotal
+        : 0
+    : 0;
+  const courierLabel = useGhanaCourier
+    ? activeCourier === "dawurobo"
+      ? "Dawurobo"
+      : activeCourier === "shaqexpress"
+        ? "ShaQ Express"
+        : undefined
+    : shipping?.name;
+  const paymentMethodLabel = useGhanaCourier
+    ? deliveryPayer === "recipient"
+      ? t("checkout.payOrderNow")
+      : deliveryPayer === "cod"
+        ? t("checkout.cashOnDelivery")
+        : t("checkout.payInFull")
+    : undefined;
+  const whatsappFulfillment: WhatsAppFulfillment = {
+    courier: courierLabel,
+    deliveryFeeLabel: useGhanaCourier
+      ? prepaidDeliveryGhs > 0
+        ? formatPrice(prepaidDeliveryGhs, currency)
+        : estimating
+          ? "Confirming…"
+          : undefined
+      : flatShippingGhs > 0
+        ? formatPrice(flatShippingGhs, currency)
+        : undefined,
+    deliveryDateLabel: deliveryDate
+      ? formatDeliveryDateLabel(deliveryDate)
+      : undefined,
+    paymentMethod: paymentMethodLabel,
+    orderTotalLabel: formatPrice(orderTotalGhs, currency),
+    payNowLabel: formatPrice(payNowGhs, currency),
+    balanceOnDeliveryLabel: useGhanaCourier
+      ? balanceOnDeliveryGhs > 0
+        ? deliveryPayer === "recipient"
+          ? `${formatPrice(balanceOnDeliveryGhs, currency)} (delivery fee)`
+          : `${formatPrice(balanceOnDeliveryGhs, currency)} (order)`
+        : "None"
+      : undefined,
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -264,8 +324,12 @@ export function RegionalCheckoutForm({
   // Keep courier choice valid when region changes (Dawurobo = Accra only)
   useEffect(() => {
     if (!useGhanaCourier) return;
+    if (courierChoice === "pickup") {
+      if (!pickupOk) setCourierChoice(shaqOk ? "shaqexpress" : dawuroboOk ? "dawurobo" : null);
+      return;
+    }
     if (courierChoice === "dawurobo" && !dawuroboOk) {
-      setCourierChoice(shaqOk ? "shaqexpress" : null);
+      setCourierChoice(shaqOk ? "shaqexpress" : pickupOk ? "pickup" : null);
       return;
     }
     if (!isAccraRegion && shaqOk && courierChoice !== "shaqexpress") {
@@ -276,13 +340,26 @@ export function RegionalCheckoutForm({
       if (!isAccraRegion && shaqOk) setCourierChoice("shaqexpress");
       else if (dawuroboOk) setCourierChoice("dawurobo");
       else if (shaqOk) setCourierChoice("shaqexpress");
+      else if (pickupOk) setCourierChoice("pickup");
     }
-  }, [useGhanaCourier, dawuroboOk, shaqOk, courierChoice, isAccraRegion]);
+  }, [useGhanaCourier, dawuroboOk, shaqOk, pickupOk, courierChoice, isAccraRegion]);
 
   useEffect(() => {
-    if (!useGhanaCourier || !destinationRegion.trim() || !activeCourier) {
+    if (!codEnabled && deliveryPayer === "cod") {
+      setDeliveryPayer("recipient");
+    }
+  }, [codEnabled, deliveryPayer]);
+
+  useEffect(() => {
+    if (activeCourier === "pickup" && deliveryPayer === "cod") {
+      setDeliveryPayer("partner");
+    }
+  }, [activeCourier, deliveryPayer]);
+
+  useEffect(() => {
+    if (!useGhanaCourier || !destinationRegion.trim() || !activeCourier || activeCourier === "pickup") {
       setEstimate(null);
-      if (!dawuroboOk) setDawuroboQuoteGhs(null);
+      if (!dawuroboOk || activeCourier === "pickup") setDawuroboQuoteGhs(null);
       return;
     }
 
@@ -367,6 +444,7 @@ export function RegionalCheckoutForm({
       }
       if (
         useGhanaCourier &&
+        activeCourier !== "pickup" &&
         (deliveryPayer === "partner" || deliveryPayer === "cod") &&
         prepaidDeliveryGhs <= 0
       ) {
@@ -388,7 +466,7 @@ export function RegionalCheckoutForm({
           items,
           ...(useGhanaCourier
             ? {
-                deliveryPayer,
+                deliveryPayer: activeCourier === "pickup" ? "partner" : deliveryPayer,
                 destinationRegion,
                 regionId,
                 deliveryProvider: activeCourier,
@@ -421,13 +499,15 @@ export function RegionalCheckoutForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-xs uppercase tracking-[0.14em] text-mocha hover:text-highlight"
-      >
-        {t("form.changeCountry")}
-      </button>
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-xs uppercase tracking-[0.14em] text-mocha hover:text-highlight"
+        >
+          {t("form.changeCountry")}
+        </button>
+      ) : null}
 
       <div>
         <p className="text-sm font-medium text-espresso">
@@ -539,134 +619,128 @@ export function RegionalCheckoutForm({
 
       {useGhanaCourier ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">Delivery agency</legend>
-          {dawuroboOk && shaqOk ? (
-            <p className="text-xs text-wf-gray -mt-1 mb-1">
-              Both deliver in Accra — compare the fees and pick the lower cost.
-            </p>
-          ) : null}
+          <legend className="text-sm mb-1">{t("checkout.delivery")}</legend>
           {dawuroboOk ? (
-            <label className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
               <input
                 type="radio"
                 name="courier"
                 checked={activeCourier === "dawurobo"}
                 onChange={() => setCourierChoice("dawurobo")}
-                className="mt-1"
               />
-              <span className="flex-1">
-                <span className="block font-medium">
-                  Dawurobo
-                  {cheaperCourier === "dawurobo" ? (
-                    <span className="ml-2 text-xs font-normal text-green-700">Lower cost</span>
-                  ) : null}
-                </span>
-                <span className="block text-xs text-wf-gray">
-                  Live rate based on your address · Greater Accra
-                </span>
-                {estimating && activeCourier === "dawurobo" && dawuroboDisplayGhs == null ? (
-                  <span className="block text-xs text-espresso mt-1">Getting live rate…</span>
-                ) : null}
-              </span>
+              <span className="flex-1 font-medium">Dawurobo</span>
               <span className="shrink-0 font-medium">
                 {dawuroboDisplayGhs != null && dawuroboDisplayGhs > 0
                   ? formatPrice(dawuroboDisplayGhs, currency)
                   : estimating
                     ? "…"
-                    : "Live rate"}
+                    : "—"}
               </span>
             </label>
           ) : null}
           {shaqOk ? (
-            <label className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
               <input
                 type="radio"
                 name="courier"
                 checked={activeCourier === "shaqexpress"}
                 onChange={() => setCourierChoice("shaqexpress")}
-                className="mt-1"
               />
-              <span className="flex-1">
-                <span className="block font-medium">
-                  ShaQ Express
-                  {cheaperCourier === "shaqexpress" ? (
-                    <span className="ml-2 text-xs font-normal text-green-700">Lower cost</span>
-                  ) : null}
-                </span>
-                <span className="block text-xs text-wf-gray">
-                  {isAccraRegion
-                    ? `Flat rate for Accra · ${formatPrice(shaqFeeGhs, currency)}`
-                    : `Flat rate outside Accra · ${formatPrice(shaqFeeGhs, currency)}`}
-                </span>
-              </span>
+              <span className="flex-1 font-medium">ShaQ Express</span>
               <span className="shrink-0 font-medium">
                 {formatPrice(shaqFeeGhs, currency)}
               </span>
             </label>
           ) : null}
-          {!dawuroboOk && !shaqOk ? (
-            <p className="text-sm text-red-600">No delivery agency is available for this region.</p>
+          {pickupOk ? (
+            <label className="flex items-start gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+              <input
+                type="radio"
+                name="courier"
+                checked={activeCourier === "pickup"}
+                onChange={() => setCourierChoice("pickup")}
+                className="mt-1"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">Pickup at shop</span>
+                <span className="mt-1 block text-[12px] leading-snug text-mocha">
+                  {[
+                    pickupInfo?.branchName,
+                    pickupInfo?.address,
+                    pickupInfo?.city,
+                    pickupInfo?.openingHours,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Collect from our shop — free"}
+                </span>
+              </span>
+              <span className="shrink-0 font-medium mt-0.5">Free</span>
+            </label>
+          ) : null}
+          {!dawuroboOk && !shaqOk && !pickupOk ? (
+            <p className="text-sm text-red-600">{t("checkout.noDelivery")}</p>
           ) : null}
         </fieldset>
       ) : null}
 
       {useGhanaCourier ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">Payment options</legend>
-          <label className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso">
+          <legend className="text-sm mb-1">{t("checkout.payment")}</legend>
+          <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
             <input
               type="radio"
               name="deliveryPayer"
               checked={deliveryPayer === "recipient"}
               onChange={() => setDeliveryPayer("recipient")}
-              className="mt-1"
             />
-            <span className="flex-1">
-              <span className="block font-medium">Pay products now</span>
-              <span className="block text-xs text-wf-gray">
-                Pay for products via Paystack. Courier collects the delivery fee on arrival.
-              </span>
-            </span>
-            <span className="shrink-0 text-xs text-wf-gray">
-              {formatPrice(subtotal, currency)} now
+            <span className="flex-1 font-medium">{t("checkout.payOrderNow")}</span>
+            <span className="shrink-0 font-medium">
+              {formatPrice(subtotal, currency)}
             </span>
           </label>
-          <label className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso">
+          {codEnabled && activeCourier !== "pickup" ? (
+            <label className="flex items-start gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+              <input
+                type="radio"
+                name="deliveryPayer"
+                checked={deliveryPayer === "cod"}
+                onChange={() => setDeliveryPayer("cod")}
+                className="mt-1"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{t("checkout.cashOnDelivery")}</span>
+                <span className="mt-1 block text-[12px] leading-snug text-mocha">
+                  {t("checkout.codHint")}
+                </span>
+              </span>
+              <span className="shrink-0 font-medium mt-0.5">
+                {formatPrice(prepaidDeliveryGhs, currency)}
+              </span>
+            </label>
+          ) : null}
+          <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
             <input
               type="radio"
               name="deliveryPayer"
-              checked={deliveryPayer === "cod"}
-              onChange={() => setDeliveryPayer("cod")}
-              className="mt-1"
-            />
-            <span className="flex-1">
-              <span className="block font-medium">Cash on delivery</span>
-              <span className="block text-xs font-bold text-green-700">
-                Pay the delivery fee now. Pay for products in cash when the courier arrives.
-              </span>
-            </span>
-            <span className="shrink-0">
-              {formatPrice(prepaidDeliveryGhs, currency)}
-            </span>
-          </label>
-          <label className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso">
-            <input
-              type="radio"
-              name="deliveryPayer"
-              checked={deliveryPayer === "partner"}
+              checked={deliveryPayer === "partner" || activeCourier === "pickup"}
               onChange={() => setDeliveryPayer("partner")}
-              className="mt-1"
             />
-            <span className="flex-1">
-              <span className="block font-medium">Pay in full now</span>
-              <span className="block text-xs text-wf-gray">
-                Products and delivery fee charged together via Paystack.
-              </span>
+            <span className="flex-1 font-medium">
+              {activeCourier === "pickup" ? t("checkout.payOrderNow") : t("checkout.payInFull")}
             </span>
-            <span className="shrink-0">
+            <span className="shrink-0 font-medium">
               {formatPrice(subtotal + prepaidDeliveryGhs, currency)}
             </span>
           </label>
+          {pickupInfo && activeCourier !== "pickup" ? (
+            <p className="text-xs text-mocha leading-snug border border-dashed border-wf-border px-3 py-2">
+              Pickup available at {pickupInfo.branchName || "our shop"}
+              {pickupInfo.address ? ` · ${pickupInfo.address}` : ""}
+              {pickupInfo.city ? `, ${pickupInfo.city}` : ""}
+              {pickupInfo.openingHours ? ` · ${pickupInfo.openingHours}` : ""}
+              {pickupInfo.notes ? ` · ${pickupInfo.notes}` : ""}
+            </p>
+          ) : null}
         </fieldset>
       ) : (
         methods.length > 0 && (
@@ -709,15 +783,6 @@ export function RegionalCheckoutForm({
 
       <p className="text-sm font-medium pt-2">
         {t("form.totalDue", { price: formatPrice(total, currency) })}
-        <span className="block text-xs font-normal text-wf-gray mt-0.5">
-          {useGhanaCourier
-            ? deliveryPayer === "cod"
-              ? `Delivery fee via ${courierAgency} · ${formatPrice(productDueOnDelivery, currency)} for products due on delivery`
-              : deliveryPayer === "recipient"
-                ? `Products via ${providerLabel} · delivery fee collected by ${courierAgency} on arrival`
-                : `Charged via ${providerLabel} · delivered by ${courierAgency}`
-            : t("form.chargedVia", { provider: providerLabel })}
-        </span>
       </p>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -736,8 +801,9 @@ export function RegionalCheckoutForm({
                 : undefined,
               price: item.price,
             }))}
-            total={total}
-            label="Submit order on WhatsApp"
+            total={orderTotalGhs}
+            fulfillment={whatsappFulfillment}
+            label={t("checkout.whatsappSubmit")}
             customer={{
               name: form.name,
               email: form.email,
@@ -754,9 +820,7 @@ export function RegionalCheckoutForm({
               !form.address.trim()
             }
             onDisabledClick={() =>
-              setError(
-                "Please fill in your name, email, phone, and address before submitting on WhatsApp."
-              )
+              setError(t("checkout.whatsappNeedDetails"))
             }
           />
 
@@ -765,7 +829,7 @@ export function RegionalCheckoutForm({
               <div className="w-full border-t border-wf-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-white px-3 text-wf-gray">or pay online</span>
+              <span className="bg-white px-3 text-wf-gray">{t("checkout.orPayOnline")}</span>
             </div>
           </div>
         </>

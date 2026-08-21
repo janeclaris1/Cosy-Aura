@@ -1,4 +1,5 @@
 import type { UiLang } from "@/lib/geo-locale";
+import { EXTRA_BY_LANG } from "@/lib/i18n-ui-extra";
 
 type Messages = Record<string, string>;
 
@@ -147,6 +148,17 @@ export const UI_EN: Messages = {
     "You will receive tracking details by email once your order is dispatched.",
   "footer.trackingBody2":
     "Need help? Contact support@cosyaura.com or use live chat.",
+  "footer.visitStore": "Shop locations",
+  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
+  "footer.storeMapHint":
+    "Both shop locations are pinned on the map — tap a pin for details and directions.",
+  "footer.storeAccraLabel": "Accra — Online Shop",
+  "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
+  "footer.storeMamfeLabel": "Mamfe, Cameroon",
+  "footer.storeMamfeAddress": "Mamfe, Cameroon",
+  "footer.storeYaoundeLabel": "Yaoundé, Cameroon",
+  "footer.storeYaoundeAddress": "Monte Meecham, Yaoundé, Cameroon",
+  "footer.getDirections": "Get directions",
   "form.fullName": "Full name",
   "form.whatsapp": "WhatsApp number",
   "form.whatsappHint": "We'll send your payment receipt here",
@@ -324,6 +336,17 @@ export const UI_FR: Messages = {
     "Vous recevrez les détails de suivi par e-mail une fois la commande expédiée.",
   "footer.trackingBody2":
     "Besoin d'aide ? Contactez support@cosyaura.com ou utilisez le chat en direct.",
+  "footer.visitStore": "Nos boutiques",
+  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
+  "footer.storeMapHint":
+    "Les deux boutiques sont repérées sur la carte — touchez un pin pour les détails et l'itinéraire.",
+  "footer.storeAccraLabel": "Accra — Boutique en ligne",
+  "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
+  "footer.storeMamfeLabel": "Mamfe, Cameroun",
+  "footer.storeMamfeAddress": "Mamfe, Cameroun",
+  "footer.storeYaoundeLabel": "Yaoundé, Cameroun",
+  "footer.storeYaoundeAddress": "Monte Meecham, Yaoundé, Cameroun",
+  "footer.getDirections": "Itinéraire",
   "form.fullName": "Nom complet",
   "form.whatsapp": "Numéro WhatsApp",
   "form.whatsappHint": "Nous enverrons votre reçu de paiement ici",
@@ -501,7 +524,18 @@ export const UI_ES: Messages = {
     "Recibirás los datos de seguimiento por correo cuando se envíe tu pedido.",
   "footer.trackingBody2":
     "¿Necesitas ayuda? Escribe a support@cosyaura.com o usa el chat en vivo.",
-    "form.fullName": "Nombre completo",
+  "footer.visitStore": "Ubicaciones",
+  "footer.storeLocation": "Accra, Mamfe y Yaoundé",
+  "footer.storeMapHint":
+    "Ambas ubicaciones están marcadas en el mapa — toca un pin para detalles e indicaciones.",
+  "footer.storeAccraLabel": "Accra — Tienda online",
+  "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
+  "footer.storeMamfeLabel": "Mamfe, Camerún",
+  "footer.storeMamfeAddress": "Mamfe, Camerún",
+  "footer.storeYaoundeLabel": "Yaoundé, Camerún",
+  "footer.storeYaoundeAddress": "Monte Meecham, Yaoundé, Camerún",
+  "footer.getDirections": "Cómo llegar",
+  "form.fullName": "Nombre completo",
   "form.whatsapp": "Número de WhatsApp",
   "form.whatsappHint": "Enviaremos tu recibo de pago aquí",
   "form.changeCountry": "← Cambiar país",
@@ -678,7 +712,18 @@ export const UI_PT: Messages = {
     "Receberá os detalhes de seguimento por e-mail quando a encomenda for enviada.",
   "footer.trackingBody2":
     "Precisa de ajuda? Contacte support@cosyaura.com ou use o chat ao vivo.",
-    "form.fullName": "Nome completo",
+  "footer.visitStore": "Localizações",
+  "footer.storeLocation": "Accra, Mamfe e Yaoundé",
+  "footer.storeMapHint":
+    "Ambas localizações estão marcadas no mapa — toque num pin para detalhes e direções.",
+  "footer.storeAccraLabel": "Accra — Loja online",
+  "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
+  "footer.storeMamfeLabel": "Mamfe, Camarões",
+  "footer.storeMamfeAddress": "Mamfe, Camarões",
+  "footer.storeYaoundeLabel": "Yaoundé, Camarões",
+  "footer.storeYaoundeAddress": "Monte Meecham, Yaoundé, Camarões",
+  "footer.getDirections": "Como chegar",
+  "form.fullName": "Nome completo",
   "form.whatsapp": "Número de WhatsApp",
   "form.whatsappHint": "Enviaremos o seu recibo de pagamento aqui",
   "form.changeCountry": "← Mudar país",
@@ -855,7 +900,18 @@ export const UI_DE: Messages = {
     "Sie erhalten Tracking-Details per E-Mail, sobald Ihre Bestellung versandt wurde.",
   "footer.trackingBody2":
     "Hilfe nötig? Schreiben Sie an support@cosyaura.com oder nutzen Sie den Live-Chat.",
-    "form.fullName": "Vollständiger Name",
+  "footer.visitStore": "Standorte",
+  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
+  "footer.storeMapHint":
+    "Beide Standorte sind auf der Karte markiert — tippen Sie auf einen Pin für Details und Route.",
+  "footer.storeAccraLabel": "Accra — Online-Shop",
+  "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
+  "footer.storeMamfeLabel": "Mamfe, Kamerun",
+  "footer.storeMamfeAddress": "Mamfe, Kamerun",
+  "footer.storeYaoundeLabel": "Yaoundé, Kamerun",
+  "footer.storeYaoundeAddress": "Monte Meecham, Yaoundé, Kamerun",
+  "footer.getDirections": "Route planen",
+  "form.fullName": "Vollständiger Name",
   "form.whatsapp": "WhatsApp-Nummer",
   "form.whatsappHint": "Wir senden Ihre Zahlungsquittung hierhin",
   "form.changeCountry": "← Land ändern",
@@ -889,9 +945,9 @@ export const UI_DE: Messages = {
 };
 
 export const UI_BY_LANG: Record<UiLang, Messages> = {
-  en: UI_EN,
-  fr: UI_FR,
-  es: UI_ES,
-  pt: UI_PT,
-  de: UI_DE,
+  en: { ...UI_EN, ...EXTRA_BY_LANG.en },
+  fr: { ...UI_FR, ...EXTRA_BY_LANG.fr },
+  es: { ...UI_ES, ...EXTRA_BY_LANG.es },
+  pt: { ...UI_PT, ...EXTRA_BY_LANG.pt },
+  de: { ...UI_DE, ...EXTRA_BY_LANG.de },
 };

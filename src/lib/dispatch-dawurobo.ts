@@ -41,6 +41,9 @@ export async function dispatchDawuroboForOrder(orderId: string): Promise<{
   if (order.deliveryProvider === "shaqexpress") {
     return { ok: false, reason: "Order uses ShaQ Express" };
   }
+  if (order.deliveryProvider === "pickup") {
+    return { ok: false, reason: "Order is shop pickup" };
+  }
   if (order.dawuroboOrderId) {
     return { ok: true, dawuroboOrderId: order.dawuroboOrderId, reason: "Already dispatched" };
   }

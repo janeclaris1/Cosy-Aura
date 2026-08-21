@@ -16,7 +16,7 @@ function thumbUrl(youtubeId: string) {
 
 function ChannelMark() {
   return (
-    <span className="w-7 h-7 rounded-full bg-[#1c1917] text-[#c5a35a] text-[10px] font-semibold tracking-wide flex items-center justify-center shrink-0">
+    <span className="w-7 h-7 rounded-full bg-[#03045e] text-white text-[10px] font-semibold tracking-wide flex items-center justify-center shrink-0">
       GS
     </span>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import {
   getStoreConfig,
   upsertStoreConfig,
@@ -7,7 +8,7 @@ import {
 } from "@/lib/store-config";
 
 export async function GET() {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("settings.write");
   if (error) return error;
 
   const config = await getStoreConfig();
@@ -15,8 +16,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("settings.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = (await req.json()) as {
     nonAfricaMarkupEnabled?: boolean;
@@ -50,6 +52,20 @@ export async function PATCH(req: Request) {
     nonAfricaMarkupUsd: body.nonAfricaMarkupUsd,
     whatsappCheckoutEnabled: body.whatsappCheckoutEnabled,
     whatsappCheckoutNumbers: body.whatsappCheckoutNumbers,
+  });
+
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "settings.update",
+    entityType: "StoreConfig",
+    entityId: "default",
+    summary: "Updated store settings",
+    req,
+    metadata: {
+      nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
+      nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
+      whatsappCheckoutEnabled: config.whatsappCheckoutEnabled,
+    },
   });
 
   return NextResponse.json(config);

@@ -23,6 +23,8 @@ import {
 import { shaqexpressConfigured } from "@/lib/shaqexpress";
 import { resolveGhanaDeliveryLocation } from "@/lib/ghana-geo";
 import { earliestDeliveryIso } from "@/lib/delivery-dates";
+import { resolveFulfillmentBranchId, getCountryCommerceConfig } from "@/lib/branches";
+import { assertCartSizeStockAvailable } from "@/lib/size-stock-server";
 
 export async function POST(req: Request) {
   try {
@@ -80,6 +82,20 @@ export async function POST(req: Request) {
       );
     }
 
+    try {
+      await assertCartSizeStockAvailable(items, country);
+    } catch (stockErr) {
+      return NextResponse.json(
+        {
+          error:
+            stockErr instanceof Error
+              ? stockErr.message
+              : "One or more items are out of stock",
+        },
+        { status: 400 }
+      );
+    }
+
     const customerEmail = String(email || "").trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
       return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
@@ -122,7 +138,7 @@ export async function POST(req: Request) {
     }
 
     const useGhanaCourier = country === "GH" && ghanaDeliveryConfigured();
-    let deliveryProvider: GhanaDeliveryProvider | null = null;
+    let deliveryProvider: GhanaDeliveryProvider | "pickup" | null = null;
     let deliveryPayer: GhanaPaymentMode | null = null;
     let courierFeeGhs = 0;
     let resolvedLat: number | null = null;
@@ -131,14 +147,26 @@ export async function POST(req: Request) {
     let shippingRegionId: number | null = null;
 
     if (useGhanaCourier) {
+      const preferred = String(deliveryProviderRaw || "")
+        .trim()
+        .toLowerCase();
+
+      if (preferred === "pickup") {
+        const commerce = await getCountryCommerceConfig("GH");
+        if (!commerce?.pickupEnabled) {
+          return NextResponse.json(
+            { error: "Pickup is not available for this shop." },
+            { status: 400 }
+          );
+        }
+        deliveryProvider = "pickup";
+        deliveryPayer = "partner";
+        shippingRegion = String(destinationRegion || (body as { region?: string }).region || "").trim() || "Pickup";
+      } else {
       shippingRegion = String(destinationRegion || (body as { region?: string }).region || "").trim();
       if (!shippingRegion) {
         return NextResponse.json({ error: "Select your Ghana region" }, { status: 400 });
       }
-
-      const preferred = String(deliveryProviderRaw || "")
-        .trim()
-        .toLowerCase() as GhanaDeliveryProvider | "";
 
       deliveryProvider = resolveGhanaDeliveryProvider(
         shippingRegion,
@@ -147,6 +175,20 @@ export async function POST(req: Request) {
       if (!deliveryProvider) {
         return NextResponse.json(
           { error: "Delivery is not available for this region yet." },
+          { status: 400 }
+        );
+      }
+
+      const commerce = await getCountryCommerceConfig("GH");
+      if (deliveryProvider === "dawurobo" && !(commerce?.dawuroboEnabled ?? true)) {
+        return NextResponse.json(
+          { error: "Dawurobo is not available. Choose ShaQ Express." },
+          { status: 400 }
+        );
+      }
+      if (deliveryProvider === "shaqexpress" && !(commerce?.shaqexpressEnabled ?? true)) {
+        return NextResponse.json(
+          { error: "ShaQ Express is not available for checkout right now." },
           { status: 400 }
         );
       }
@@ -179,6 +221,12 @@ export async function POST(req: Request) {
         // Dawurobo partner-payer wallet is separate; not required here.
         deliveryPayer = "partner";
       } else if (payerRaw === "cod") {
+        if (!(commerce?.codEnabled ?? true)) {
+          return NextResponse.json(
+            { error: "Cash on delivery is not available for this shop." },
+            { status: 400 }
+          );
+        }
         deliveryPayer = "cod";
       } else if (payerRaw === "recipient") {
         deliveryPayer = "recipient";
@@ -208,10 +256,11 @@ export async function POST(req: Request) {
           address: String(address || "").trim() || undefined,
           lat: resolvedLat,
           lng: resolvedLng,
-          provider: deliveryProvider,
+          provider: deliveryProvider as GhanaDeliveryProvider,
         });
         courierFeeGhs = estimate.amountGhs;
       }
+      } // end courier (non-pickup)
     }
 
     const methods = await getActiveShippingMethods();
@@ -246,19 +295,25 @@ export async function POST(req: Request) {
     const dest = country as PaystackCountry;
 
     const providerLabel =
-      deliveryProvider === "shaqexpress"
-        ? "ShaQ Express"
-        : deliveryProvider === "dawurobo"
-          ? "Dawurobo"
-          : null;
+      deliveryProvider === "pickup"
+        ? "Pickup"
+        : deliveryProvider === "shaqexpress"
+          ? "ShaQ Express"
+          : deliveryProvider === "dawurobo"
+            ? "Dawurobo"
+            : null;
 
     const shippingMethodLabel = useGhanaCourier
-      ? deliveryPayer === "cod"
-        ? `${providerLabel} · COD (delivery prepaid)`
-        : deliveryPayer === "partner"
-          ? `${providerLabel} · paid in full`
-          : `${providerLabel} · pay rider`
+      ? deliveryProvider === "pickup"
+        ? "Pickup at shop · paid in full"
+        : deliveryPayer === "cod"
+          ? `${providerLabel} · COD (delivery prepaid)`
+          : deliveryPayer === "partner"
+            ? `${providerLabel} · paid in full`
+            : `${providerLabel} · pay rider`
       : `${shipping!.name} · ${shipping!.eta}`;
+
+    const fulfillmentBranchId = await resolveFulfillmentBranchId(dest);
 
     const order = await prisma.order.create({
       data: {
@@ -281,11 +336,15 @@ export async function POST(req: Request) {
         deliveryLng: resolvedLng,
         dawuroboPayer: deliveryPayer,
         paymentProvider: "paystack",
+        ...(fulfillmentBranchId
+          ? { fulfillmentBranch: { connect: { id: fulfillmentBranchId } } }
+          : {}),
         items: {
           create: pricedItems.map((item) => ({
             fragranceId: item.fragranceId,
             price: item.price,
             quantity: item.quantity,
+            bottleSize: item.bottleSize ?? 50,
           })),
         },
       },

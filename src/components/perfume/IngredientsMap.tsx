@@ -59,7 +59,7 @@ export function IngredientsMap({
                   >
                     <circle
                       r={on ? 9 : 6}
-                      fill={on ? "#a67c52" : isNote ? "#1c1917" : "#9a8b7a"}
+                      fill={on ? "#03045e" : isNote ? "#03045e" : "#9a8b7a"}
                       opacity={0.95}
                     />
                     <circle r={on ? 16 : 0} fill="#d4af37" opacity={0.25} />

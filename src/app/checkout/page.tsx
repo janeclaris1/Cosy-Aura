@@ -20,14 +20,6 @@ import type { GeoPaymentRoute, PaymentDestination } from "@/lib/geo-payment";
 import { trackMetaInitiateCheckout } from "@/lib/meta-pixel";
 import { isBottleSize } from "@/lib/bottle-sizes";
 import { WhatsAppDetailsCheckout } from "@/components/checkout/WhatsAppDetailsCheckout";
-function providerCopy(route: GeoPaymentRoute | null, destination: PaymentDestination | null) {
-  if (destination === "GH" || destination === "NG") return "Paystack";
-  if (destination === "CEMAC") return "Flutterwave";
-  if (destination === "OTHER") return "Stripe";
-  if (route?.provider === "paystack") return "Paystack";
-  if (route?.provider === "flutterwave") return "Flutterwave";
-  return "Stripe";
-}
 
 function detectBrowserCountry(timeoutMs = 4000): Promise<{ lat: number; lng: number } | null> {
   if (typeof navigator === "undefined" || !navigator.geolocation) return Promise.resolve(null);
@@ -59,7 +51,6 @@ export default function CheckoutPage() {
   const [destination, setDestination] = useState<PaymentDestination | null>(null);
   const [cemacCountry, setCemacCountry] = useState<CemacCountry>("CM");
   const [route, setRoute] = useState<GeoPaymentRoute | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
   const [detecting, setDetecting] = useState(true);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState(() => earliestDeliveryIso());
@@ -105,7 +96,6 @@ export default function CheckoutPage() {
       setRoute(next);
       setDestination(next.destination);
       if (next.cemacCountry) setCemacCountry(next.cemacCountry);
-      setShowPicker(false);
       setDetecting(false);
 
       const currencyCode = chargeCurrencyForDestination(next.destination);
@@ -218,16 +208,9 @@ export default function CheckoutPage() {
   }, [cartKey, deliveryDate]);
 
   useEffect(() => {
-    if (destination !== "OTHER" || showPicker) return;
+    if (destination !== "OTHER") return;
     void startStripeCheckout();
-  }, [destination, showPicker, startStripeCheckout]);
-
-  function openPicker() {
-    stripeRequestId.current += 1;
-    setShowPicker(true);
-    setClientSecret(null);
-    setError(null);
-  }
+  }, [destination, startStripeCheckout]);
 
   if (items.length === 0 && !clientSecret) {
     return (
@@ -255,13 +238,6 @@ export default function CheckoutPage() {
     sizeMl: isBottleSize(Number(i.bottleSize)) ? Number(i.bottleSize) : undefined,
     price: priceFor(i),
   }));
-  const detectedLine =
-    route?.country && route.label !== "location unknown"
-      ? t("checkout.detected", {
-          place: route.label,
-          provider: providerCopy(route, destination),
-        })
-      : t("checkout.unknown");
 
   return (
     <div className="min-h-[calc(100vh-8rem)] grid grid-cols-1 lg:grid-cols-2">
@@ -376,112 +352,21 @@ export default function CheckoutPage() {
 
           {!detecting && (
             <>
-              <p className="text-xs text-wf-gray mb-4">
-                {detectedLine}{" "}
-                <button
-                  type="button"
-                  onClick={openPicker}
-                  className="underline hover:text-espresso"
-                >
-                  Change
-                </button>
-              </p>
-
-              {showPicker && (
-                <div className="space-y-3 mb-8">
-                  <h1 className="font-playfair text-2xl text-espresso mb-4">
-                    Choose payment region
-                  </h1>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyRoute({
-                        country: "GH",
-                        destination: "GH",
-                        provider: "paystack",
-                        label: "Ghana",
-                      })
-                    }
-                    className="w-full text-left border border-wf-border px-4 py-3 hover:border-espresso transition-colors"
-                  >
-                    <span className="block text-sm font-medium">Ghana</span>
-                    <span className="block text-xs text-wf-gray mt-0.5">
-                      Paystack · cards &amp; mobile money
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyRoute({
-                        country: "NG",
-                        destination: "NG",
-                        provider: "paystack",
-                        label: "Nigeria",
-                      })
-                    }
-                    className="w-full text-left border border-wf-border px-4 py-3 hover:border-espresso transition-colors"
-                  >
-                    <span className="block text-sm font-medium">Nigeria</span>
-                    <span className="block text-xs text-wf-gray mt-0.5">
-                      Paystack · cards, bank &amp; transfer
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyRoute({
-                        country: "CM",
-                        destination: "CEMAC",
-                        cemacCountry: "CM",
-                        provider: "flutterwave",
-                        label: "Cameroon",
-                      })
-                    }
-                    className="w-full text-left border border-wf-border px-4 py-3 hover:border-espresso transition-colors"
-                  >
-                    <span className="block text-sm font-medium">
-                      CEMAC · Cameroon &amp; Central Africa
-                    </span>
-                    <span className="block text-xs text-wf-gray mt-0.5">
-                      Flutterwave · cards &amp; mobile money (XAF)
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyRoute({
-                        country: null,
-                        destination: "OTHER",
-                        provider: "stripe",
-                        label: "Rest of world",
-                      })
-                    }
-                    className="w-full text-left border border-wf-border px-4 py-3 hover:border-espresso transition-colors"
-                  >
-                    <span className="block text-sm font-medium">Rest of world</span>
-                    <span className="block text-xs text-wf-gray mt-0.5">
-                      Stripe · Visa, Mastercard, Amex (USD)
-                    </span>
-                  </button>
-                </div>
-              )}
-
-              {!showPicker && viaWhatsApp && (
+              {viaWhatsApp && (
                 <p className="mb-6 text-sm text-espresso">
                   Complete your details below, then submit on WhatsApp so we can confirm your order.
                 </p>
               )}
 
-              {!showPicker && (destination === "GH" || destination === "NG") && (
+              {(destination === "GH" || destination === "NG") && (
                 <PaystackCheckoutForm
                   country={destination as PaystackCountry}
                   items={paystackItems}
                   subtotal={subtotal}
-                  onBack={openPicker}
                 />
               )}
 
-              {!showPicker && destination === "CEMAC" && (
+              {destination === "CEMAC" && (
                 <FlutterwaveCheckoutForm
                   country={cemacCountry}
                   onCountryChange={(code) => {
@@ -500,11 +385,10 @@ export default function CheckoutPage() {
                   }}
                   items={paystackItems}
                   subtotal={subtotal}
-                  onBack={openPicker}
                 />
               )}
 
-              {!showPicker && destination === "OTHER" && (
+              {destination === "OTHER" && (
                 <>
                   {viaWhatsApp ? (
                     <WhatsAppDetailsCheckout

@@ -7,16 +7,11 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/lib/store";
 import { usePremiumStore } from "@/lib/premium-store";
+import { useLocaleStore, useT } from "@/lib/locale-store";
 import { readConsent } from "@/lib/cookie-consent";
 import type { SupportCartLine } from "@/lib/support-types";
 
 type Turn = { role: "user" | "assistant"; content: string };
-
-const GREETING: Turn = {
-  role: "assistant",
-  content:
-    "Hi there! Welcome to Cosy Aura. I’m Enow - how can I help you today? Looking for a signature oil, or something for a gift? 😊",
-};
 
 function renderInline(text: string) {
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g);
@@ -77,12 +72,20 @@ export function SupportChat() {
   const pathname = usePathname();
   const addItem = useCartStore((s) => s.addItem);
   const compareCount = usePremiumStore((s) => s.compare.length);
+  const country = useLocaleStore((s) => s.country);
+  const currency = useLocaleStore((s) => s.currency);
+  const language = useLocaleStore((s) => s.language);
+  const t = useT();
+  const greeting: Turn = {
+    role: "assistant",
+    content: `${t("support.greeting")} 😊`,
+  };
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cookieBanner, setCookieBanner] = useState(false);
-  const [messages, setMessages] = useState<Turn[]>([GREETING]);
+  const [messages, setMessages] = useState<Turn[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const sessionId = useRef(
     typeof crypto !== "undefined" && crypto.randomUUID
@@ -91,6 +94,14 @@ export function SupportChat() {
   );
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 0) return [greeting];
+      if (prev.length === 1 && prev[0].role === "assistant") return [greeting];
+      return prev;
+    });
+  }, [greeting.content]);
 
   const isPdp = Boolean(pathname && /^\/fragrances\/[^/]+$/.test(pathname));
 
@@ -116,7 +127,7 @@ export function SupportChat() {
         : "bottom-5";
 
   function flushSummary() {
-    const turns = messagesRef.current.filter((m) => m !== GREETING && m.content.trim());
+    const turns = messagesRef.current.filter((m, i) => !(i === 0 && m.role === "assistant") && m.content.trim());
     if (!turns.some((m) => m.role === "user")) return;
     const payload = JSON.stringify({
       sessionId: sessionId.current,
@@ -172,7 +183,10 @@ export function SupportChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: next.filter((m) => m !== GREETING),
+          messages: next.filter((m, i) => !(i === 0 && m.role === "assistant")),
+          language,
+          country,
+          currency,
         }),
       });
       const data = await res.json();
@@ -223,7 +237,7 @@ export function SupportChat() {
                 setOpen(false);
               }}
               className="p-1 hover:text-gold transition-colors"
-              aria-label="Close chat"
+              aria-label={t("support.close")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -248,7 +262,7 @@ export function SupportChat() {
               </div>
             ))}
             {loading && (
-              <p className="text-xs text-mocha px-1">Thinking…</p>
+              <p className="text-xs text-mocha px-1">{t("support.thinking")}</p>
             )}
             {error && (
               <p className="text-xs text-[#c8102e] px-1">
@@ -270,7 +284,7 @@ export function SupportChat() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Hi Enow - I’m looking for…"
+              placeholder={t("support.placeholder")}
               className="flex-1 min-w-0 bg-white border border-wf-border px-3 py-2 text-sm outline-none focus:border-espresso"
               maxLength={1200}
             />
@@ -295,7 +309,7 @@ export function SupportChat() {
           })
         }
         className="w-14 h-14 rounded-full bg-espresso text-ivory shadow-lg flex items-center justify-center hover:bg-espresso/90 transition-colors"
-        aria-label={open ? "Close support chat" : "Open support chat"}
+        aria-label={open ? t("support.close") : t("support.open")}
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>

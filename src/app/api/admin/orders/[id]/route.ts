@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi } from "@/lib/admin";
+import { requireAdminApi, orderBranchWhere } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { notifyOrderStatusChange } from "@/lib/notifications";
 import { resolveTrackingUrl } from "@/lib/order-tracking";
+import { commitOrderInventory, restoreOrderInventory } from "@/lib/inventory";
 import type { OrderStatus, Prisma } from "@prisma/client";
 
 const VALID_STATUSES: OrderStatus[] = [
@@ -19,8 +21,9 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("orders.write");
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const contentType = req.headers.get("content-type") || "";
   let body: Record<string, unknown> = {};
@@ -35,10 +38,14 @@ export async function POST(
       trackingUrl: formData.get("trackingUrl"),
       carrier: formData.get("carrier"),
       markShipped: formData.get("markShipped") === "true",
+      fulfillmentBranchId: formData.get("fulfillmentBranchId"),
     };
   }
 
-  const existing = await prisma.order.findUnique({ where: { id: params.id } });
+  const scope = orderBranchWhere(ctx);
+  const existing = await prisma.order.findFirst({
+    where: { id: params.id, ...(scope as object) },
+  });
   if (!existing) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
@@ -58,10 +65,43 @@ export async function POST(
     data.status = body.status as OrderStatus;
   }
 
+  if (body.fulfillmentBranchId !== undefined) {
+    if (existing.inventoryCommittedAt) {
+      return NextResponse.json(
+        {
+          error:
+            "Stock already committed for this order. Cancel/refund to restore before reassigning.",
+        },
+        { status: 400 }
+      );
+    }
+    const nextId = body.fulfillmentBranchId
+      ? String(body.fulfillmentBranchId).trim()
+      : "";
+    if (!nextId) {
+      data.fulfillmentBranch = { disconnect: true };
+    } else {
+      const branch = await prisma.branch.findUnique({ where: { id: nextId } });
+      if (!branch || !branch.active) {
+        return NextResponse.json({ error: "Branch not found" }, { status: 400 });
+      }
+      const orderCountry = String(existing.shippingCountry || "").toUpperCase();
+      if (
+        (orderCountry === "GH" || orderCountry === "CM") &&
+        branch.country !== orderCountry
+      ) {
+        return NextResponse.json(
+          { error: "Branch must be in the same country as the order." },
+          { status: 400 }
+        );
+      }
+      data.fulfillmentBranch = { connect: { id: branch.id } };
+    }
+  }
+
   if (hasTrackingUpdate) {
     if (body.trackingNumber !== undefined) {
-      data.trackingNumber =
-        String(body.trackingNumber || "").trim() || null;
+      data.trackingNumber = String(body.trackingNumber || "").trim() || null;
     }
     if (body.trackingUrl !== undefined) {
       data.trackingUrl = String(body.trackingUrl || "").trim() || null;
@@ -83,7 +123,6 @@ export async function POST(
         ? (data.trackingUrl as string | null)
         : existing.trackingUrl;
 
-    // Auto-fill carrier URL when missing
     if (!nextTrackingUrl && nextTrackingNumber) {
       data.trackingUrl = resolveTrackingUrl({
         trackingUrl: null,
@@ -111,8 +150,48 @@ export async function POST(
     data,
   });
 
+  const becameCommitted =
+    ["PENDING", "PAID"].includes(existing.status) &&
+    ["PROCESSING", "SHIPPED", "DELIVERED"].includes(updated.status);
+  const becameRestored =
+    Boolean(existing.inventoryCommittedAt) &&
+    ["CANCELLED", "REFUNDED"].includes(updated.status) &&
+    !["CANCELLED", "REFUNDED"].includes(existing.status);
+
+  if (becameCommitted) {
+    await commitOrderInventory(updated.id);
+  } else if (becameRestored) {
+    await restoreOrderInventory(updated.id);
+  }
+
   if (existing.status !== updated.status) {
     await notifyOrderStatusChange(updated.id, updated.status);
+    await writeAuditLog({
+      actorId: ctx.userId,
+      action: "order.status",
+      entityType: "Order",
+      entityId: updated.id,
+      summary: `Order ${updated.id.slice(0, 8).toUpperCase()} ${existing.status} → ${updated.status}`,
+      metadata: {
+        from: existing.status,
+        to: updated.status,
+        fulfillmentBranchId: updated.fulfillmentBranchId,
+      },
+    });
+  } else if (
+    existing.fulfillmentBranchId !== updated.fulfillmentBranchId
+  ) {
+    await writeAuditLog({
+      actorId: ctx.userId,
+      action: "order.reassign",
+      entityType: "Order",
+      entityId: updated.id,
+      summary: `Order ${updated.id.slice(0, 8).toUpperCase()} reassigned fulfilment branch`,
+      metadata: {
+        from: existing.fulfillmentBranchId,
+        to: updated.fulfillmentBranchId,
+      },
+    });
   }
 
   return NextResponse.json(updated);

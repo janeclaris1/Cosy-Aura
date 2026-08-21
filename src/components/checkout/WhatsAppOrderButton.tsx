@@ -1,9 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useLocaleStore } from "@/lib/locale-store";
-import { useCartStore } from "@/lib/store";
-import { buildWhatsAppOrderMessage } from "@/lib/store-config-client";
+import { buildWhatsAppOrderMessage, type WhatsAppFulfillment } from "@/lib/store-config-client";
 import { useWhatsAppCheckoutConfig } from "@/lib/whatsapp-checkout-client";
 import { formatPrice, cn } from "@/lib/utils";
 
@@ -24,8 +22,8 @@ function WhatsAppIcon({ className }: { className?: string }) {
 }
 
 /**
- * Product-surface CTA: add to cart (via onPrepareCart) and go to checkout
- * so details can be captured before WhatsApp is opened.
+ * Product-surface CTA: add to cart (via onPrepareCart) without leaving the page.
+ * Checkout / WhatsApp submit happens from the cart when the shopper is ready.
  */
 export function WhatsAppToCheckoutButton({
   onPrepareCart,
@@ -38,8 +36,6 @@ export function WhatsAppToCheckoutButton({
   label?: string;
   compact?: boolean;
 }) {
-  const router = useRouter();
-  const closeCart = useCartStore((s) => s.closeCart);
   const localeCountry = useLocaleStore((s) => s.country);
   const currency = useLocaleStore((s) => s.currency);
   const { cfg } = useWhatsAppCheckoutConfig({
@@ -49,19 +45,17 @@ export function WhatsAppToCheckoutButton({
 
   if (!cfg?.enabled) return null;
 
-  function goToCheckout(e: React.MouseEvent<HTMLButtonElement>) {
+  function addToCart(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
     e.stopPropagation();
     onPrepareCart();
-    closeCart();
-    router.push("/checkout?via=whatsapp");
   }
 
   if (compact) {
     return (
       <button
         type="button"
-        onClick={goToCheckout}
+        onClick={addToCart}
         className={cn(
           "inline-flex items-center justify-center gap-1.5 w-full min-h-9 px-2 py-1.5 text-[11px] font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors",
           className
@@ -77,7 +71,7 @@ export function WhatsAppToCheckoutButton({
   return (
     <button
       type="button"
-      onClick={goToCheckout}
+      onClick={addToCart}
       className={cn(
         "inline-flex items-center justify-center gap-2 w-full min-h-11 px-4 py-3 text-sm font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors",
         className
@@ -100,6 +94,7 @@ export function WhatsAppOrderButton({
   withDivider = false,
   compact = false,
   customer,
+  fulfillment,
   disabled = false,
   onDisabledClick,
 }: {
@@ -120,6 +115,7 @@ export function WhatsAppOrderButton({
     postcode?: string;
     region?: string;
   };
+  fulfillment?: WhatsAppFulfillment;
   disabled?: boolean;
   onDisabledClick?: () => void;
 }) {
@@ -146,6 +142,7 @@ export function WhatsAppOrderButton({
     })),
     totalLabel: total != null ? formatPrice(total, currency) : undefined,
     customer,
+    fulfillment,
   });
 
   const href = `${cfg.waMeUrl}?text=${encodeURIComponent(message)}`;

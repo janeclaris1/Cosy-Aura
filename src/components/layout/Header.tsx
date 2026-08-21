@@ -77,7 +77,7 @@ function NavDropdown({
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <button className="flex items-center gap-1 px-4 py-3 text-sm text-wf-black hover:text-gold transition-colors">
+      <button className="flex items-center gap-1 px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors">
         {label}
         <ChevronDown className="w-3.5 h-3.5" />
       </button>
@@ -139,31 +139,31 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm">
+    <header className="site-header sticky top-0 z-40 bg-primary">
       <TopUtilityBar />
 
-      <div className="border-b border-wf-border bg-surface/95">
+      <div className="bg-primary text-white">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-16">
           <Link href="/" className="shrink-0 hover:opacity-90 transition-opacity">
-            <BrandLogo variant="light" size="md" />
+            <BrandLogo variant="dark" size="md" />
           </Link>
 
           <div className="hidden md:flex flex-1 max-w-xl mx-8">
-            <SearchBar />
+            <SearchBar onDark />
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 text-white">
             <div className="hidden sm:block">
-              <LocaleSwitcher />
+              <LocaleSwitcher onDark />
             </div>
 
             <Link
               href="/wishlist"
-              className="relative inline-flex items-center justify-center min-h-11 min-w-11 hover:text-gold transition-colors"
+              className="relative inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
               <Heart className="w-5 h-5" />
               {wishlistItems.length > 0 && (
-                <span className="absolute top-1 right-1 bg-gold text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 bg-[#FFD200] text-[#03045e] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                   {wishlistItems.length}
                 </span>
               )}
@@ -171,25 +171,23 @@ export function Header() {
 
             <Link
               href="/account"
-              className="hidden sm:inline-flex items-center justify-center min-h-11 min-w-11 hover:text-gold transition-colors"
+              className="hidden sm:inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
               <User className="w-5 h-5" />
             </Link>
 
             <button
               onClick={toggleCart}
-              className="relative inline-flex items-center justify-center min-h-11 min-w-11 hover:text-gold transition-colors"
+              className="relative inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
               <ShoppingCart className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute top-1 right-1 bg-gold text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
+              <span className="absolute top-1 right-1 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
             </button>
 
             <button
-              className="md:hidden inline-flex items-center justify-center min-h-11 min-w-11"
+              className="md:hidden inline-flex items-center justify-center min-h-11 min-w-11 text-white"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
@@ -199,18 +197,18 @@ export function Header() {
         </div>
 
         <div className="md:hidden px-4 pb-3">
-          <SearchBar />
+          <SearchBar onDark />
         </div>
       </div>
 
-      <nav className="site-nav hidden md:block border-b border-wf-border bg-ivory">
-        <div className="max-w-7xl mx-auto px-4 flex items-center">
+      <nav className="site-nav hidden md:block bg-primary border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 flex items-center text-white">
           <NavDropdown label={t("nav.brands")} horizontal>
             {BRANDS.map((brand) => (
               <Link
                 key={brand.slug}
                 href={`/fragrances/${brand.slug}`}
-                className="block shrink-0 whitespace-nowrap px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block shrink-0 whitespace-nowrap px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {brand.name}
               </Link>
@@ -222,7 +220,7 @@ export function Header() {
               <Link
                 key={range.href}
                 href={range.href}
-                className="block px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {range.label}
               </Link>
@@ -234,7 +232,7 @@ export function Header() {
               <Link
                 key={f.href}
                 href={f.href}
-                className="block px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {t(f.key)}
               </Link>
@@ -246,7 +244,7 @@ export function Header() {
               <Link
                 key={g.href}
                 href={g.href}
-                className="block px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {t(g.key)}
               </Link>
@@ -258,7 +256,7 @@ export function Header() {
               <Link
                 key={c.label}
                 href={c.href}
-                className="block px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {c.label}
               </Link>
@@ -267,7 +265,7 @@ export function Header() {
 
           <Link
             href="/fragrance-finder"
-            className="px-4 py-3 text-sm font-medium hover:text-gold transition-colors"
+            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
           >
             {t("nav.finder")}
           </Link>
@@ -277,7 +275,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="block px-4 py-2 text-sm hover:bg-wf-light hover:text-gold transition-colors"
+                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
               >
                 {t(item.key)}
               </Link>
@@ -286,7 +284,7 @@ export function Header() {
 
           <Link
             href="/blog"
-            className="px-4 py-3 text-sm font-medium hover:text-gold transition-colors"
+            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
           >
             {t("nav.journal")}
           </Link>
@@ -295,20 +293,20 @@ export function Header() {
 
       <div
         className={cn(
-          "site-nav md:hidden overflow-y-auto transition-all duration-300 bg-ivory border-b border-wf-border",
+          "site-nav md:hidden overflow-y-auto transition-all duration-300 bg-primary text-white border-t border-white/10",
           mobileOpen ? "max-h-[min(70vh,720px)]" : "max-h-0"
         )}
       >
         <div className="px-4 py-4 space-y-4">
-          <LocaleSwitcher compact />
+          <LocaleSwitcher compact onDark />
           <div>
-            <p className="text-xs uppercase tracking-wider text-wf-gray mb-2">{t("nav.brands")}</p>
+            <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.brands")}</p>
             <div className="flex w-full flex-wrap items-center gap-1 pb-1">
               {BRANDS.map((brand) => (
                 <Link
                   key={brand.slug}
                   href={`/fragrances/${brand.slug}`}
-                  className="shrink-0 whitespace-nowrap px-3 py-1.5 text-sm hover:bg-wf-light hover:text-gold"
+                  className="shrink-0 whitespace-nowrap px-3 py-1.5 text-sm text-white hover:text-[#FFD200]"
                   onClick={() => setMobileOpen(false)}
                 >
                   {brand.name}
@@ -317,30 +315,30 @@ export function Header() {
             </div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wider text-wf-gray mb-2">{t("nav.shopBy")}</p>
+            <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.shopBy")}</p>
             <div className="space-y-1">
               {priceRanges.map((r) => (
-                <Link key={r.href} href={r.href} className="block text-sm py-1.5 hover:text-gold" onClick={() => setMobileOpen(false)}>
+                <Link key={r.href} href={r.href} className="block text-sm py-1.5 text-white hover:text-[#FFD200]" onClick={() => setMobileOpen(false)}>
                   {r.label}
                 </Link>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wider text-wf-gray mb-2">{t("nav.family")}</p>
+            <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.family")}</p>
             <div className="space-y-1">
               {FRAGRANCE_FAMILIES.map((f) => (
-                <Link key={f.href} href={f.href} className="block text-sm py-1.5 hover:text-gold" onClick={() => setMobileOpen(false)}>
+                <Link key={f.href} href={f.href} className="block text-sm py-1.5 text-white hover:text-[#FFD200]" onClick={() => setMobileOpen(false)}>
                   {t(f.key)}
                 </Link>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wider text-wf-gray mb-2">{t("nav.gender")}</p>
+            <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.gender")}</p>
             <div className="space-y-1">
               {GENDERS.map((g) => (
-                <Link key={g.href} href={g.href} className="block text-sm py-1.5 hover:text-gold" onClick={() => setMobileOpen(false)}>
+                <Link key={g.href} href={g.href} className="block text-sm py-1.5 text-white hover:text-[#FFD200]" onClick={() => setMobileOpen(false)}>
                   {t(g.key)}
                 </Link>
               ))}
@@ -348,35 +346,35 @@ export function Header() {
           </div>
           <Link
             href="/fragrance-finder"
-            className="block text-sm py-1.5 font-medium hover:text-gold"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
             onClick={() => setMobileOpen(false)}
           >
             {t("nav.finder")}
           </Link>
           <Link
             href="/atelier"
-            className="block text-sm py-1.5 font-medium hover:text-gold"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
             onClick={() => setMobileOpen(false)}
           >
             {t("nav.perfumeAtelier")}
           </Link>
           <Link
             href="/gift-finder"
-            className="block text-sm py-1.5 font-medium hover:text-gold"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
             onClick={() => setMobileOpen(false)}
           >
             {t("nav.giftFinder")}
           </Link>
           <Link
             href="/scent-journal"
-            className="block text-sm py-1.5 font-medium hover:text-gold"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
             onClick={() => setMobileOpen(false)}
           >
             {t("nav.scentJournal")}
           </Link>
           <Link
             href="/blog"
-            className="block text-sm py-1.5 font-medium hover:text-gold"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
             onClick={() => setMobileOpen(false)}
           >
             {t("nav.journal")}

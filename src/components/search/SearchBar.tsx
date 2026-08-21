@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Flower2 } from "lucide-react";
+import { Flower2, Search } from "lucide-react";
 import { cn, formatPrice, inspiredByBrandLine } from "@/lib/utils";
 import { useRegionalPrice } from "@/lib/use-regional-price";
 import { salePriceForSize } from "@/lib/pricing";
@@ -23,7 +23,7 @@ function SearchResultPrice({ slug, currency }: { slug: string; currency: string 
   return <>{formatPrice(regionalPrice, currency)}</>;
 }
 
-export function SearchBar() {
+export function SearchBar({ onDark = false }: { onDark?: boolean }) {
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const t = useT();
@@ -68,16 +68,32 @@ export function SearchBar() {
 
   return (
     <div ref={ref} className="relative w-full">
-      <div className="relative">
-        <Flower2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
+      <div className="relative flex items-stretch">
+        {!onDark ? (
+          <Flower2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary pointer-events-none z-10" />
+        ) : null}
         <input
           type="text"
           placeholder={t("search.placeholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-wf-border rounded-full text-sm focus:outline-none focus:border-highlight transition-colors duration-organic ease-organic"
+          className={cn(
+            "w-full text-sm text-[#03045e] focus:outline-none transition-colors duration-organic ease-organic",
+            onDark
+              ? "pl-4 pr-12 py-2.5 bg-white border-0 rounded-md focus:ring-2 focus:ring-[#FFD200]"
+              : "pl-10 pr-4 py-2.5 bg-white border border-wf-border rounded-full focus:border-highlight"
+          )}
         />
+        {onDark ? (
+          <button
+            type="button"
+            className="absolute right-0 top-0 bottom-0 w-11 rounded-r-md bg-[#FFD200] hover:bg-[#E6BC00] text-[#03045e] flex items-center justify-center transition-colors"
+            aria-label={t("search.placeholder")}
+          >
+            <Search className="w-5 h-5" strokeWidth={2.25} />
+          </button>
+        ) : null}
       </div>
 
       {open && (

@@ -1,11 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { Instagram, Facebook, Twitter, Youtube } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { FooterRegions } from "@/components/layout/FooterRegions";
 import { useT } from "@/lib/locale-store";
+import type { StorePin } from "@/components/layout/StoreLocationsMap";
+
+const StoreLocationsMap = dynamic(
+  () =>
+    import("@/components/layout/StoreLocationsMap").then(
+      (m) => m.StoreLocationsMap
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 sm:h-80 lg:h-96 rounded-sm border border-white/15 bg-[#02033f] animate-pulse" />
+    ),
+  }
+);
 
 const SHOP_LINKS = [
   { key: "footer.allFragrances", href: "/fragrances" },
@@ -88,6 +103,42 @@ export function Footer() {
   const t = useT();
   const label = (key: string) => (key.startsWith("footer.") ? t(key) : key);
 
+  const storePins: StorePin[] = [
+    {
+      id: "accra",
+      label: t("footer.storeAccraLabel"),
+      address: t("footer.storeAccraAddress"),
+      // Kokomlemle / Olympic Street area, Accra
+      lat: 5.5794,
+      lng: -0.2081,
+      directionsUrl:
+        "https://www.google.com/maps/search/?api=1&query=56+Olympic+Street+Kokomlemle+Accra+Ghana",
+      directionsLabel: t("footer.getDirections"),
+    },
+    {
+      id: "mamfe",
+      label: t("footer.storeMamfeLabel"),
+      address: t("footer.storeMamfeAddress"),
+      // Mamfe, Southwest Region, Cameroon
+      lat: 5.7667,
+      lng: 9.3167,
+      directionsUrl:
+        "https://www.google.com/maps/search/?api=1&query=Mamfe+Cameroon",
+      directionsLabel: t("footer.getDirections"),
+    },
+    {
+      id: "yaounde",
+      label: t("footer.storeYaoundeLabel"),
+      address: t("footer.storeYaoundeAddress"),
+      // Monte Meecham / Mont Fébé area, Yaoundé
+      lat: 3.9125,
+      lng: 11.4956,
+      directionsUrl:
+        "https://www.google.com/maps/search/?api=1&query=Monte+Meecham+Yaounde+Cameroon",
+      directionsLabel: t("footer.getDirections"),
+    },
+  ];
+
   return (
     <footer className="bg-primary text-white">
       <div className="max-w-7xl mx-auto px-4 py-16">
@@ -100,10 +151,29 @@ export function Footer() {
             <p className="text-sm text-gray-400 leading-relaxed mb-4">
               {t("footer.tagline")}
             </p>
-            <address className="not-italic text-sm text-gray-400 leading-relaxed mb-6">
-              30 N Gould St Ste R
-              <br />
-              Sheridan, WY 82801
+            <address className="not-italic text-sm text-gray-400 leading-relaxed mb-6 space-y-4">
+              <span className="block text-white font-medium">
+                {t("footer.visitStore")}
+              </span>
+              <span className="block">
+                <span className="text-white/90">{t("footer.storeAccraLabel")}</span>
+                <br />
+                No 56 Olympic Street
+                <br />
+                Kokomlemle, Accra
+              </span>
+              <span className="block">
+                <span className="text-white/90">{t("footer.storeMamfeLabel")}</span>
+                <br />
+                Mamfe, Cameroon
+              </span>
+              <span className="block">
+                <span className="text-white/90">{t("footer.storeYaoundeLabel")}</span>
+                <br />
+                Monte Meecham
+                <br />
+                Yaoundé, Cameroon
+              </span>
             </address>
             <div className="flex gap-4">
               {SOCIAL_LINKS.map(({ label, href, Icon }) => (
@@ -183,6 +253,37 @@ export function Footer() {
       </div>
 
       <FooterRegions />
+
+      {/* Store locations — one map, two pins */}
+      <div className="border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.4fr)] gap-8 lg:gap-12 items-start">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wider mb-2 text-white">
+              {t("footer.visitStore")}
+            </h3>
+            <p className="text-sm text-gray-400 leading-relaxed mb-6">
+              {t("footer.storeMapHint")}
+            </p>
+            <ul className="space-y-5 text-sm text-gray-400">
+              {storePins.map((pin) => (
+                <li key={pin.id}>
+                  <p className="font-medium text-white mb-1">{pin.label}</p>
+                  <p className="leading-relaxed mb-2">{pin.address}</p>
+                  <a
+                    href={pin.directionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center font-medium text-[#FFD200] hover:text-white transition-colors"
+                  >
+                    {t("footer.getDirections")} →
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <StoreLocationsMap pins={storePins} />
+        </div>
+      </div>
 
       {/* Delivery & tracking */}
       <div className="border-t border-gray-800">

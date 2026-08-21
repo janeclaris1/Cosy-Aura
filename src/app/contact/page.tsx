@@ -27,7 +27,7 @@ export default function ContactPage() {
           aria-hidden
         />
         <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-24">
-          <p className="text-xs uppercase tracking-[0.25em] text-[#c4a574] mb-4 animate-fade-up">
+          <p className="text-xs uppercase tracking-[0.25em] text-[#0077b6] mb-4 animate-fade-up">
             COSY AURA
           </p>
           <h1 className="text-4xl md:text-6xl text-white mb-5 max-w-3xl animate-fade-up [animation-delay:80ms]">

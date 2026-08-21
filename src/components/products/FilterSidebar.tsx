@@ -15,6 +15,7 @@ import {
   SILLAGE_OPTIONS,
   SUSTAINABILITY_OPTIONS,
 } from "@/lib/filter-options";
+import { useT } from "@/lib/locale-store";
 
 interface FilterSidebarProps {
   brandSlug?: string;
@@ -36,6 +37,7 @@ function FilterGroup({
 }
 
 export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -88,7 +90,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
 
   return (
     <aside className="w-full lg:w-64 shrink-0 space-y-8">
-      <FilterGroup title="Fragrance Family">
+      <FilterGroup title={t("pdp.family")}>
         {FRAGRANCE_FAMILY_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -102,7 +104,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Concentration">
+      <FilterGroup title={t("pdp.concentration")}>
         {CONCENTRATION_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -116,7 +118,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Longevity">
+      <FilterGroup title={t("plp.longevity")}>
         {LONGEVITY_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -130,7 +132,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Bottle Size">
+      <FilterGroup title={t("plp.bottleSize")}>
         {BOTTLE_SIZE_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -144,7 +146,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Sillage">
+      <FilterGroup title={t("plp.sillage")}>
         {SILLAGE_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -158,7 +160,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Gender">
+      <FilterGroup title={t("plp.gender")}>
         {GENDER_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -172,7 +174,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Collection">
+      <FilterGroup title={t("plp.collection")}>
         {COLLECTION_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -186,7 +188,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
         ))}
       </FilterGroup>
 
-      <FilterGroup title="Sustainability">
+      <FilterGroup title={t("plp.sustainability")}>
         {SUSTAINABILITY_OPTIONS.map((m) => (
           <label key={m.value} className="flex items-center gap-2 cursor-pointer">
             <input
@@ -201,7 +203,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
       </FilterGroup>
 
       <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">Price Range</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">{t("nav.price")}</h3>
         <div className="space-y-2 mb-3">
           {PRICE_RANGE_OPTIONS.map((preset) => {
             const isActive =

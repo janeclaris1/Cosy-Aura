@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { syncFragranceCountryStocks } from "@/lib/sync-country-stock";
 
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("catalog.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
 
@@ -65,15 +67,31 @@ export async function PUT(
     });
   }
 
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "catalog.fragrance.update",
+    entityType: "Fragrance",
+    entityId: fragrance.id,
+    summary: `Updated fragrance ${fragrance.model} (price ${fragrance.price}, stock ${fragrance.stock})`,
+    req,
+    metadata: { price: fragrance.price, stock: fragrance.stock },
+  });
+
   return NextResponse.json(fragrance);
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("catalog.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const existing = await prisma.fragrance.findUnique({
+    where: { id: params.id },
+    select: { id: true, model: true, reference: true },
+  });
 
   const orderItems = await prisma.orderItem.count({
     where: { fragranceId: params.id },
@@ -86,5 +104,13 @@ export async function DELETE(
   }
 
   await prisma.fragrance.delete({ where: { id: params.id } });
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "catalog.fragrance.delete",
+    entityType: "Fragrance",
+    entityId: params.id,
+    summary: `Deleted fragrance ${existing?.model || params.id}`,
+    req,
+  });
   return NextResponse.json({ ok: true });
 }

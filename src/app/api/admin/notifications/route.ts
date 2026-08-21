@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 
 export async function GET() {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("notifications.read");
   if (error) return error;
 
   const [unread, notifications] = await Promise.all([
@@ -18,7 +18,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("notifications.read");
   if (error) return error;
 
   const body = await req.json();

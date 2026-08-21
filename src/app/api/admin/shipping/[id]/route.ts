@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { parseShippingMethodInput } from "@/lib/shipping-methods";
 import { slugify } from "@/lib/utils";
 
@@ -8,8 +9,9 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("shipping.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = parseShippingMethodInput(body);
@@ -36,15 +38,25 @@ export async function PUT(
     },
   });
 
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "shipping.update",
+    entityType: "ShippingMethod",
+    entityId: method.id,
+    summary: `Updated shipping method ${method.name}`,
+    req,
+  });
+
   return NextResponse.json(method);
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("shipping.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const enabledCount = await prisma.shippingMethod.count({
     where: { enabled: true },
@@ -65,5 +77,13 @@ export async function DELETE(
   }
 
   await prisma.shippingMethod.delete({ where: { id: params.id } });
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "shipping.delete",
+    entityType: "ShippingMethod",
+    entityId: params.id,
+    summary: `Deleted shipping method ${target.name}`,
+    req,
+  });
   return NextResponse.json({ ok: true });
 }

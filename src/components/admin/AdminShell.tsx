@@ -7,11 +7,18 @@ import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminNotificationListener } from "@/components/admin/AdminNotificationListener";
+import { AdminBranchSwitcher } from "@/components/admin/AdminBranchSwitcher";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", exact: true },
   { href: "/admin/fragrances", label: "Fragrances" },
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/branches", label: "Branches" },
+  { href: "/admin/stock", label: "Stock" },
+  { href: "/admin/transfers", label: "Transfers" },
+  { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/activity", label: "Activity" },
+  { href: "/admin/staff", label: "Staff" },
   { href: "/admin/shipping", label: "Shipping" },
   { href: "/admin/pricing", label: "Settings" },
   { href: "/admin/brands", label: "Brands" },
@@ -74,6 +81,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="flex items-center gap-4 text-sm shrink-0">
+            <AdminBranchSwitcher />
             <Link
               href="/admin/notifications"
               className="relative hover:text-gold transition-colors"

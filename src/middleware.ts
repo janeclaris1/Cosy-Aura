@@ -1,6 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
+const adminApiHits = new Map<string, number[]>();
+
 function isMaintenanceEnabled() {
   const value = process.env.MAINTENANCE_MODE?.trim().toLowerCase();
   return value === "true" || value === "1" || value === "yes";
@@ -42,12 +44,13 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Admin route protection (except login)
+  // Admin route protection (except login + set-password)
   const isAdminArea =
     pathname === "/admin" || pathname.startsWith("/admin/");
-  const isAdminLogin = pathname === "/admin/login";
+  const isAdminPublic =
+    pathname === "/admin/login" || pathname === "/admin/set-password";
 
-  if (isAdminArea && !isAdminLogin) {
+  if (isAdminArea && !isAdminPublic) {
     const token = await getToken({
       req,
       secret: process.env.NEXTAUTH_SECRET,
@@ -60,6 +63,30 @@ export async function middleware(req: NextRequest) {
     if (token.role !== "ADMIN") {
       return NextResponse.redirect(new URL("/admin/login", req.url));
     }
+  }
+
+  // Basic rate limit on admin API mutations (per IP, edge memory)
+  if (
+    pathname.startsWith("/api/admin") &&
+    !["GET", "HEAD", "OPTIONS"].includes(req.method)
+  ) {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "local";
+    const key = `mw:${ip}`;
+    const now = Date.now();
+    const windowMs = 60_000;
+    const maxHits = 90;
+    const recent = (adminApiHits.get(key) || []).filter((t) => now - t < windowMs);
+    if (recent.length >= maxHits) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a moment." },
+        { status: 429 }
+      );
+    }
+    recent.push(now);
+    adminApiHits.set(key, recent);
   }
 
   const requestHeaders = new Headers(req.headers);

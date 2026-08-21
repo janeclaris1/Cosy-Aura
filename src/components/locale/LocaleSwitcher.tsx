@@ -6,12 +6,18 @@ import {
   POPULAR_CURRENCIES,
   UI_LANGUAGES,
 } from "@/lib/geo-locale";
-import { useLocaleStore, useT } from "@/lib/locale-store";
+import { useLocaleStore, useT, useUiLanguage } from "@/lib/locale-store";
 import { cn } from "@/lib/utils";
 
-export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
+export function LocaleSwitcher({
+  compact = false,
+  onDark = false,
+}: {
+  compact?: boolean;
+  onDark?: boolean;
+}) {
   const t = useT();
-  const language = useLocaleStore((s) => s.language);
+  const language = useUiLanguage();
   const currency = useLocaleStore((s) => s.currency);
   const setLanguage = useLocaleStore((s) => s.setLanguage);
   const setCurrency = useLocaleStore((s) => s.setCurrency);
@@ -26,6 +32,9 @@ export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
   }, [currency]);
 
   const langMeta = UI_LANGUAGES.find((item) => item.code === language) || UI_LANGUAGES[0];
+  const triggerClass = onDark
+    ? "inline-flex items-center gap-1 text-sm font-medium text-white/90 hover:text-[#FFD200] transition-colors"
+    : "inline-flex items-center gap-1 text-sm font-medium text-wf-gray hover:text-gold transition-colors";
 
   return (
     <div className={cn("flex items-center gap-2", compact && "flex-wrap")}>
@@ -33,7 +42,7 @@ export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={() => setOpen(open === "lang" ? null : "lang")}
-          className="inline-flex items-center gap-1 text-sm font-medium text-wf-gray hover:text-gold transition-colors"
+          className={triggerClass}
           aria-label={t("locale.language")}
         >
           <span>{langMeta.code.toUpperCase()}</span>
@@ -61,7 +70,7 @@ export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
         )}
       </div>
 
-      <span className="text-wf-border" aria-hidden>
+      <span className={cn(onDark ? "text-white/30" : "text-wf-border")} aria-hidden>
         |
       </span>
 
@@ -69,7 +78,7 @@ export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={() => setOpen(open === "cur" ? null : "cur")}
-          className="inline-flex items-center gap-1 text-sm font-medium text-wf-gray hover:text-gold transition-colors"
+          className={triggerClass}
           aria-label={t("locale.currency")}
         >
           <span>{currency}</span>

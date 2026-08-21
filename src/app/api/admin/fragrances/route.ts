@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { writeAuditLog } from "@/lib/audit";
 import { slugify } from "@/lib/utils";
 import {
   defaultCountryStocksFromGlobal,
@@ -8,8 +9,9 @@ import {
 } from "@/lib/sync-country-stock";
 
 export async function POST(req: Request) {
-  const { error } = await requireAdminApi();
+  const { ctx, error } = await requireAdminApi("catalog.write", { req });
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const brand = await prisma.brand.findUnique({ where: { id: body.brandId } });
@@ -66,6 +68,16 @@ export async function POST(req: Request) {
       ? body.countryStocks
       : defaultCountryStocksFromGlobal(stock)
   );
+
+  await writeAuditLog({
+    actorId: ctx.userId,
+    action: "catalog.fragrance.create",
+    entityType: "Fragrance",
+    entityId: fragrance.id,
+    summary: `Created fragrance ${fragrance.model} (${fragrance.reference})`,
+    req,
+    metadata: { price: fragrance.price, stock },
+  });
 
   return NextResponse.json(fragrance);
 }

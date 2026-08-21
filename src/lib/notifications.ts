@@ -5,6 +5,7 @@ import {
   getWhatsAppNotifyTo,
   normalizeWhatsAppNumber,
   sendWhatsAppDocument,
+  sendWhatsAppText,
 } from "./whatsapp";
 import { deliveryDateIso, formatDeliveryDateLabel } from "./delivery-dates";
 import { buildOrderReceiptPdf } from "./order-receipt-pdf";
@@ -190,7 +191,7 @@ function orderItemsHtml(order: OrderWithItems) {
 function emailShell(title: string, body: string) {
   return `<!DOCTYPE html>
 <html><body style="font-family:Georgia,serif;color:#1A1A1A;max-width:560px;margin:0 auto;padding:24px;">
-  <p style="letter-spacing:2px;font-size:14px;color:#B8860B;margin:0 0 8px;">COSY AURA</p>
+  <p style="letter-spacing:2px;font-size:14px;color:#03045e;margin:0 0 8px;">COSY AURA</p>
   <h1 style="font-size:24px;margin:0 0 16px;">${title}</h1>
   ${body}
   <p style="margin-top:32px;font-size:12px;color:#666;">Questions? Reply to this email or visit ${SITE_URL}/contact</p>
@@ -405,7 +406,7 @@ export async function notifyOrderPaid(
          : ""
      }
      <table style="width:100%;border-collapse:collapse;">${orderItemsHtml(order)}</table>
-     <p style="margin-top:20px;"><a href="${adminLink}" style="background:#B8860B;color:#fff;padding:10px 18px;text-decoration:none;border-radius:4px;">View order</a></p>`
+     <p style="margin-top:20px;"><a href="${adminLink}" style="background:#03045e;color:#fff;padding:10px 18px;text-decoration:none;border-radius:4px;">View order</a></p>`
   );
 
   const customerHtml = emailShell(
@@ -423,7 +424,7 @@ export async function notifyOrderPaid(
      <p style="margin-top:16px;">You'll receive another email when your order ships.</p>
      <p style="margin-top:8px;"><a href="${SITE_URL}/track?ref=${shortId}&email=${encodeURIComponent(
        order.email
-     )}" style="color:#B8860B;">Track your order</a></p>`
+     )}" style="color:#03045e;">Track your order</a></p>`
   );
 
   const customerResult = await sendEmail({
@@ -526,12 +527,12 @@ export async function notifyOrderStatusChange(
         }
         ${
           resolveTrackingUrl(order)
-            ? `<p><a href="${resolveTrackingUrl(order)}" style="color:#B8860B;">Track with carrier</a></p>`
+            ? `<p><a href="${resolveTrackingUrl(order)}" style="color:#03045e;">Track with carrier</a></p>`
             : ""
         }
         <p><a href="${SITE_URL}/track?ref=${shortId}&email=${encodeURIComponent(
           order.email
-        )}" style="color:#B8860B;">View order status</a></p>`,
+        )}" style="color:#03045e;">View order status</a></p>`,
     },
     DELIVERED: {
       subject: `Order #${shortId} delivered`,
@@ -560,6 +561,32 @@ export async function notifyOrderStatusChange(
        <table style="width:100%;border-collapse:collapse;">${orderItemsHtml(order)}</table>`
     ),
   });
+
+  // Customer WhatsApp for key fulfilment statuses
+  if (["PROCESSING", "SHIPPED", "DELIVERED"].includes(status)) {
+    const phone = normalizeWhatsAppNumber(
+      order.shippingPhone || "",
+      order.shippingCountry
+    );
+    if (phone) {
+      const trackUrl = `${SITE_URL}/track?ref=${shortId}&email=${encodeURIComponent(order.email)}`;
+      const tracking =
+        status === "SHIPPED" && order.trackingNumber
+          ? `\nTracking: ${order.trackingNumber}${order.carrier ? ` (${order.carrier})` : ""}`
+          : "";
+      const text =
+        status === "PROCESSING"
+          ? `Cosy Aura: order #${shortId} is being prepared.`
+          : status === "SHIPPED"
+            ? `Cosy Aura: order #${shortId} has shipped.${tracking}\nTrack: ${trackUrl}`
+            : `Cosy Aura: order #${shortId} was marked delivered. Enjoy your fragrance.`;
+      try {
+        await sendWhatsAppText(text, phone, order.shippingCountry);
+      } catch (err) {
+        console.error("[whatsapp] status update failed", shortId, err);
+      }
+    }
+  }
 }
 
 export async function notifyContactEnquiry(enquiry: {

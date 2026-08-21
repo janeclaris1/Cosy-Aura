@@ -6,7 +6,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi();
+  const { error } = await requireAdminApi("enquiries.write");
   if (error) return error;
 
   const body = await req.json();

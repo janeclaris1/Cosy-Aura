@@ -118,12 +118,13 @@ async function callAnthropic(messages: AnthropicMessage[], system: string) {
 
 async function replyWithEnow(
   history: ChatTurn[],
-  context: string
+  context: string,
+  locale?: { country?: string | null; currency?: string | null; language?: string | null }
 ): Promise<{ text: string; cartLines: SupportCartLine[] } | null> {
   const messages = toAnthropicMessages(history);
   if (!messages.length) return null;
 
-  const system = `${enowSystemPrompt()}\n\nLive store data for this turn:\n\n${context}`;
+  const system = `${enowSystemPrompt(locale?.language || "en")}\n\nLive store data for this turn:\n\n${context}`;
   const cartLines: SupportCartLine[] = [];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
@@ -143,7 +144,11 @@ async function replyWithEnow(
 
     const toolResults: AnthropicContent[] = [];
     for (const tool of toolUses) {
-      const { result, cartLine } = await runSupportTool(tool.name, tool.input || {});
+      const { result, cartLine } = await runSupportTool(
+        tool.name,
+        tool.input || {},
+        locale
+      );
       if (cartLine) cartLines.push(cartLine);
       toolResults.push({
         type: "tool_result",
@@ -168,13 +173,18 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const history = sanitizeHistory(body.messages);
+    const locale = {
+      country: typeof body.country === "string" ? body.country : null,
+      currency: typeof body.currency === "string" ? body.currency : null,
+      language: typeof body.language === "string" ? body.language : null,
+    };
     const lastUser = [...history].reverse().find((m) => m.role === "user");
     if (!lastUser) {
       return NextResponse.json({ error: "Please enter a question." }, { status: 400 });
     }
 
-    const store = await buildStoreContext(lastUser.content);
-    const enow = await replyWithEnow(history, store.text);
+    const store = await buildStoreContext(lastUser.content, locale);
+    const enow = await replyWithEnow(history, store.text, locale);
 
     if (enow) {
       return NextResponse.json({
@@ -185,7 +195,12 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      reply: fallbackAnswer(lastUser.content, store.matches, store.featured),
+      reply: fallbackAnswer(
+        lastUser.content,
+        store.matches,
+        store.featured,
+        locale
+      ),
       cartLines: [],
       source: "fallback",
     });
