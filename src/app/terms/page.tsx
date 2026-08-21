@@ -1,205 +1,142 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { ContentSection } from "@/components/content/ContentPage";
+import { ContentPage, ContentSection } from "@/components/content/ContentPage";
 
-const EFFECTIVE_DATE = "August 4, 2026";
+const EFFECTIVE_DATE = "August 21, 2026";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions",
   description:
-    "Legal terms that govern purchases and use of COSY AURA.",
+    "Terms that govern your use of cosyaura.com and purchases from Cosy Aura.",
 };
 
 export default function TermsPage() {
   return (
-    <div>
-      <section className="relative border-b border-wf-border overflow-hidden">
-        <Image
-          src="https://images.unsplash.com/photo-1541643600914-78b084683601?w=1600&h=900&fit=crop"
-          alt="Luxury perfume bottle background"
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-black/45" aria-hidden />
-        <div className="relative max-w-4xl mx-auto px-4 py-20 md:py-28">
-          <h1 className="text-4xl md:text-5xl text-white mb-4">Terms and Conditions</h1>
-          <p className="text-white/90 text-base md:text-lg leading-relaxed max-w-2xl">
-            These Terms and Conditions govern your access to this website and your purchase of products from COSY AURA.
-          </p>
-        </div>
-      </section>
-      <section className="max-w-4xl mx-auto px-4 py-12 md:py-16">
-      <p className="text-sm text-wf-gray mb-8">
-        Effective date: <span className="text-wf-black">{EFFECTIVE_DATE}</span>
+    <ContentPage
+      title="Terms and Conditions"
+      subtitle="These Terms and Conditions govern your access to cosyaura.com and your purchase of Cosy Aura perfume oils. By using this website or placing an order, you agree to these terms."
+    >
+      <p className="text-sm text-black/60 mb-10">
+        Effective date: <span className="text-black font-medium">{EFFECTIVE_DATE}</span>
       </p>
 
-      <ContentSection title="1. Agreement to terms">
+      <ContentSection title="Agreement to terms">
         <p>
-          By accessing this website or placing an order, you agree to these Terms
-          and Conditions and our Privacy Policy. If you do not agree, do not use
-          this website.
+          By browsing this website or completing a purchase, you agree to these
+          Terms and Conditions and our{" "}
+          <a href="/privacy">Privacy Policy</a>. If you do not agree, please do
+          not use this website.
         </p>
       </ContentSection>
 
-      <ContentSection title="2. Eligibility and account responsibility">
-        <ul className="list-disc pl-5 space-y-2">
-          <li>You must be legally capable of entering binding contracts.</li>
-          <li>You must provide accurate and current information.</li>
-          <li>
-            You are responsible for account credentials and activity under your
-            account.
-          </li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="3. Product listings and availability">
+      <ContentSection title="Eligibility and your account">
         <p>
-          We make reasonable efforts to describe products accurately, including
-          specifications, availability, and pricing. Product images are for
-          illustration and may vary slightly due to display settings.
-        </p>
-        <p>
-          We reserve the right to correct errors, update information, and modify
-          listings at any time without prior notice.
+          You must be legally able to enter a binding contract and must provide
+          accurate, current information at checkout and in any account you create.
+          You are responsible for keeping login details secure and for activity
+          under your account.
         </p>
       </ContentSection>
 
-      <ContentSection title="4. Pricing, taxes, and payment">
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Prices are shown in USD unless otherwise stated.</li>
-          <li>Applicable taxes, duties, and fees may apply depending on destination.</li>
-          <li>
-            Payment is processed by third-party providers. We do not store full
-            payment card details.
-          </li>
-          <li>
-            We may refuse, cancel, or limit orders where fraud risk, pricing error,
-            compliance concerns, or stock issues exist.
-          </li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="5. Shipping and fulfillment by partners">
+      <ContentSection title="Products and availability">
         <p>
-          All products listed on this website are fulfilled and shipped through our
-          logistics and distribution partners. Shipping timelines are estimates only.
-        </p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>
-            Risk of delay due to customs, weather, carrier operations, or force
-            majeure events is outside our reasonable control.
-          </li>
-          <li>
-            Title and risk of loss transfer to the customer when the package is
-            delivered to the shipping address or authorized drop point.
-          </li>
-          <li>
-            Customers are responsible for accurate delivery information and for
-            receiving the package, including signature where required.
-          </li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="6. Returns, cancellations, and refunds">
-        <p>
-          Returns and refunds are governed by our Returns Policy. Eligibility,
-          condition requirements, and time windows apply. We may refuse returns
-          that do not satisfy policy requirements.
+          Cosy Aura sells alcohol-free perfume oils. We work hard to describe
+          products accurately, including size, notes, and availability. Images are
+          for illustration; slight differences in display are possible. Stock can
+          change quickly — we may correct errors, update listings, or cancel an
+          order when an item cannot be fulfilled, with a refund of amounts paid
+          for that item.
         </p>
       </ContentSection>
 
-      <ContentSection title="7. Prohibited use">
-        <p>You may not use this website to:</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Violate law, regulation, or third-party rights.</li>
-          <li>Attempt unauthorized access to systems or data.</li>
-          <li>Interfere with website operation, security, or integrity.</li>
-          <li>Scrape content or data without written permission.</li>
-        </ul>
+      <ContentSection title="Pricing, taxes, and payment">
+        <p>
+          Prices are shown in the currency selected on the site or at checkout.
+          Applicable taxes, duties, and fees may apply depending on destination.
+          Payment is processed by third-party providers (including Paystack,
+          Flutterwave, and Stripe). We do not store full payment card numbers.
+        </p>
+        <p>
+          We may refuse, cancel, or limit orders where we detect fraud risk,
+          pricing errors, compliance concerns, or stock issues.
+        </p>
       </ContentSection>
 
-      <ContentSection title="8. Intellectual property">
+      <ContentSection title="Shipping and delivery">
         <p>
-          All website content, including text, graphics, logos, design, and software,
-          is owned by or licensed to COSY AURA and protected by
-          intellectual property laws. No rights are granted except as expressly
+          Orders are prepared after payment confirmation. Delivery options,
+          estimates, and fees are shown at checkout. Timelines are estimates and
+          may be affected by carriers, customs, weather, or events outside our
+          reasonable control.
+        </p>
+        <p>
+          You are responsible for providing a correct delivery address and for
+          receiving the package. Risk of loss generally transfers when the
+          package is delivered to the address you provided. See our{" "}
+          <a href="/shipping">Shipping</a> page for more detail.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Returns, cancellations, and refunds">
+        <p>
+          Returns and refunds are governed by our{" "}
+          <a href="/returns">Trial &amp; Return</a> policy. Time limits,
+          condition requirements, and eligibility rules apply. We may decline
+          returns that do not meet that policy.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Acceptable use">
+        <p>
+          You may not use this website to break the law, infringe others&apos;
+          rights, attempt unauthorized access to our systems, disrupt the site,
+          or scrape content without written permission.
+        </p>
+      </ContentSection>
+
+      <ContentSection title="Intellectual property">
+        <p>
+          Website content — including text, graphics, logos, product photography,
+          and software — is owned by or licensed to Cosy Aura and protected by
+          intellectual property laws. No license is granted except as expressly
           stated.
         </p>
       </ContentSection>
 
-      <ContentSection title="9. Disclaimer of warranties">
+      <ContentSection title="Disclaimer and limitation of liability">
         <p>
-          This website and all services are provided on an “as is” and “as available”
-          basis to the maximum extent permitted by law. We disclaim all warranties,
-          express or implied, including implied warranties of merchantability, fitness
-          for a particular purpose, and non-infringement.
+          To the fullest extent permitted by law, this website and our services
+          are provided &quot;as is&quot; and &quot;as available.&quot; We disclaim
+          implied warranties including merchantability and fitness for a
+          particular purpose.
+        </p>
+        <p>
+          To the maximum extent permitted by law, Cosy Aura is not liable for
+          indirect, incidental, consequential, or special damages. Our total
+          liability for any claim related to a purchase is limited to the amount
+          you paid for that order.
         </p>
       </ContentSection>
 
-      <ContentSection title="10. Limitation of liability">
+      <ContentSection title="Governing law">
         <p>
-          To the maximum extent permitted by law, COSY AURA, its owners,
-          employees, affiliates, and partners are not liable for any indirect,
-          incidental, consequential, special, punitive, or exemplary damages,
-          including lost profits, lost data, or business interruption.
-        </p>
-        <p>
-          Our total aggregate liability for any claim arising from or related to
-          your use of this website or a purchase is limited to the amount paid by
-          you for the specific order giving rise to the claim.
+          These terms are governed by applicable law in the jurisdictions where
+          Cosy Aura operates, including Ghana and Cameroon for local fulfillment,
+          without regard to conflict-of-law rules that would require another
+          forum, except where mandatory consumer law says otherwise.
         </p>
       </ContentSection>
 
-      <ContentSection title="11. Indemnification">
+      <ContentSection title="Changes and contact">
         <p>
-          You agree to defend, indemnify, and hold harmless COSY AURA
-          and its affiliates, officers, employees, and partners from and against
-          claims, losses, liabilities, costs, and expenses, including reasonable
-          legal fees, arising out of your breach of these terms, misuse of this
-          website, or violation of law or third-party rights.
+          We may update these Terms and Conditions at any time. Updated terms
+          take effect when posted. Continued use of the website after changes
+          means you accept the revised terms.
+        </p>
+        <p>
+          Questions? Email{" "}
+          <a href="mailto:support@cosyaura.com">support@cosyaura.com</a>.
         </p>
       </ContentSection>
-
-      <ContentSection title="12. Compliance and export controls">
-        <p>
-          You are responsible for compliance with local laws related to import,
-          customs, sanctions, and product restrictions in your destination country.
-          We may refuse orders that create legal or sanctions risk.
-        </p>
-      </ContentSection>
-
-      <ContentSection title="13. Governing law and dispute resolution">
-        <p>
-          These terms are governed by the laws of the State of Wyoming, United States,
-          without regard to conflict of law principles.
-        </p>
-        <p>
-          Any dispute arising from these terms or your use of this website shall be
-          resolved exclusively in courts located in Wyoming, unless mandatory law
-          requires otherwise.
-        </p>
-      </ContentSection>
-
-      <ContentSection title="14. Changes to terms">
-        <p>
-          We may update these Terms and Conditions at any time. Updated terms become
-          effective upon posting. Continued use of the website after updates indicates
-          acceptance of revised terms.
-        </p>
-      </ContentSection>
-
-      <ContentSection title="15. Contact">
-        <p>
-          For legal notices or questions about these terms, contact{" "}
-          <a href="mailto:support@cosyaura.com" className="text-gold hover:text-gold-light">
-            support@cosyaura.com
-          </a>
-          .
-        </p>
-      </ContentSection>
-      </section>
-    </div>
+    </ContentPage>
   );
 }

@@ -4,7 +4,7 @@ import { AboutPageContent } from "@/components/about/AboutPageContent";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "COSY AURA curates handcrafted oil-based luxury perfume oils inspired by Grasse - sustainable, vegan-friendly, alcohol-free, with secure checkout and trial & return.",
+    "Cosy Aura curates alcohol-free perfume oils with shops in Accra, Mamfe, and Yaoundé — secure checkout, WhatsApp support, and a 14-day return.",
 };
 
 export default function AboutPage() {

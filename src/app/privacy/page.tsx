@@ -1,171 +1,125 @@
 import type { Metadata } from "next";
 import { ContentPage, ContentSection } from "@/components/content/ContentPage";
 
-const EFFECTIVE_DATE = "August 4, 2026";
+const EFFECTIVE_DATE = "August 21, 2026";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How COSY AURA collects, uses, stores, and shares personal information.",
+    "How Cosy Aura collects, uses, and protects your personal information.",
 };
 
 export default function PrivacyPage() {
   return (
     <ContentPage
-      title="Privacy Policy"
-      subtitle="This Privacy Policy describes how COSY AURA handles personal information when you use this website."
+      title="Security and Privacy Guaranteed"
+      subtitle="We are committed to protecting your privacy. Personal information you share with Cosy Aura is used to process your orders and support your experience — never sold for marketing lists."
     >
-      <p className="text-sm text-wf-gray mb-8">
-        Effective date: <span className="text-wf-black">{EFFECTIVE_DATE}</span>
+      <p className="text-sm text-black/60 mb-10">
+        Effective date: <span className="text-black font-medium">{EFFECTIVE_DATE}</span>
       </p>
 
-      <ContentSection title="1. Who controls your information">
+      <ContentSection title="Our commitment to you">
         <p>
-          COSY AURA controls the personal information collected
-          through this website. References to “we”, “our”, and “us” in this
-          policy mean COSY AURA.
+          Cosy Aura respects your privacy. We use the personal information you
+          provide only to process and fulfill your orders, communicate about
+          deliveries and support, and improve our storefront. We do not sell
+          your personal information for money.
         </p>
         <p>
-          Contact:{" "}
-          <a href="mailto:support@cosyaura.com" className="text-gold hover:text-gold-light">
-            support@cosyaura.com
-          </a>
+          All transactions on cosyaura.com are protected with industry-standard
+          Secure Socket Layer (SSL) encryption. Payment card details are handled
+          by our payment partners (such as Paystack, Flutterwave, and Stripe) —
+          we do not store full card numbers on our servers.
         </p>
-      </ContentSection>
-
-      <ContentSection title="2. Information we collect">
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Account details such as name, email address, and login information.</li>
-          <li>Order details such as products purchased, pricing, and order history.</li>
-          <li>
-            Checkout details such as shipping name, address, phone, and courier
-            selection.
-          </li>
-          <li>
-            Payment references from payment processors. We do not store full
-            payment card numbers.
-          </li>
-          <li>Messages and requests sent through contact forms or email.</li>
-          <li>
-            Technical data such as IP address, device type, browser, operating
-            system, and usage analytics.
-          </li>
-          <li>Cookie and consent preference information.</li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="3. How we use personal information">
-        <ul className="list-disc pl-5 space-y-2">
-          <li>To create and manage customer accounts.</li>
-          <li>To process orders, payments, shipping, returns, and refunds.</li>
-          <li>To send transactional communications about orders and support.</li>
-          <li>To detect, prevent, and investigate fraud or abuse.</li>
-          <li>To improve website performance, products, and customer experience.</li>
-          <li>To comply with legal obligations and enforce our terms.</li>
-          <li>
-            To send marketing updates where consent is provided or where permitted
-            by law.
-          </li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="4. Legal bases for processing">
-        <p>Depending on your location, we process data based on one or more of the following:</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Performance of a contract, including order fulfillment and support.</li>
-          <li>Legitimate interests, including security, analytics, and operations.</li>
-          <li>Consent, including optional cookies and marketing communications.</li>
-          <li>Legal obligations, including tax, accounting, and regulatory duties.</li>
-        </ul>
-      </ContentSection>
-
-      <ContentSection title="5. Cookies and tracking technologies">
         <p>
-          We use essential cookies required for security, cart functions, and
-          checkout. We may also use analytics or marketing cookies where consent
-          is required. You can manage cookie preferences through our cookie
-          banner and browser settings.
+          If you have questions about your data, or wish to access, correct, or
+          request deletion of personal information we hold about you, contact{" "}
+          <a href="mailto:support@cosyaura.com">support@cosyaura.com</a>.
         </p>
       </ContentSection>
 
-      <ContentSection title="6. Sharing personal information">
-        <p>We may share personal information with trusted service providers, including:</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Payment processors and fraud prevention providers.</li>
-          <li>Email and communication providers.</li>
-          <li>Hosting, infrastructure, analytics, and security vendors.</li>
-          <li>Shipping and logistics partners needed to fulfill your order.</li>
-        </ul>
+      <ContentSection title="Information we collect">
         <p>
-          We may also disclose information where required by law, court order,
-          or to protect legal rights, safety, or security. We do not sell personal
-          information for money.
+          When you browse, create an account, or place an order, we may collect
+          your name, email address, phone number, shipping address, order
+          history, and messages you send to our team. We also collect limited
+          technical data such as IP address, device type, and browser information
+          to keep the site secure and reliable.
+        </p>
+        <p>
+          We use cookies and similar technologies for essential store functions
+          (cart, login, security) and, where permitted, to understand how
+          visitors use the site and measure marketing performance. You can manage
+          non-essential cookies through our cookie banner and your browser
+          settings.
         </p>
       </ContentSection>
 
-      <ContentSection title="7. International transfers">
+      <ContentSection title="How we use and share information">
         <p>
-          Your information may be transferred to and processed in countries other
-          than your own. Where applicable, we use reasonable safeguards for
-          cross-border data transfers in accordance with relevant law.
+          We use your information to create accounts, process payments, pack and
+          ship orders, send order confirmations and tracking updates, prevent
+          fraud, and respond to support requests. We may send marketing emails
+          only where you have opted in or where the law allows — you can
+          unsubscribe at any time.
+        </p>
+        <p>
+          We share personal information only with trusted service providers who
+          help us operate: payment processors, email and messaging providers,
+          hosting and security vendors, and shipping or logistics partners needed
+          to deliver your order. We may also disclose information when required
+          by law or to protect rights and safety.
         </p>
       </ContentSection>
 
-      <ContentSection title="8. Data retention">
+      <ContentSection title="Information for customers outside Ghana and Cameroon">
         <p>
-          We retain personal information for as long as necessary for the purposes
-          described in this policy, including legal, accounting, tax, dispute,
-          and enforcement needs. Retention periods vary by data category and legal
-          requirements.
+          Cosy Aura serves customers internationally. If you place an order from
+          outside Ghana or Cameroon, your personal information may be processed
+          in countries where we or our service providers operate, including for
+          payment and delivery. By placing an order, you consent to this transfer
+          as needed to fulfill your purchase and provide support.
+        </p>
+        <p>
+          Depending on where you live, you may have rights to access, correct,
+          delete, or restrict certain processing of your data, or to lodge a
+          complaint with a data protection authority. Email{" "}
+          <a href="mailto:support@cosyaura.com">support@cosyaura.com</a> to
+          exercise these rights. We may need to verify your identity before
+          completing a request.
         </p>
       </ContentSection>
 
-      <ContentSection title="9. Security">
+      <ContentSection title="Payment partners">
         <p>
-          We use technical and organizational measures designed to protect personal
-          information. No method of transmission or storage is fully secure, and
-          we cannot guarantee absolute security.
+          To offer secure checkout, we share necessary order and customer details
+          with payment providers such as Paystack (Ghana and Nigeria), Flutterwave
+          (CEMAC), and Stripe (other markets). Their handling of your payment
+          data is governed by their own privacy notices in addition to this
+          policy.
         </p>
       </ContentSection>
 
-      <ContentSection title="10. Your rights">
-        <p>Depending on applicable law, you may have rights to:</p>
-        <ul className="list-disc pl-5 space-y-2">
-          <li>Access or receive a copy of your personal information.</li>
-          <li>Request correction of inaccurate information.</li>
-          <li>Request deletion of certain information.</li>
-          <li>Object to certain processing or request restriction.</li>
-          <li>Withdraw consent where processing is based on consent.</li>
-          <li>Request data portability where applicable.</li>
-          <li>Lodge a complaint with a relevant data protection authority.</li>
-        </ul>
+      <ContentSection title="Retention, security, and children">
         <p>
-          To exercise rights, contact{" "}
-          <a href="mailto:support@cosyaura.com" className="text-gold hover:text-gold-light">
-            support@cosyaura.com
-          </a>
-          . We may request identity verification before completing requests.
+          We keep personal information only as long as needed for orders,
+          accounting, legal, and support purposes. We use technical and
+          organizational measures designed to protect your data, but no online
+          transmission is completely risk-free.
+        </p>
+        <p>
+          This website is not directed to children under 13, and we do not
+          knowingly collect personal information from children under 13.
         </p>
       </ContentSection>
 
-      <ContentSection title="11. Children's privacy">
+      <ContentSection title="Changes to this policy">
         <p>
-          This website is not directed to children under 13, and we do not knowingly
-          collect personal information from children under 13.
-        </p>
-      </ContentSection>
-
-      <ContentSection title="12. Third-party links and services">
-        <p>
-          This website may contain links to third-party websites and services.
-          Their privacy practices are governed by their own policies, not this one.
-        </p>
-      </ContentSection>
-
-      <ContentSection title="13. Changes to this policy">
-        <p>
-          We may update this Privacy Policy from time to time. Changes become
-          effective when posted on this page, unless otherwise stated.
+          We may update this Privacy Policy from time to time. Changes take
+          effect when posted on this page unless we state otherwise. Continued
+          use of cosyaura.com after an update means you accept the revised
+          policy.
         </p>
       </ContentSection>
     </ContentPage>

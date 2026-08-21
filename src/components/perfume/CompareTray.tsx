@@ -5,14 +5,16 @@ import { GitCompareArrows, X } from "lucide-react";
 import { usePremiumStore } from "@/lib/premium-store";
 import { useT } from "@/lib/locale-store";
 import { cn } from "@/lib/utils";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 
 export function CompareTray() {
   const t = useT();
+  const mounted = useIsClientMounted();
   const compare = usePremiumStore((s) => s.compare);
   const removeCompare = usePremiumStore((s) => s.removeCompare);
   const clearCompare = usePremiumStore((s) => s.clearCompare);
 
-  if (compare.length === 0) return null;
+  if (!mounted || compare.length === 0) return null;
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 border-t border-wf-border bg-white/95 backdrop-blur-md shadow-[0_-8px_30px_rgba(45,27,61,0.12)] pb-[env(safe-area-inset-bottom)]">

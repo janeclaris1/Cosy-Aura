@@ -17,6 +17,7 @@ import { TopUtilityBar } from "@/components/layout/TopUtilityBar";
 import { LocaleSwitcher } from "@/components/locale/LocaleSwitcher";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { cn, formatPrice } from "@/lib/utils";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 
 const BRANDS = [
   { name: "Chanel", slug: "chanel" },
@@ -98,11 +99,15 @@ function NavDropdown({
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mounted = useIsClientMounted();
   const { items, toggleCart } = useCartStore();
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const wishlistItems = useWishlistStore((s) => s.items);
-  const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const cartCount = mounted
+    ? items.reduce((sum, i) => sum + i.quantity, 0)
+    : 0;
+  const wishlistCount = mounted ? wishlistItems.length : 0;
   const t = useT();
 
   const priceRanges = PRICE_FILTERS.map((range) => {
@@ -162,9 +167,9 @@ export function Header() {
               className="relative inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
               <Heart className="w-5 h-5" />
-              {wishlistItems.length > 0 && (
+              {wishlistCount > 0 && (
                 <span className="absolute top-1 right-1 bg-[#FFD200] text-[#03045e] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {wishlistItems.length}
+                  {wishlistCount}
                 </span>
               )}
             </Link>
@@ -214,6 +219,13 @@ export function Header() {
               </Link>
             ))}
           </NavDropdown>
+
+          <Link
+            href="/fragrances"
+            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
+          >
+            {t("nav.shopAll")}
+          </Link>
 
           <NavDropdown label={t("nav.price")}>
             {priceRanges.map((range) => (
@@ -314,6 +326,13 @@ export function Header() {
               ))}
             </div>
           </div>
+          <Link
+            href="/fragrances"
+            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
+            onClick={() => setMobileOpen(false)}
+          >
+            {t("nav.shopAll")}
+          </Link>
           <div>
             <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.shopBy")}</p>
             <div className="space-y-1">

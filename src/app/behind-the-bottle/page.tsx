@@ -33,12 +33,12 @@ export default function BehindTheBottlePage() {
               i % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""
             }`}
           >
-            <div className="relative aspect-[4/5] bg-wf-light overflow-hidden">
+            <div className="relative aspect-[4/5] bg-[#f3f4f6] overflow-hidden">
               <Image
                 src={p.image}
-                alt={p.name}
+                alt={`${p.name} — Cosy Aura perfume oil`}
                 fill
-                className="object-cover"
+                className="object-contain p-8 md:p-12"
                 sizes="(max-width:768px) 100vw, 50vw"
               />
             </div>

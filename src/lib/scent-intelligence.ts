@@ -303,8 +303,7 @@ export const PERFUMER_STORIES = [
     name: "Camille Beaumont",
     title: "Nose · Grasse Atelier",
     focus: "Rose & iris reconstructions",
-    image:
-      "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=800&h=1000&fit=crop",
+    image: "/images/fragrances/new/oil-bare-rose.png",
     excerpt:
       "Camille trained among the flower fields of Grasse, learning to chase the fleeting Centifolia harvest before dawn.",
     body: `Camille Beaumont believes a perfume should feel like a letter you almost send. Her formulas lean on rose, iris, and soft woods - never loud, always legible.
@@ -316,8 +315,7 @@ In our atelier collaborations she obsesses over the pause between heart and base
     name: "Amir Rahman",
     title: "Nose · Resin & Smoke",
     focus: "Oud, frankincense, saffron",
-    image:
-      "https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=800&h=1000&fit=crop",
+    image: "/images/fragrances/new/oil-oud-wood.png",
     excerpt:
       "Amir builds nocturnal architectures from oud and incense, balancing drama with breathable air.",
     body: `Raised between Muscat and London, Amir treats oud as architecture rather than ornament. Every smoky facet needs a window - citrus peel, saffron spark, or cool vetiver.
@@ -329,8 +327,7 @@ His compositions for COSY AURA favor evening silhouettes: powerful enough for wi
     name: "Elena Voss",
     title: "Nose · Soft Modern",
     focus: "Musk, pear, clean florals",
-    image:
-      "https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&h=1000&fit=crop",
+    image: "/images/fragrances/new/oil-imagination.png",
     excerpt:
       "Elena designs office-to-evening skinscents - translucent, skin-close, endlessly wearable.",
     body: `Elena’s brief is always the same: make something that disappears into personality. She layers pear, white musk, and sheer florals until the perfume feels like warm skin after rain.

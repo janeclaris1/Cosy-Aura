@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Leaf, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useT } from "@/lib/locale-store";
+import { cn, formatPrice } from "@/lib/utils";
+import { useLocaleStore, useT } from "@/lib/locale-store";
 import {
   BOTTLE_SIZE_OPTIONS,
   COLLECTION_OPTIONS,
@@ -13,6 +14,7 @@ import {
   GENDER_OPTIONS,
   LONGEVITY_OPTIONS,
   PRICE_RANGE_OPTIONS,
+  priceRangeLabel,
   SILLAGE_OPTIONS,
   SUSTAINABILITY_OPTIONS,
 } from "@/lib/filter-options";
@@ -51,15 +53,23 @@ export function ProductToolbar({
   total,
   brandSlug,
   brands = [],
-  bottleSizes = [],
+  bottleSizes: _bottleSizes = [],
 }: ProductToolbarProps) {
   const t = useT();
+  const currency = useLocaleStore((s) => s.currency);
+  useLocaleStore((s) => s.rates);
   const router = useRouter();
   const searchParams = useSearchParams();
   const sort = searchParams.get("sort") || "newest";
   const [open, setOpen] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(
+    null
+  );
+  const [portalReady, setPortalReady] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const base = brandSlug ? `/fragrances/${brandSlug}` : "/fragrances";
 
@@ -81,6 +91,7 @@ export function ProductToolbar({
         else params.delete(key);
       });
       setOpen(null);
+      setMenuPos(null);
     },
     [pushParams]
   );
@@ -94,6 +105,7 @@ export function ProductToolbar({
         else params.delete(maxKey);
       });
       setOpen(null);
+      setMenuPos(null);
     },
     [pushParams]
   );
@@ -115,15 +127,59 @@ export function ProductToolbar({
   const activeValues = (key: string) =>
     searchParams.get(key)?.split(",").filter(Boolean) || [];
 
-  useEffect(() => {
-    function onPointerDown(e: MouseEvent) {
-      if (!barRef.current?.contains(e.target as Node)) {
-        setOpen(null);
-      }
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+  const updateMenuPos = useCallback((pillId: string) => {
+    const el = pillRefs.current[pillId];
+    if (!el || typeof window === "undefined") return;
+    const rect = el.getBoundingClientRect();
+    const menuWidth = Math.min(window.innerWidth * 0.9, 280);
+    const left = Math.max(
+      8,
+      Math.min(rect.left, window.innerWidth - menuWidth - 8)
+    );
+    setMenuPos({ top: rect.bottom + 8, left });
   }, []);
+
+  const togglePill = useCallback(
+    (pillId: string) => {
+      if (open === pillId) {
+        setOpen(null);
+        setMenuPos(null);
+        return;
+      }
+      setOpen(pillId);
+      updateMenuPos(pillId);
+    },
+    [open, updateMenuPos]
+  );
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (barRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(null);
+      setMenuPos(null);
+    }
+
+    function onReposition() {
+      updateMenuPos(open);
+    }
+
+    document.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, updateMenuPos]);
 
   useEffect(() => {
     document.body.style.overflow = moreOpen ? "hidden" : "";
@@ -137,13 +193,11 @@ export function ProductToolbar({
   const hasPrice = Boolean(searchParams.get("minPrice") || searchParams.get("maxPrice"));
   const moreCount = MORE_FILTER_KEYS.filter((key) => searchParams.get(key)).length;
 
-  const sizeOptions =
-    bottleSizes.length > 0
-      ? bottleSizes.map((size) => ({ value: String(size), label: `${size} ml` }))
-      : [...BOTTLE_SIZE_OPTIONS];
+  const sizeOptions = [...BOTTLE_SIZE_OPTIONS];
 
   function selectBrand(slug: string | null) {
     setOpen(null);
+    setMenuPos(null);
     if (!slug) {
       router.push("/fragrances");
       return;
@@ -173,6 +227,174 @@ export function ProductToolbar({
     { id: "gender", label: t("plp.gender"), active: activeValues("gender").length > 0 },
   ];
 
+  const dropdown =
+    open && menuPos && portalReady
+      ? createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPos.top, left: menuPos.left }}
+            className="fixed z-[60] w-[min(90vw,280px)] max-h-[min(60vh,420px)] overflow-y-auto rounded-xl border border-wf-border bg-white shadow-lg p-2"
+          >
+            {open === "brands" && (
+              <div className="flex flex-wrap items-center gap-1">
+                <DropdownItem
+                  label="All brands"
+                  active={!activeBrand}
+                  onClick={() => selectBrand(null)}
+                  horizontal
+                />
+                {brands.map((brand) => (
+                  <DropdownItem
+                    key={brand.id}
+                    label={brand.name}
+                    active={activeBrand === brand.slug}
+                    onClick={() => selectBrand(brand.slug)}
+                    horizontal
+                  />
+                ))}
+              </div>
+            )}
+
+            {open === "bottleSize" && (
+              <>
+                <DropdownItem
+                  label="All sizes"
+                  active={activeBottleSizes.length === 0}
+                  onClick={() => setParam("bottleSize", null)}
+                />
+                {sizeOptions.length === 0 && (
+                  <p className="px-3 py-2 text-sm text-wf-gray">No sizes available</p>
+                )}
+                {sizeOptions.map((size) => (
+                  <DropdownItem
+                    key={size.value}
+                    label={size.label}
+                    active={activeBottleSizes.includes(size.value)}
+                    onClick={() => toggleArray("bottleSize", size.value)}
+                  />
+                ))}
+              </>
+            )}
+
+            {open === "price" && (
+              <>
+                <DropdownItem
+                  label="Any price"
+                  active={!hasPrice}
+                  onClick={() => setRange("minPrice", "maxPrice", null, null)}
+                />
+              {PRICE_RANGE_OPTIONS.map((preset) => (
+                <DropdownItem
+                  key={preset.id}
+                  label={priceRangeLabel(preset, currency, t, formatPrice)}
+                  active={
+                    (searchParams.get("minPrice") || "") === (preset.min || "") &&
+                    (searchParams.get("maxPrice") || "") === (preset.max || "")
+                  }
+                  onClick={() =>
+                    setRange("minPrice", "maxPrice", preset.min, preset.max)
+                  }
+                />
+              ))}
+                <div className="border-t border-wf-border mt-2 pt-2 px-2 space-y-2">
+                  <p className="text-xs text-wf-gray px-1">Custom range</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      defaultValue={searchParams.get("minPrice") || ""}
+                      className="w-full px-2 py-1.5 border border-wf-border rounded text-sm"
+                      id="filter-min-price"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      defaultValue={searchParams.get("maxPrice") || ""}
+                      className="w-full px-2 py-1.5 border border-wf-border rounded text-sm"
+                      id="filter-max-price"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="w-full btn-gold text-sm py-2"
+                    onClick={() => {
+                      const min = (
+                        document.getElementById(
+                          "filter-min-price"
+                        ) as HTMLInputElement
+                      )?.value;
+                      const max = (
+                        document.getElementById(
+                          "filter-max-price"
+                        ) as HTMLInputElement
+                      )?.value;
+                      setRange("minPrice", "maxPrice", min || null, max || null);
+                    }}
+                  >
+                    {t("plp.apply")}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {open === "fragranceFamily" && (
+              <>
+                <DropdownItem
+                  label="All families"
+                  active={activeValues("fragranceFamily").length === 0}
+                  onClick={() => setParam("fragranceFamily", null)}
+                />
+                {FRAGRANCE_FAMILY_OPTIONS.map((item) => (
+                  <DropdownItem
+                    key={item.value}
+                    label={item.label}
+                    active={activeValues("fragranceFamily").includes(item.value)}
+                    onClick={() => toggleArray("fragranceFamily", item.value)}
+                  />
+                ))}
+              </>
+            )}
+
+            {open === "concentration" && (
+              <>
+                <DropdownItem
+                  label="All concentrations"
+                  active={activeValues("concentration").length === 0}
+                  onClick={() => setParam("concentration", null)}
+                />
+                {CONCENTRATION_OPTIONS.map((item) => (
+                  <DropdownItem
+                    key={item.value}
+                    label={item.label}
+                    active={activeValues("concentration").includes(item.value)}
+                    onClick={() => toggleArray("concentration", item.value)}
+                  />
+                ))}
+              </>
+            )}
+
+            {open === "gender" && (
+              <>
+                <DropdownItem
+                  label="All genders"
+                  active={activeValues("gender").length === 0}
+                  onClick={() => setParam("gender", null)}
+                />
+                {GENDER_OPTIONS.map((item) => (
+                  <DropdownItem
+                    key={item.value}
+                    label={item.label}
+                    active={activeValues("gender").includes(item.value)}
+                    onClick={() => toggleArray("gender", item.value)}
+                  />
+                ))}
+              </>
+            )}
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <div className="mb-6" ref={barRef}>
       <div className="flex items-center justify-between gap-4 mb-4">
@@ -199,7 +421,10 @@ export function ProductToolbar({
             <div key={pill.id} className="relative shrink-0">
               <button
                 type="button"
-                onClick={() => setOpen(open === pill.id ? null : pill.id)}
+                ref={(el) => {
+                  pillRefs.current[pill.id] = el;
+                }}
+                onClick={() => togglePill(pill.id)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full text-sm px-3.5 sm:px-4 py-2 transition-colors whitespace-nowrap",
                   pill.active || open === pill.id
@@ -215,167 +440,6 @@ export function ProductToolbar({
                   )}
                 />
               </button>
-
-              {open === pill.id && (
-                <div className="absolute left-0 top-full mt-2 z-40 w-[min(90vw,280px)] max-h-[60vh] overflow-y-auto rounded-xl border border-wf-border bg-white shadow-lg p-2">
-                  {pill.id === "brands" && (
-                    <div className="flex flex-wrap items-center gap-1">
-                      <DropdownItem
-                        label="All brands"
-                        active={!activeBrand}
-                        onClick={() => selectBrand(null)}
-                        horizontal
-                      />
-                      {brands.map((brand) => (
-                        <DropdownItem
-                          key={brand.id}
-                          label={brand.name}
-                          active={activeBrand === brand.slug}
-                          onClick={() => selectBrand(brand.slug)}
-                          horizontal
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {pill.id === "bottleSize" && (
-                    <>
-                      <DropdownItem
-                        label="All sizes"
-                        active={activeBottleSizes.length === 0}
-                        onClick={() => setParam("bottleSize", null)}
-                      />
-                      {sizeOptions.length === 0 && (
-                        <p className="px-3 py-2 text-sm text-wf-gray">No sizes available</p>
-                      )}
-                      {sizeOptions.map((size) => (
-                        <DropdownItem
-                          key={size.value}
-                          label={size.label}
-                          active={activeBottleSizes.includes(size.value)}
-                          onClick={() => toggleArray("bottleSize", size.value)}
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {pill.id === "price" && (
-                    <>
-                      <DropdownItem
-                        label="Any price"
-                        active={!hasPrice}
-                        onClick={() => setRange("minPrice", "maxPrice", null, null)}
-                      />
-                      {PRICE_RANGE_OPTIONS.map((preset) => (
-                        <DropdownItem
-                          key={preset.label}
-                          label={preset.label}
-                          active={
-                            (searchParams.get("minPrice") || "") === (preset.min || "") &&
-                            (searchParams.get("maxPrice") || "") === (preset.max || "")
-                          }
-                          onClick={() =>
-                            setRange("minPrice", "maxPrice", preset.min, preset.max)
-                          }
-                        />
-                      ))}
-                      <div className="border-t border-wf-border mt-2 pt-2 px-2 space-y-2">
-                        <p className="text-xs text-wf-gray px-1">Custom range</p>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            placeholder="Min"
-                            defaultValue={searchParams.get("minPrice") || ""}
-                            className="w-full px-2 py-1.5 border border-wf-border rounded text-sm"
-                            id="filter-min-price"
-                          />
-                          <input
-                            type="number"
-                            placeholder="Max"
-                            defaultValue={searchParams.get("maxPrice") || ""}
-                            className="w-full px-2 py-1.5 border border-wf-border rounded text-sm"
-                            id="filter-max-price"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          className="w-full btn-gold text-sm py-2"
-                          onClick={() => {
-                            const min = (
-                              document.getElementById("filter-min-price") as HTMLInputElement
-                            )?.value;
-                            const max = (
-                              document.getElementById("filter-max-price") as HTMLInputElement
-                            )?.value;
-                            setRange(
-                              "minPrice",
-                              "maxPrice",
-                              min || null,
-                              max || null
-                            );
-                          }}
-                        >
-                          {t("plp.apply")}
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {pill.id === "fragranceFamily" && (
-                    <>
-                      <DropdownItem
-                        label="All families"
-                        active={activeValues("fragranceFamily").length === 0}
-                        onClick={() => setParam("fragranceFamily", null)}
-                      />
-                      {FRAGRANCE_FAMILY_OPTIONS.map((item) => (
-                        <DropdownItem
-                          key={item.value}
-                          label={item.label}
-                          active={activeValues("fragranceFamily").includes(item.value)}
-                          onClick={() => toggleArray("fragranceFamily", item.value)}
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {pill.id === "concentration" && (
-                    <>
-                      <DropdownItem
-                        label="All concentrations"
-                        active={activeValues("concentration").length === 0}
-                        onClick={() => setParam("concentration", null)}
-                      />
-                      {CONCENTRATION_OPTIONS.map((item) => (
-                        <DropdownItem
-                          key={item.value}
-                          label={item.label}
-                          active={activeValues("concentration").includes(item.value)}
-                          onClick={() => toggleArray("concentration", item.value)}
-                        />
-                      ))}
-                    </>
-                  )}
-
-                  {pill.id === "gender" && (
-                    <>
-                      <DropdownItem
-                        label="All genders"
-                        active={activeValues("gender").length === 0}
-                        onClick={() => setParam("gender", null)}
-                      />
-                      {GENDER_OPTIONS.map((item) => (
-                        <DropdownItem
-                          key={item.value}
-                          label={item.label}
-                          active={activeValues("gender").includes(item.value)}
-                          onClick={() => toggleArray("gender", item.value)}
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           ))}
 
@@ -383,6 +447,7 @@ export function ProductToolbar({
           type="button"
           onClick={() => {
             setOpen(null);
+            setMenuPos(null);
             setMoreOpen(true);
           }}
           className={cn(
@@ -399,6 +464,8 @@ export function ProductToolbar({
           <Leaf className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {dropdown}
 
       {moreOpen && (
         <div className="fixed inset-0 z-50">

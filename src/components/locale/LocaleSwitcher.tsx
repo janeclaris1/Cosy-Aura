@@ -49,7 +49,7 @@ export function LocaleSwitcher({
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
         {open === "lang" && (
-          <div className="absolute top-full right-0 mt-2 bg-white border border-wf-border shadow-lg rounded-lg py-1 z-50 min-w-[10rem]">
+          <div className="absolute top-full right-0 mt-2 bg-white border border-wf-border shadow-lg rounded-lg py-1 z-50 min-w-[10rem] text-[#03045e]">
             {UI_LANGUAGES.map((item) => (
               <button
                 key={item.code}
@@ -59,7 +59,7 @@ export function LocaleSwitcher({
                   setOpen(null);
                 }}
                 className={cn(
-                  "block w-full px-4 py-2 text-sm text-left hover:bg-wf-light",
+                  "block w-full px-4 py-2 text-sm text-left text-[#03045e] hover:bg-wf-light",
                   language === item.code && "text-gold font-medium"
                 )}
               >
@@ -85,7 +85,7 @@ export function LocaleSwitcher({
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
         {open === "cur" && (
-          <div className="absolute top-full right-0 mt-2 bg-white border border-wf-border shadow-lg rounded-lg py-1 z-50 max-h-72 overflow-y-auto min-w-[7rem]">
+          <div className="absolute top-full right-0 mt-2 bg-white border border-wf-border shadow-lg rounded-lg py-1 z-50 max-h-72 overflow-y-auto min-w-[7rem] text-[#03045e]">
             {currencies.map((code) => (
               <button
                 key={code}
@@ -95,7 +95,7 @@ export function LocaleSwitcher({
                   setOpen(null);
                 }}
                 className={cn(
-                  "block w-full px-4 py-2 text-sm text-left hover:bg-wf-light",
+                  "block w-full px-4 py-2 text-sm text-left text-[#03045e] hover:bg-wf-light",
                   currency === code && "text-gold font-medium"
                 )}
               >

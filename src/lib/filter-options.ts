@@ -55,12 +55,28 @@ export const SUSTAINABILITY_OPTIONS = [
   { value: "sustainable", label: "Sustainable" },
 ] as const;
 
+/** Catalog price bands in GHS (DB currency). Labels are formatted in the shopper currency. */
 export const PRICE_RANGE_OPTIONS = [
-  { label: "Under $50", min: null as string | null, max: "50" },
-  { label: "$50 - $100", min: "50", max: "100" },
-  { label: "$100 - $200", min: "100", max: "200" },
-  { label: "$200+", min: "200", max: null as string | null },
+  { id: "under150", min: null as string | null, max: "150" },
+  { id: "150-250", min: "150", max: "250" },
+  { id: "250-400", min: "250", max: "400" },
+  { id: "400plus", min: "400", max: null as string | null },
 ] as const;
+
+export function priceRangeLabel(
+  preset: { min: string | null; max: string | null },
+  currency: string,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  formatPrice: (amount: number, currency?: string) => string
+): string {
+  if (preset.max && !preset.min) {
+    return t("price.under", { price: formatPrice(Number(preset.max), currency) });
+  }
+  if (preset.min && !preset.max) {
+    return t("price.over", { price: formatPrice(Number(preset.min), currency) });
+  }
+  return `${formatPrice(Number(preset.min), currency)} - ${formatPrice(Number(preset.max), currency)}`;
+}
 
 /** Map longevity filter tokens → substring patterns found in DB strings */
 export const LONGEVITY_MATCHERS: Record<string, string[]> = {

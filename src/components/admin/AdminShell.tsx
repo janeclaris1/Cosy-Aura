@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminNotificationListener } from "@/components/admin/AdminNotificationListener";
 import { AdminBranchSwitcher } from "@/components/admin/AdminBranchSwitcher";
@@ -32,6 +32,11 @@ const NAV = [
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,72 +58,141 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  const nav = (
+    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      {NAV.map((item) => {
+        const active = item.exact
+          ? pathname === item.href
+          : pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "block rounded-md px-3 py-2 text-sm transition-colors",
+              active
+                ? "bg-white/10 text-[#FFD200] font-medium"
+                : "text-white/85 hover:bg-white/5 hover:text-white"
+            )}
+          >
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  const sidebarFooter = (
+    <div className="border-t border-white/10 p-3 space-y-3 shrink-0">
+      <AdminBranchSwitcher />
+      <div className="flex items-center gap-3 px-1">
+        <Link
+          href="/admin/notifications"
+          className="relative inline-flex items-center justify-center text-white/85 hover:text-[#FFD200] transition-colors"
+          aria-label="Notifications"
+        >
+          <Bell className="w-5 h-5" />
+          {unread > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </Link>
+        <Link
+          href="/"
+          className="text-sm text-white/85 hover:text-[#FFD200] transition-colors"
+        >
+          View Site
+        </Link>
+      </div>
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: "/admin/login" })}
+        className="w-full text-left rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/5 hover:text-[#FFD200] transition-colors"
+      >
+        Sign out
+      </button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-wf-light">
+    <div className="min-h-screen bg-wf-light lg:flex">
       <AdminNotificationListener />
-      <header className="bg-wf-black text-white">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14 gap-4">
-          <Link href="/admin" className="font-playfair text-lg tracking-wider shrink-0">
+
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-60 lg:shrink-0 lg:sticky lg:top-0 lg:h-screen bg-[#03045e] text-white">
+        <div className="px-4 py-5 border-b border-white/10 shrink-0">
+          <Link href="/admin" className="font-playfair text-lg tracking-wider">
             COSY AURA Admin
           </Link>
-          <nav className="hidden lg:flex items-center gap-4 text-sm flex-1 justify-center flex-wrap">
-            {NAV.map((item) => {
-              const active = item.exact
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "hover:text-gold transition-colors",
-                    active && "text-gold"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="flex items-center gap-4 text-sm shrink-0">
-            <AdminBranchSwitcher />
+        </div>
+        {nav}
+        {sidebarFooter}
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="lg:hidden sticky top-0 z-40 bg-[#03045e] text-white">
+        <div className="flex items-center justify-between gap-3 px-4 h-14">
+          <Link href="/admin" className="font-playfair text-base tracking-wider">
+            COSY AURA Admin
+          </Link>
+          <div className="flex items-center gap-3">
             <Link
               href="/admin/notifications"
-              className="relative hover:text-gold transition-colors"
+              className="relative hover:text-[#FFD200]"
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
               {unread > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-gold text-white text-[10px] min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                <span className="absolute -top-1.5 -right-1.5 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
             </Link>
-            <Link href="/" className="hover:text-gold transition-colors hidden sm:inline">
-              View Site
-            </Link>
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: "/admin/login" })}
-              className="hover:text-gold transition-colors"
+              onClick={() => setMobileOpen(true)}
+              className="inline-flex items-center justify-center min-h-10 min-w-10"
+              aria-label="Open menu"
             >
-              Sign out
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>
-        <nav className="lg:hidden border-t border-white/10 px-4 py-2 flex gap-3 overflow-x-auto text-xs">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="whitespace-nowrap hover:text-gold"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </header>
-      <div className="max-w-7xl mx-auto px-4 py-8">{children}</div>
+      </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="relative z-10 flex flex-col w-[min(100%,18rem)] h-full bg-[#03045e] text-white shadow-xl">
+            <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+              <Link href="/admin" className="font-playfair text-lg tracking-wider">
+                COSY AURA Admin
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="inline-flex items-center justify-center min-h-10 min-w-10"
+                aria-label="Close menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {nav}
+            {sidebarFooter}
+          </aside>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <div className="max-w-7xl mx-auto px-4 py-8">{children}</div>
+      </div>
     </div>
   );
 }

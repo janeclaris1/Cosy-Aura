@@ -150,7 +150,7 @@ export function ProductCard({
               e.preventDefault();
               toggleItem(fragrance.id);
             }}
-            className="absolute top-0 right-0 min-h-11 min-w-11 bg-white/90 flex items-center justify-center hover:bg-white transition-colors"
+            className="absolute top-0 right-0 min-h-11 min-w-11 flex items-center justify-center bg-transparent hover:opacity-80 transition-opacity"
             aria-label={isWishlisted ? t("product.wishlistRemove") : t("product.wishlistAdd")}
           >
             <Heart

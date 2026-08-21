@@ -16,6 +16,7 @@ import { useCartStore } from "@/lib/store";
 import {
   LocaleHydratedContext,
   LocaleSsrContext,
+  LocaleSsrCountryContext,
 } from "@/components/locale/locale-context";
 
 type LocaleState = {
@@ -196,6 +197,15 @@ export function useUiLanguage(): UiLang {
   const hydrated = useContext(LocaleHydratedContext);
   const storeLanguage = useLocaleStore((s) => s.language);
   return hydrated ? storeLanguage : ssrLanguage;
+}
+
+/** Detected shopper country (ISO-2), SSR-safe via cookie until hydrate. */
+export function useShopperCountry(): string | null {
+  const ssrCountry = useContext(LocaleSsrCountryContext);
+  const hydrated = useContext(LocaleHydratedContext);
+  const storeCountry = useLocaleStore((s) => s.country);
+  if (!hydrated) return ssrCountry;
+  return storeCountry || ssrCountry;
 }
 
 export function useT() {

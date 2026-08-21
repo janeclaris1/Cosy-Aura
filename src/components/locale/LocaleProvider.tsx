@@ -10,6 +10,7 @@ import {
 import {
   LocaleHydratedContext,
   LocaleSsrContext,
+  LocaleSsrCountryContext,
 } from "@/components/locale/locale-context";
 
 /**
@@ -27,6 +28,10 @@ export function LocaleProvider({
     initialLocale && isUiLang(initialLocale.language)
       ? initialLocale.language
       : "en";
+  const ssrCountry =
+    initialLocale?.country && /^[A-Za-z]{2}$/.test(initialLocale.country)
+      ? initialLocale.country.toUpperCase()
+      : null;
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -51,9 +56,11 @@ export function LocaleProvider({
 
   return (
     <LocaleSsrContext.Provider value={ssrLanguage}>
-      <LocaleHydratedContext.Provider value={hydrated}>
-        {children}
-      </LocaleHydratedContext.Provider>
+      <LocaleSsrCountryContext.Provider value={ssrCountry}>
+        <LocaleHydratedContext.Provider value={hydrated}>
+          {children}
+        </LocaleHydratedContext.Provider>
+      </LocaleSsrCountryContext.Provider>
     </LocaleSsrContext.Provider>
   );
 }

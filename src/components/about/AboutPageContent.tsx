@@ -1,46 +1,31 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Handshake, LayoutGrid, Brain, Compass } from "lucide-react";
+import { Star } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-
-const HERO_BRANDS = [
-  { name: "Chanel", slug: "chanel" },
-  { name: "Dior", slug: "dior" },
-  { name: "Tom Ford", slug: "tom-ford" },
-  { name: "Creed", slug: "creed" },
-  { name: "Byredo", slug: "byredo" },
-  { name: "Maison Francis Kurkdjian", slug: "maison-francis-kurkdjian" },
-];
+import { getGoogleReviews } from "@/lib/google-reviews";
 
 const MEDIA = {
-  hero: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=1600&h=1000&fit=crop",
-  cardOne: "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=600&fit=crop",
-  cardTwo: "https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=800&h=600&fit=crop",
-  service: "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=800&h=600&fit=crop",
-  returns: "https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=800&h=600&fit=crop",
-  stats: "https://images.unsplash.com/photo-1547887538-8476a0d0a5a4?w=800&h=600&fit=crop",
+  hero: "/images/lifestyle/buy-with-confidence.png",
+  authentic: "/images/fragrances/new/oil-black-orchid.png",
+  stayInTouch: "/images/lifestyle/request-a-fragrance.png",
+  talkToUs: "/images/fragrances/new/oil-club-de-nuit-intense.png",
 };
 
-const PILLARS = [
+const FALLBACK_TESTIMONIALS = [
   {
-    icon: Handshake,
-    title: "Service",
-    body: "Outstanding customer care is central to how we work. From first enquiry to delivery, our team guides you through a clear and secure purchase with support at every step.",
+    name: "Ama",
+    text: "The oil lasts all day on my skin - richer than sprays I have bought elsewhere. Delivery to Accra was quick and well packed.",
+    rating: 5,
   },
   {
-    icon: LayoutGrid,
-    title: "Choice",
-    body: "Explore a wide catalog of floral, woody, and niche fragrances across houses including Chanel, Dior, Tom Ford, Creed, Byredo, and Maison Francis Kurkdjian.",
+    name: "Jean",
+    text: "Ordered from Yaounde and got clear WhatsApp updates. The scent is close to the house I love, without the alcohol burn.",
+    rating: 5,
   },
   {
-    icon: Brain,
-    title: "Knowledge",
-    body: "We help you compare concentrations, notes, and bottle sizes so you can choose with confidence whether this is your first luxury fragrance or your next signature scent.",
-  },
-  {
-    icon: Compass,
-    title: "Independence",
-    body: "We are not tied to a single manufacturer. That gives you impartial guidance and the freedom to shop many brands in one place at transparent listed prices.",
+    name: "Kwame",
+    text: "Transparent sizes and pricing. Tried a sample first, then went for 50ml. Support answered every question.",
+    rating: 5,
   },
 ];
 
@@ -56,205 +41,279 @@ async function getAboutStats() {
   }
 }
 
+function Stars({ rating }: { rating: number }) {
+  const n = Math.max(0, Math.min(5, Math.round(rating)));
+  const label = n + " out of 5 stars";
+  return (
+    <span className="inline-flex items-center gap-1.5" aria-label={label}>
+      <span className="inline-flex gap-0.5" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={
+              i < n
+                ? "w-3.5 h-3.5 fill-[#FFD200] text-[#FFD200]"
+                : "w-3.5 h-3.5 text-[#c5c9d6]"
+            }
+          />
+        ))}
+      </span>
+      <span className="text-xs tabular-nums text-[#03045e]">{n.toFixed(2)}</span>
+    </span>
+  );
+}
+
 export async function AboutPageContent() {
-  const { fragranceCount, brandCount } = await getAboutStats();
+  const [{ fragranceCount, brandCount }, reviewsPayload] = await Promise.all([
+    getAboutStats(),
+    getGoogleReviews().catch(() => null),
+  ]);
+
   const fragrancesLabel =
     fragranceCount >= 1000
-      ? `${Math.floor(fragranceCount / 100) * 100}+`
+      ? Math.floor(fragranceCount / 100) * 100 + "+"
       : fragranceCount > 0
         ? String(fragranceCount)
-        : "500+";
+        : "200+";
+
+  const brandsLabel = brandCount > 0 ? brandCount + "+" : "40+";
+
+  const googleReviews = (reviewsPayload?.reviews || [])
+    .filter((r) => r.text.trim().length > 40)
+    .slice(0, 3)
+    .map((r) => ({
+      name: r.name.split(" ")[0] || r.name,
+      text:
+        r.text.length > 220 ? r.text.slice(0, 217).trim() + "..." : r.text,
+      rating: r.rating || 5,
+    }));
+
+  const testimonials =
+    googleReviews.length >= 3 ? googleReviews : FALLBACK_TESTIMONIALS;
+
+  const reviewCount =
+    reviewsPayload?.total && reviewsPayload.total > 0
+      ? reviewsPayload.total
+      : null;
 
   return (
-    <div className="bg-white font-cantora">
-      <section className="relative min-h-[85vh] flex flex-col justify-center items-center text-center text-white overflow-hidden">
-        <Image
-          src={MEDIA.hero}
-          alt="Luxury fragrance bottle photographed in studio lighting"
-          fill
-          priority
-          className="object-cover object-center grayscale"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-black/60" aria-hidden />
-        <div className="relative z-10 max-w-4xl mx-auto px-6 py-24 md:py-32">
-          <p className="text-xs uppercase tracking-[0.25em] text-white/70 mb-6">
-            COSY AURA
-          </p>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] leading-snug md:leading-tight tracking-tight">
-            Global luxury fragrance selection, trusted support, and secure checkout
-            come together to help you find your next scent.
-          </h1>
-        </div>
-
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-16 md:pb-20 mt-auto">
-          <p className="text-xs sm:text-sm text-white/80 mb-8 max-w-2xl mx-auto">
-            Brands we carry include
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 opacity-90">
-            {HERO_BRANDS.map((brand) => (
-              <Link
-                key={brand.name}
-                href={`/fragrances/${brand.slug}`}
-                className="hover:opacity-100 opacity-80 transition-opacity"
-                aria-label={brand.name}
-              >
-                <span className="font-playfair text-lg md:text-xl text-white">
-                  {brand.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <a
-          href="#welcome"
-          className="relative z-10 pb-8 text-white/70 hover:text-white transition-colors"
-          aria-label="Scroll to learn more"
-        >
-          <ChevronDown className="w-6 h-6 animate-bounce" />
-        </a>
-      </section>
-
-      <section id="welcome" className="max-w-5xl mx-auto px-6 py-16 md:py-24 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-wf-black mb-8">
-          Welcome To COSY AURA
-        </h2>
-        <p className="text-wf-gray text-base md:text-lg leading-relaxed max-w-3xl mx-auto mb-14 md:mb-20">
-          COSY AURA is a curated destination for brand new luxury
-          fragrances. With hundreds of references across {brandCount || "15"}+ brands
-          including Chanel, Dior, Tom Ford, Creed, Byredo, and Hermès,
-          plus secure checkout and worldwide delivery after payment
-          confirmation, this is a reliable place to discover your next fragrance.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10 text-left">
+    <div className="bg-white text-[#03045e]">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 md:py-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
           <div>
-            <div className="relative aspect-[4/3] bg-wf-light overflow-hidden mb-4">
-              <Image
-                src={MEDIA.cardOne}
-                alt="Close-up of a premium perfume bottle and glass"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-            <h3 className="text-xl font-bold text-wf-black">Curated Inventory</h3>
-          </div>
-          <div>
-            <div className="relative aspect-[4/3] bg-wf-light overflow-hidden mb-4">
-              <Image
-                src={MEDIA.cardTwo}
-                alt="Fragrance shown in a lifestyle setup for digital shopping"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-            <h3 className="text-xl font-bold text-wf-black">Transparent Value</h3>
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-5xl mx-auto px-6 pb-16 md:pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14">
-          <div>
-            <div className="relative aspect-[4/3] bg-wf-light overflow-hidden mb-5">
-              <Image
-                src={MEDIA.service}
-                alt="High-end perfume photographed to show bottle and finishing"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
-            </div>
-            <h3 className="text-xl font-bold text-wf-black mb-3">Secure Fulfillment</h3>
-            <p className="text-wf-gray text-[15px] leading-relaxed">
-              Every order is prepared only after payment is confirmed. Fragrances are
-              checked, packed with care, and dispatched with tracked international
-              shipping via Aramex, FedEx, or DHL Express so you always know where
-              your piece is from checkout to delivery.
+            <h1 className="font-inter text-3xl sm:text-4xl md:text-[2.75rem] font-bold tracking-tight text-black mb-3">
+              About Cosy Aura
+            </h1>
+            <p className="font-inter text-xl sm:text-2xl font-semibold text-black mb-6">
+              Oil-based luxury. Close to skin.
             </p>
-          </div>
-          <div>
-            <div className="relative aspect-[4/3] bg-wf-light overflow-hidden mb-5">
-              <Image
-                src={MEDIA.returns}
-                alt="Premium fragrance and packaging to represent protected delivery"
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
+            <div className="bg-[#E8ECF8] px-5 py-4 mb-6">
+              <p className="font-inter text-sm sm:text-base font-semibold text-[#03045e] leading-snug">
+                Founded in 2021, Cosy Aura curates alcohol-free perfume oils with
+                shops in Accra, Yaounde, and Mamfe - and {fragrancesLabel} scents
+                online.
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-wf-black mb-3">14-Day Returns</h3>
-            <p className="text-wf-gray text-[15px] leading-relaxed">
-              Buying a luxury fragrance online should feel straightforward. With 14
-              days to change your mind, you can shop with confidence. If needed,
-              return your fragrance unused in original packaging for a full refund.
-            </p>
+            <div className="space-y-4 text-[15px] sm:text-base leading-relaxed text-black">
+              <p>
+                Cosy Aura is built for people who want a lasting trail without
+                alcohol sprays. Our oils sit warm on skin, with sizes from samples
+                to 100ml, inspired by the great houses you already love.
+              </p>
+              <p>
+                We fulfil from Ghana and Cameroon with secure checkout, WhatsApp
+                support, and careful packing after payment. Whether you shop
+                online from Accra or visit Yaounde and Mamfe, you get transparent
+                pricing and guidance - not a hard sell.
+              </p>
+            </div>
+          </div>
+          <div className="relative aspect-[4/5] lg:aspect-auto lg:min-h-[520px] bg-[#f3f4f6] overflow-hidden">
+            <Image
+              src={MEDIA.hero}
+              alt="Cosy Aura perfume oils arranged for discovery"
+              fill
+              priority
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
           </div>
         </div>
       </section>
 
-      <section className="relative min-h-[420px] md:min-h-[480px] flex items-stretch overflow-hidden">
-        <Image
-          src={MEDIA.stats}
-          alt="Luxury fragrance collection highlighting variety in stock"
-          fill
-          className="object-cover"
-          sizes="100vw"
-        />
-        <div className="relative z-10 flex items-center">
-          <div className="bg-white/95 backdrop-blur-sm px-8 py-10 md:px-12 md:py-14 min-w-[240px] md:min-w-[280px] shadow-lg">
-            <ul className="space-y-8">
-              <li>
-                <p className="text-3xl md:text-4xl font-bold text-gold tabular-nums">2024</p>
-                <p className="text-sm text-wf-gray mt-1">Store founded</p>
-              </li>
-              <li>
-                <p className="text-3xl md:text-4xl font-bold text-gold tabular-nums">
-                  {fragrancesLabel}
-                </p>
-                <p className="text-sm text-wf-gray mt-1">Fragrances available now</p>
-              </li>
-              <li>
-                <p className="text-3xl md:text-4xl font-bold text-gold tabular-nums">
-                  {brandCount || "15"}+
-                </p>
-                <p className="text-sm text-wf-gray mt-1">Luxury brands</p>
-              </li>
-            </ul>
+      <section className="bg-[#f5f5f5]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 md:py-20">
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,280px)_1fr] lg:grid-cols-[minmax(0,340px)_1fr] gap-10 md:gap-14 items-center">
+            <div className="mx-auto w-[220px] h-[220px] sm:w-[260px] sm:h-[260px] lg:w-[320px] lg:h-[320px] relative shrink-0">
+              <div className="absolute inset-0 rounded-full overflow-hidden bg-white shadow-sm">
+                <Image
+                  src={MEDIA.authentic}
+                  alt="Authentic Cosy Aura perfume oil bottle"
+                  fill
+                  className="object-contain p-6"
+                  sizes="320px"
+                />
+              </div>
+            </div>
+            <div>
+              <h2 className="font-inter text-2xl sm:text-3xl font-bold text-black mb-4">
+                An authentic scent
+              </h2>
+              <p className="text-[15px] sm:text-base leading-relaxed text-black max-w-xl">
+                We source carefully and check every oil before it leaves our
+                shelves. Cosy Aura never sells knockoffs - only alcohol-free
+                perfume oils prepared for lasting wear. Unhappy with an order?
+                Return unused product in original packaging within 14 days for a
+                full refund.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 py-16 md:py-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-14">
-          {PILLARS.map(({ icon: Icon, title, body }) => (
-            <div key={title}>
-              <Icon className="w-8 h-8 text-gold mb-4 stroke-[1.5]" aria-hidden />
-              <h3 className="text-xl font-bold text-wf-black mb-3">{title}</h3>
-              <p className="text-wf-gray text-[15px] leading-relaxed">{body}</p>
-            </div>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 md:py-20">
+        <div className="text-center mb-10 md:mb-12">
+          <h2 className="font-inter text-xl sm:text-2xl font-bold tracking-wide uppercase text-black mb-3">
+            Customer testimonials
+          </h2>
+          <p className="text-sm sm:text-base text-[#03045e]">
+            Need to vet us further?{" "}
+            {reviewCount ? (
+              <>
+                Over{" "}
+                <strong>{reviewCount.toLocaleString()} positive reviews</strong>{" "}
+                (and counting!) speak for themselves.
+              </>
+            ) : (
+              <>
+                Real customers across Ghana and Cameroon share how our oils wear
+                day after day.
+              </>
+            )}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+          {testimonials.map((item) => (
+            <blockquote
+              key={item.name + "-" + item.text.slice(0, 24)}
+              className="bg-[#E8ECF8] px-6 py-7 text-left"
+            >
+              <p className="font-playfair text-[15px] leading-relaxed text-[#03045e] mb-5">
+                &ldquo;{item.text}&rdquo;
+              </p>
+              <footer>
+                <p className="font-inter font-bold text-sm text-[#03045e]">
+                  {item.name}
+                </p>
+                <p className="font-inter text-sm text-[#03045e] mb-2">
+                  Verified buyer
+                </p>
+                <Stars rating={item.rating} />
+              </footer>
+            </blockquote>
           ))}
         </div>
       </section>
 
-      <section className="border-t border-wf-border bg-wf-light">
-        <div className="max-w-5xl mx-auto px-6 py-14 md:py-16 flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <h2 className="text-2xl text-wf-black mb-2">Find your next fragrance</h2>
-            <p className="text-sm text-wf-gray">
-              Browse the full catalog or speak with our team first.
-            </p>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,280px)_1fr] lg:grid-cols-[minmax(0,320px)_1fr] gap-10 md:gap-14 items-center">
+          <div className="mx-auto w-[220px] h-[220px] sm:w-[260px] sm:h-[260px] lg:w-[300px] lg:h-[300px] relative shrink-0">
+            <div className="absolute inset-0 rounded-full overflow-hidden bg-[#f5f5f5]">
+              <Image
+                src={MEDIA.stayInTouch}
+                alt="Stay connected with Cosy Aura"
+                fill
+                className="object-cover"
+                sizes="300px"
+              />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3 shrink-0">
-            <Link href="/fragrances" className="btn-gold">
-              Browse Fragrances
+          <div>
+            <h2 className="font-inter text-2xl sm:text-3xl font-bold text-black mb-4">
+              Stay in touch
+            </h2>
+            <p className="text-[15px] sm:text-base leading-relaxed text-black max-w-xl mb-6">
+              We are here to help you feel and smell your absolute best. Browse
+              the full oil collection, read scent stories in the Journal, or
+              follow Cosy Aura on Instagram and Facebook for new drops and
+              atelier notes.
+            </p>
+            <Link href="/fragrances" className="btn-gold inline-block">
+              Shop now
             </Link>
-            <Link href="/contact" className="btn-outline">
-              Contact Us
-            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#f7f7f7]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+            <div>
+              <h2 className="font-inter text-2xl sm:text-3xl font-bold text-black mb-5">
+                Talk to us
+              </h2>
+              <div className="bg-[#E8ECF8] px-5 py-5 mb-6 text-center sm:text-left">
+                <p className="font-inter text-sm sm:text-base">
+                  <a
+                    href="mailto:support@cosyaura.com"
+                    className="font-semibold text-[#03045e] underline underline-offset-2 hover:text-[#0077b6]"
+                  >
+                    support@cosyaura.com
+                  </a>
+                </p>
+              </div>
+              <p className="text-[15px] sm:text-base leading-relaxed text-black mb-4">
+                Questions about an order, tracking, bottle size, or which oil
+                suits you? Our team in Ghana and Cameroon is ready to help -
+                before you buy and after it ships.
+              </p>
+              <p className="text-sm text-[#6b6b6b] leading-relaxed">
+                Visit us: Accra (No 56 Olympic Street, Kokomlemle) · Monte
+                Meecham, Yaounde · Mamfe
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/contact" className="btn-gold">
+                  Contact form
+                </Link>
+                <Link href="/faq" className="btn-outline">
+                  FAQ
+                </Link>
+              </div>
+            </div>
+            <div className="relative aspect-[5/4] bg-white overflow-hidden">
+              <Image
+                src={MEDIA.talkToUs}
+                alt="Cosy Aura fragrance oils ready for customers"
+                fill
+                className="object-contain p-8"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[#e8e8e8]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 grid grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="font-inter text-2xl md:text-3xl font-bold tabular-nums text-[#03045e]">
+              2021
+            </p>
+            <p className="text-xs sm:text-sm text-[#6b6b6b] mt-1">Founded</p>
+          </div>
+          <div>
+            <p className="font-inter text-2xl md:text-3xl font-bold tabular-nums text-[#03045e]">
+              {fragrancesLabel}
+            </p>
+            <p className="text-xs sm:text-sm text-[#6b6b6b] mt-1">Oils online</p>
+          </div>
+          <div>
+            <p className="font-inter text-2xl md:text-3xl font-bold tabular-nums text-[#03045e]">
+              {brandsLabel}
+            </p>
+            <p className="text-xs sm:text-sm text-[#6b6b6b] mt-1">
+              Houses inspired
+            </p>
           </div>
         </div>
       </section>

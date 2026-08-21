@@ -300,19 +300,37 @@ export function SupportChat() {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() =>
-          setOpen((v) => {
-            if (v) flushSummary();
-            return !v;
-          })
-        }
-        className="w-14 h-14 rounded-full bg-espresso text-ivory shadow-lg flex items-center justify-center hover:bg-espresso/90 transition-colors"
-        aria-label={open ? t("support.close") : t("support.open")}
-      >
-        {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-      </button>
+      <div className="flex items-end gap-3">
+        {!open && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="relative max-w-[14rem] rounded-2xl rounded-br-sm bg-white border border-wf-border px-4 py-2.5 text-left shadow-lg hover:border-[#03045e]/40 transition-colors animate-fade-up"
+          >
+            <span className="block font-inter text-sm font-medium text-[#03045e] leading-snug">
+              {t("support.teaser")}
+            </span>
+            <span
+              className="pointer-events-none absolute top-1/2 -right-1.5 w-3 h-3 -translate-y-1/2 rotate-45 bg-white border-r border-t border-wf-border"
+              aria-hidden
+            />
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            setOpen((v) => {
+              if (v) flushSummary();
+              return !v;
+            })
+          }
+          className="w-14 h-14 shrink-0 rounded-full bg-[#FFD200] text-[#03045e] shadow-lg flex items-center justify-center hover:bg-[#E6BC00] transition-colors"
+          aria-label={open ? t("support.close") : t("support.open")}
+        >
+          {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        </button>
+      </div>
     </div>
   );
 }

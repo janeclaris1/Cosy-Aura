@@ -12,10 +12,12 @@ import {
   GENDER_OPTIONS,
   LONGEVITY_OPTIONS,
   PRICE_RANGE_OPTIONS,
+  priceRangeLabel,
   SILLAGE_OPTIONS,
   SUSTAINABILITY_OPTIONS,
 } from "@/lib/filter-options";
-import { useT } from "@/lib/locale-store";
+import { useLocaleStore, useT } from "@/lib/locale-store";
+import { formatPrice } from "@/lib/utils";
 
 interface FilterSidebarProps {
   brandSlug?: string;
@@ -38,6 +40,8 @@ function FilterGroup({
 
 export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
   const t = useT();
+  const currency = useLocaleStore((s) => s.currency);
+  useLocaleStore((s) => s.rates);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -211,7 +215,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
               (searchParams.get("maxPrice") || "") === (preset.max || "");
             return (
               <button
-                key={preset.label}
+                key={preset.id}
                 type="button"
                 onClick={() => setPriceRange(preset.min, preset.max)}
                 className={`block w-full text-left text-sm px-3 py-2 rounded border transition-colors duration-organic ease-organic ${
@@ -220,7 +224,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
                     : "border-wf-border hover:border-highlight"
                 }`}
               >
-                {preset.label}
+                {priceRangeLabel(preset, currency, t, formatPrice)}
               </button>
             );
           })}

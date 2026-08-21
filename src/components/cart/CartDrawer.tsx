@@ -7,11 +7,15 @@ import { useCartStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, cn, inspiredByBrandLine } from "@/lib/utils";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import Image from "next/image";
 
 export function CartDrawer() {
-  const { items, isOpen, closeCart, removeItem, updateQuantity } =
+  const mounted = useIsClientMounted();
+  const { items: storedItems, isOpen, closeCart, removeItem, updateQuantity } =
     useCartStore();
+  // Avoid hydration mismatch: persist may rehydrate before React hydrates.
+  const items = mounted ? storedItems : [];
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const t = useT();

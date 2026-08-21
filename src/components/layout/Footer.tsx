@@ -116,17 +116,6 @@ export function Footer() {
       directionsLabel: t("footer.getDirections"),
     },
     {
-      id: "mamfe",
-      label: t("footer.storeMamfeLabel"),
-      address: t("footer.storeMamfeAddress"),
-      // Mamfe, Southwest Region, Cameroon
-      lat: 5.7667,
-      lng: 9.3167,
-      directionsUrl:
-        "https://www.google.com/maps/search/?api=1&query=Mamfe+Cameroon",
-      directionsLabel: t("footer.getDirections"),
-    },
-    {
       id: "yaounde",
       label: t("footer.storeYaoundeLabel"),
       address: t("footer.storeYaoundeAddress"),
@@ -135,6 +124,17 @@ export function Footer() {
       lng: 11.4956,
       directionsUrl:
         "https://www.google.com/maps/search/?api=1&query=Monte+Meecham+Yaounde+Cameroon",
+      directionsLabel: t("footer.getDirections"),
+    },
+    {
+      id: "mamfe",
+      label: t("footer.storeMamfeLabel"),
+      address: t("footer.storeMamfeAddress"),
+      // Mamfe, Southwest Region, Cameroon
+      lat: 5.7667,
+      lng: 9.3167,
+      directionsUrl:
+        "https://www.google.com/maps/search/?api=1&query=Mamfe+Cameroon",
       directionsLabel: t("footer.getDirections"),
     },
   ];
@@ -163,16 +163,16 @@ export function Footer() {
                 Kokomlemle, Accra
               </span>
               <span className="block">
-                <span className="text-white/90">{t("footer.storeMamfeLabel")}</span>
-                <br />
-                Mamfe, Cameroon
-              </span>
-              <span className="block">
                 <span className="text-white/90">{t("footer.storeYaoundeLabel")}</span>
                 <br />
                 Monte Meecham
                 <br />
                 Yaoundé, Cameroon
+              </span>
+              <span className="block">
+                <span className="text-white/90">{t("footer.storeMamfeLabel")}</span>
+                <br />
+                Mamfe, Cameroon
               </span>
             </address>
             <div className="flex gap-4">
@@ -261,10 +261,7 @@ export function Footer() {
             <h3 className="text-sm font-semibold uppercase tracking-wider mb-2 text-white">
               {t("footer.visitStore")}
             </h3>
-            <p className="text-sm text-gray-400 leading-relaxed mb-6">
-              {t("footer.storeMapHint")}
-            </p>
-            <ul className="space-y-5 text-sm text-gray-400">
+            <ul className="space-y-5 text-sm text-gray-400 mt-4">
               {storePins.map((pin) => (
                 <li key={pin.id}>
                   <p className="font-medium text-white mb-1">{pin.label}</p>

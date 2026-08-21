@@ -33,7 +33,7 @@ export function AdminBranchSwitcher() {
   if (branches.length < 2) return null;
 
   return (
-    <label className="hidden md:flex items-center gap-2 text-xs text-white/80">
+    <label className="flex flex-col gap-1.5 text-xs text-white/80 px-1">
       <span className="whitespace-nowrap">Act as</span>
       <select
         value={branchId}
@@ -45,7 +45,7 @@ export function AdminBranchSwitcher() {
             new CustomEvent("ca-admin-branch", { detail: { branchId: next } })
           );
         }}
-        className="bg-white/10 border border-white/20 text-white text-xs px-2 py-1 max-w-[11rem]"
+        className="w-full bg-white/10 border border-white/20 text-white text-xs px-2 py-1.5 rounded-md"
       >
         {branches.map((b) => (
           <option key={b.id} value={b.id} className="text-espresso">

@@ -149,9 +149,7 @@ export const UI_EN: Messages = {
   "footer.trackingBody2":
     "Need help? Contact support@cosyaura.com or use live chat.",
   "footer.visitStore": "Shop locations",
-  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
-  "footer.storeMapHint":
-    "Both shop locations are pinned on the map — tap a pin for details and directions.",
+  "footer.storeLocation": "Accra, Yaoundé & Mamfe",
   "footer.storeAccraLabel": "Accra — Online Shop",
   "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
   "footer.storeMamfeLabel": "Mamfe, Cameroon",
@@ -337,9 +335,7 @@ export const UI_FR: Messages = {
   "footer.trackingBody2":
     "Besoin d'aide ? Contactez support@cosyaura.com ou utilisez le chat en direct.",
   "footer.visitStore": "Nos boutiques",
-  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
-  "footer.storeMapHint":
-    "Les deux boutiques sont repérées sur la carte — touchez un pin pour les détails et l'itinéraire.",
+  "footer.storeLocation": "Accra, Yaoundé & Mamfe",
   "footer.storeAccraLabel": "Accra — Boutique en ligne",
   "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
   "footer.storeMamfeLabel": "Mamfe, Cameroun",
@@ -525,9 +521,7 @@ export const UI_ES: Messages = {
   "footer.trackingBody2":
     "¿Necesitas ayuda? Escribe a support@cosyaura.com o usa el chat en vivo.",
   "footer.visitStore": "Ubicaciones",
-  "footer.storeLocation": "Accra, Mamfe y Yaoundé",
-  "footer.storeMapHint":
-    "Ambas ubicaciones están marcadas en el mapa — toca un pin para detalles e indicaciones.",
+  "footer.storeLocation": "Accra, Yaoundé y Mamfe",
   "footer.storeAccraLabel": "Accra — Tienda online",
   "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
   "footer.storeMamfeLabel": "Mamfe, Camerún",
@@ -713,9 +707,7 @@ export const UI_PT: Messages = {
   "footer.trackingBody2":
     "Precisa de ajuda? Contacte support@cosyaura.com ou use o chat ao vivo.",
   "footer.visitStore": "Localizações",
-  "footer.storeLocation": "Accra, Mamfe e Yaoundé",
-  "footer.storeMapHint":
-    "Ambas localizações estão marcadas no mapa — toque num pin para detalhes e direções.",
+  "footer.storeLocation": "Accra, Yaoundé e Mamfe",
   "footer.storeAccraLabel": "Accra — Loja online",
   "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
   "footer.storeMamfeLabel": "Mamfe, Camarões",
@@ -901,9 +893,7 @@ export const UI_DE: Messages = {
   "footer.trackingBody2":
     "Hilfe nötig? Schreiben Sie an support@cosyaura.com oder nutzen Sie den Live-Chat.",
   "footer.visitStore": "Standorte",
-  "footer.storeLocation": "Accra, Mamfe & Yaoundé",
-  "footer.storeMapHint":
-    "Beide Standorte sind auf der Karte markiert — tippen Sie auf einen Pin für Details und Route.",
+  "footer.storeLocation": "Accra, Yaoundé & Mamfe",
   "footer.storeAccraLabel": "Accra — Online-Shop",
   "footer.storeAccraAddress": "No 56 Olympic Street, Kokomlemle, Accra, Ghana",
   "footer.storeMamfeLabel": "Mamfe, Kamerun",
