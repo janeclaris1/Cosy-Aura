@@ -10,7 +10,7 @@ const en: Messages = {
   "util.help": "Help",
   "util.contact": "Contact",
   "nav.brands": "Brands",
-  "nav.shopAll": "Shop all products",
+  "nav.shopAll": "Shop All Products",
   "nav.price": "Price",
   "nav.family": "Fragrance Family",
   "nav.gender": "Gender",
