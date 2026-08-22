@@ -49,12 +49,20 @@ export function buildRootMetadata(): Metadata {
       icon: [
         { url: "/favicon.ico", sizes: "32x32" },
         { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
       ],
       apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
+    appleWebApp: {
+      capable: true,
+      title: "Cosy Aura",
+      statusBarStyle: "black-translucent",
     },
     other: {
       "algolia-site-verification": "163E676A1222ACC2",
       "google-site-verification": "_SPtOEkK2AipTYoZRjFj4R4QyFohXr8oq8tsposOpx4",
+      "mobile-web-app-capable": "yes",
     },
   };
 }

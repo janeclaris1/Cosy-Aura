@@ -140,6 +140,13 @@ export const UI_EN: Messages = {
     "We use cookies to improve your experience, remember preferences, and measure site performance.",
   "cookie.accept": "Accept",
   "cookie.decline": "Decline",
+  "pwa.installTitle": "Install Cosy Aura",
+  "pwa.installBody": "Add Cosy Aura to your home screen for quicker shopping — like an app, no app store needed.",
+  "pwa.install": "Install",
+  "pwa.dismiss": "Not now",
+  "pwa.iosHint": "Install Cosy Aura on your iPhone or iPad for a full-screen app experience.",
+  "pwa.iosSteps": "Tap Share, then Add to Home Screen.",
+  "pwa.footerInstall": "Install app",
   "footer.deliveryBody1":
     "We ship worldwide after payment confirmation. Express insured options are available at checkout.",
   "footer.deliveryBody2":
@@ -346,6 +353,13 @@ export const UI_FR: Messages = {
     "Nous utilisons des cookies pour améliorer votre expérience, mémoriser vos préférences et mesurer les performances du site.",
   "cookie.accept": "Accepter",
   "cookie.decline": "Refuser",
+  "pwa.installTitle": "Installer Cosy Aura",
+  "pwa.installBody": "Ajoutez Cosy Aura à l’écran d’accueil pour acheter plus vite — comme une appli, sans l’App Store.",
+  "pwa.install": "Installer",
+  "pwa.dismiss": "Pas maintenant",
+  "pwa.iosHint": "Installez Cosy Aura sur iPhone ou iPad pour une expérience plein écran.",
+  "pwa.iosSteps": "Appuyez sur Partager, puis Sur l’écran d’accueil.",
+  "pwa.footerInstall": "Installer l’appli",
   "footer.deliveryBody1":
     "Nous expédions dans le monde entier après confirmation du paiement. Des options express assurées sont disponibles au paiement.",
   "footer.deliveryBody2":
@@ -552,6 +566,13 @@ export const UI_ES: Messages = {
     "Usamos cookies para mejorar tu experiencia, recordar preferencias y medir el rendimiento del sitio.",
   "cookie.accept": "Aceptar",
   "cookie.decline": "Rechazar",
+  "pwa.installTitle": "Instalar Cosy Aura",
+  "pwa.installBody": "Añade Cosy Aura a tu pantalla de inicio para comprar más rápido — como una app, sin tienda.",
+  "pwa.install": "Instalar",
+  "pwa.dismiss": "Ahora no",
+  "pwa.iosHint": "Instala Cosy Aura en tu iPhone o iPad para usarla a pantalla completa.",
+  "pwa.iosSteps": "Toca Compartir y luego Añadir a pantalla de inicio.",
+  "pwa.footerInstall": "Instalar app",
   "footer.deliveryBody1":
     "Enviamos a todo el mundo tras confirmar el pago. Opciones express aseguradas disponibles al pagar.",
   "footer.deliveryBody2":
@@ -758,6 +779,13 @@ export const UI_PT: Messages = {
     "Usamos cookies para melhorar a sua experiência, lembrar preferências e medir o desempenho do site.",
   "cookie.accept": "Aceitar",
   "cookie.decline": "Recusar",
+  "pwa.installTitle": "Instalar Cosy Aura",
+  "pwa.installBody": "Adicione a Cosy Aura ao ecrã inicial para comprar mais depressa — como uma app, sem loja.",
+  "pwa.install": "Instalar",
+  "pwa.dismiss": "Agora não",
+  "pwa.iosHint": "Instale a Cosy Aura no iPhone ou iPad para uma experiência em ecrã inteiro.",
+  "pwa.iosSteps": "Toque em Partilhar e depois Adicionar ao ecrã principal.",
+  "pwa.footerInstall": "Instalar app",
   "footer.deliveryBody1":
     "Enviamos para todo o mundo após confirmação do pagamento. Opções expressas asseguradas disponíveis no checkout.",
   "footer.deliveryBody2":
@@ -964,6 +992,13 @@ export const UI_DE: Messages = {
     "Wir verwenden Cookies, um Ihre Erfahrung zu verbessern, Einstellungen zu speichern und die Leistung der Website zu messen.",
   "cookie.accept": "Akzeptieren",
   "cookie.decline": "Ablehnen",
+  "pwa.installTitle": "Cosy Aura installieren",
+  "pwa.installBody": "Fügen Sie Cosy Aura dem Startbildschirm hinzu — wie eine App, ohne App Store.",
+  "pwa.install": "Installieren",
+  "pwa.dismiss": "Nicht jetzt",
+  "pwa.iosHint": "Installieren Sie Cosy Aura auf iPhone oder iPad für Vollbild.",
+  "pwa.iosSteps": "Tippen Sie auf Teilen, dann Auf dem Home-Bildschirm.",
+  "pwa.footerInstall": "App installieren",
   "footer.deliveryBody1":
     "Wir versenden weltweit nach Zahlungsbestätigung. Versicherte Expressoptionen sind an der Kasse verfügbar.",
   "footer.deliveryBody2":

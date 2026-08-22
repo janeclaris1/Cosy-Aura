@@ -17,6 +17,7 @@ import { NewsletterPopup } from "@/components/home/NewsletterPopup";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
 import { CompareTray } from "@/components/perfume/CompareTray";
+import { PwaProvider } from "@/components/pwa/PwaProvider";
 import { Providers } from "@/components/Providers";
 import { buildRootMetadata } from "@/lib/seo-metadata";
 import {
@@ -123,6 +124,7 @@ export default async function RootLayout({
               <CompareTray />
               <NewsletterPopup />
               <CookieConsent />
+              <PwaProvider />
               <SupportChat />
             </>
           )}

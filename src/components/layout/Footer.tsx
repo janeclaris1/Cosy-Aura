@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { Instagram, Facebook, Twitter, Youtube } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { FooterRegions } from "@/components/layout/FooterRegions";
+import { InstallAppLink } from "@/components/pwa/InstallAppLink";
 import { useT } from "@/lib/locale-store";
 import type { StorePin } from "@/components/layout/StoreLocationsMap";
 
@@ -230,6 +231,9 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <InstallAppLink className="text-sm text-gray-400 hover:text-gold transition-colors text-left" />
+              </li>
             </ul>
           </div>
 
