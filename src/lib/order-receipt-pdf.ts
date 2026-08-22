@@ -1,5 +1,3 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import {
   formatReceiptMoney,
@@ -83,36 +81,15 @@ export async function buildOrderReceiptPdf(order: ReceiptOrder): Promise<Buffer>
   page.drawRectangle({ x: 0, y: height - 8, width, height: 8, color: GOLD });
   page.drawRectangle({ x: 0, y: 0, width, height: 8, color: GOLD });
 
-  try {
-    const logoBytes = await readFile(
-      path.join(process.cwd(), "public/images/brand/ca-monogram.png")
-    );
-    const logo = await pdf.embedPng(logoBytes);
-    page.drawImage(logo, {
-      x: margin,
-      y: height - 92,
-      width: 52,
-      height: 36,
-    });
-  } catch {
-    page.drawText("CA", {
-      x: margin,
-      y: height - 78,
-      size: 22,
-      font: serifBold,
-      color: ESPRESSO,
-    });
-  }
-
   page.drawText("COSY AURA", {
-    x: margin + 62,
+    x: margin,
     y: height - 70,
     size: 18,
     font: serifBold,
     color: ESPRESSO,
   });
   page.drawText("Oil-based perfume atelier", {
-    x: margin + 62,
+    x: margin,
     y: height - 86,
     size: 9,
     font: sans,
@@ -337,7 +314,7 @@ export async function buildOrderReceiptPdf(order: ReceiptOrder): Promise<Buffer>
     font: serif,
     color: ESPRESSO,
   });
-  page.drawText("support@cosyaura.com  ·  cosyaura.com", {
+  page.drawText("support@cosyaura.com  ·  COSY AURA LLC", {
     x: margin,
     y: 28,
     size: 8,
