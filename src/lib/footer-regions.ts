@@ -6,6 +6,7 @@ export const FOOTER_REGIONS: { code: string; label: string }[] = [
   { code: "CH", label: "Schweiz" },
   { code: "PL", label: "Polska" },
   { code: "GR", label: "Ελλάδα" },
+  { code: "CM", label: "Cameroon" },
   { code: "FR", label: "France" },
   { code: "GB", label: "United Kingdom" },
   { code: "AT", label: "Österreich" },

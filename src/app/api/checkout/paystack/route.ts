@@ -146,6 +146,19 @@ export async function POST(req: Request) {
     let shippingRegion: string | null = null;
     let shippingRegionId: number | null = null;
 
+    if (country !== "GH") {
+      const payerRaw = String(deliveryPayerRaw || "").toLowerCase();
+      if (payerRaw === "recipient" || payerRaw === "cod") {
+        return NextResponse.json(
+          {
+            error:
+              "Pay Order Now and Cash on delivery are only available for Ghana checkout.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (useGhanaCourier) {
       const preferred = String(deliveryProviderRaw || "")
         .trim()

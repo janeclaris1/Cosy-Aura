@@ -79,6 +79,13 @@ export async function publishReceiptPdf(
   }
 
   const signed = signedReceiptUrl(orderId);
-  if (signed) return { imageUrl: signed, pdfUrl: signed };
+  if (signed) {
+    console.log("[receipt] using signed URL for WhatsApp/email attachment");
+    return { imageUrl: signed, pdfUrl: signed };
+  }
+
+  console.warn(
+    "[receipt] no public receipt URL — set CLOUDINARY_* or NEXT_PUBLIC_SITE_URL (non-localhost) for PDF attachments"
+  );
   return null;
 }

@@ -51,20 +51,30 @@ export function FulfillOrderOnSuccess() {
           return;
         }
         setStatus("done");
+        const parts: string[] = [];
         if (data.emailSent === false) {
-          setStatus("error");
-          setMessage(
+          parts.push(
             data.emailError
-              ? `Order paid, but confirmation email failed: ${data.emailError}`
-              : "Order paid, but confirmation email failed. Contact support."
+              ? `Confirmation email failed: ${data.emailError}`
+              : "Confirmation email could not be sent."
           );
-          return;
-        }
-        if (data.reason === "Already fulfilled") {
-          setMessage("Order already confirmed.");
+        } else if (data.reason === "Already fulfilled") {
+          parts.push("Order already confirmed.");
         } else {
-          setMessage("Confirmation email sent.");
+          parts.push("Confirmation email sent.");
         }
+        if (data.customerWhatsAppOk === false) {
+          parts.push(
+            data.whatsappError ||
+              "WhatsApp receipt to your phone could not be sent. Use an approved WhatsApp sender (not Twilio sandbox) and ensure your number includes country code."
+          );
+        } else if (data.customerWhatsAppOk === true) {
+          parts.push("WhatsApp receipt sent to your phone.");
+        }
+        if (parts.some((p) => p.includes("failed") || p.includes("could not"))) {
+          setStatus("error");
+        }
+        setMessage(parts.join(" "));
       } catch {
         if (!cancelled) {
           setStatus("error");

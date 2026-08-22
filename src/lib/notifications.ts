@@ -19,6 +19,9 @@ import {
 const FROM_EMAIL = normalizeFromEmail(
   process.env.EMAIL_FROM || "COSY AURA <onboarding@resend.dev>"
 );
+const RESEND_FALLBACK_FROM = normalizeFromEmail(
+  process.env.RESEND_FALLBACK_FROM || "COSY AURA <onboarding@resend.dev>"
+);
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXTAUTH_URL ||
@@ -88,33 +91,35 @@ function orderDeliveryLabel(order: OrderWithItems): string | null {
   return iso ? formatDeliveryDateLabel(iso) : null;
 }
 
-export async function sendEmail({
-  to,
-  subject,
-  html,
-  replyTo,
-  attachments,
-}: {
-  to: string | string[];
+function isResendDomainVerificationError(error: string): boolean {
+  return /domain is not verified|verify your domain/i.test(error);
+}
+
+function friendlyEmailError(raw: string): string {
+  if (isResendDomainVerificationError(raw)) {
+    const fromAddr = extractEmailAddress(FROM_EMAIL) || FROM_EMAIL;
+    return `Email domain not verified in Resend (${fromAddr}). Add and verify the domain at resend.com/domains, or set RESEND_FALLBACK_FROM to a verified sender.`;
+  }
+  return raw.slice(0, 300);
+}
+
+async function sendEmailViaResend(input: {
+  from: string;
+  to: string[];
   subject: string;
   html: string;
   replyTo?: string;
   attachments?: Array<{ filename: string; content: string }>;
 }): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
-  const recipients = (Array.isArray(to) ? to : [to])
-    .map((entry) => extractEmailAddress(entry) || entry.trim())
-    .filter((entry) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry));
-
-  if (recipients.length === 0) {
-    return { ok: false, error: "No valid email recipients" };
-  }
-
   if (!apiKey) {
-    // Never pretend mail was sent - that previously marked orders as emailed
-    // on production when RESEND_API_KEY was missing.
     if (process.env.EMAIL_DEV_LOG === "true") {
-      console.log("[email:dev]", { to, subject, html: html.slice(0, 200) });
+      console.log("[email:dev]", {
+        from: input.from,
+        to: input.to,
+        subject: input.subject,
+        html: input.html.slice(0, 200),
+      });
       return { ok: true };
     }
     console.error("[email] RESEND_API_KEY is not configured");
@@ -129,24 +134,31 @@ export async function sendEmail({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: recipients,
-        ...(replyTo ? { reply_to: replyTo } : {}),
-        subject,
-        html,
-        ...(attachments?.length ? { attachments } : {}),
+        from: input.from,
+        to: input.to,
+        ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+        subject: input.subject,
+        html: input.html,
+        ...(input.attachments?.length ? { attachments: input.attachments } : {}),
       }),
     });
 
     const bodyText = await res.text();
     if (!res.ok) {
       console.error("[email] Resend failed:", bodyText);
-      return { ok: false, error: bodyText.slice(0, 300) };
+      return { ok: false, error: bodyText.slice(0, 400) };
     }
     try {
       const parsed = JSON.parse(bodyText) as { id?: string };
       if (parsed.id) {
-        console.log("[email] Resend accepted:", parsed.id, "→", recipients.join(", "));
+        console.log(
+          "[email] Resend accepted:",
+          parsed.id,
+          "from",
+          input.from,
+          "→",
+          input.to.join(", ")
+        );
       }
     } catch {
       /* ignore */
@@ -159,6 +171,60 @@ export async function sendEmail({
       error: error instanceof Error ? error.message : "send failed",
     };
   }
+}
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  replyTo,
+  attachments,
+}: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+  attachments?: Array<{ filename: string; content: string }>;
+}): Promise<{ ok: boolean; error?: string }> {
+  const recipients = (Array.isArray(to) ? to : [to])
+    .map((entry) => extractEmailAddress(entry) || entry.trim())
+    .filter((entry) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry));
+
+  if (recipients.length === 0) {
+    return { ok: false, error: "No valid email recipients" };
+  }
+
+  let result = await sendEmailViaResend({
+    from: FROM_EMAIL,
+    to: recipients,
+    subject,
+    html,
+    replyTo,
+    attachments,
+  });
+
+  if (
+    !result.ok &&
+    result.error &&
+    isResendDomainVerificationError(result.error) &&
+    RESEND_FALLBACK_FROM !== FROM_EMAIL
+  ) {
+    console.warn("[email] retrying with RESEND_FALLBACK_FROM:", RESEND_FALLBACK_FROM);
+    result = await sendEmailViaResend({
+      from: RESEND_FALLBACK_FROM,
+      to: recipients,
+      subject,
+      html,
+      replyTo,
+      attachments,
+    });
+  }
+
+  if (!result.ok && result.error) {
+    return { ok: false, error: friendlyEmailError(result.error) };
+  }
+
+  return result;
 }
 
 export async function createAdminNotification(input: {
@@ -258,7 +324,21 @@ async function sendCustomerReceiptWhatsApp(
     order.shippingPhone,
     order.shippingCountry
   );
-  if (customerPhone && customerPhone === getWhatsAppNotifyTo()) {
+  if (!customerPhone) {
+    console.warn("[whatsapp] customer receipt skipped - invalid phone", shortId, order.shippingPhone);
+    return { ok: false, error: "Invalid customer phone number — include country code (e.g. +233…)" };
+  }
+
+  if (
+    process.env.TWILIO_ACCOUNT_SID &&
+    (process.env.TWILIO_WHATSAPP_FROM || "").includes("14155238886")
+  ) {
+    console.warn(
+      "[whatsapp] Twilio sandbox — customer receipts only deliver after the buyer joins your sandbox"
+    );
+  }
+
+  if (customerPhone === getWhatsAppNotifyTo()) {
     await createAdminNotification({
       type: "ORDER_WHATSAPP_CUSTOMER",
       title: `Customer receipt #${shortId}`,
@@ -337,6 +417,7 @@ export async function notifyOrderPaid(
   adminOk: boolean;
   whatsappOk?: boolean;
   customerWhatsAppOk?: boolean;
+  customerWhatsAppError?: string;
   error?: string;
 }> {
   const order = await prisma.order.findUnique({
@@ -380,6 +461,10 @@ export async function notifyOrderPaid(
     shortId,
     publishedReceipt
   );
+  const customerWhatsAppError =
+    customerWhatsAppResult.ok || "skipped" in customerWhatsAppResult
+      ? undefined
+      : customerWhatsAppResult.error || "Customer WhatsApp receipt failed";
 
   if (
     !order.email ||
@@ -392,6 +477,7 @@ export async function notifyOrderPaid(
       adminOk: false,
       whatsappOk: whatsappResult.ok,
       customerWhatsAppOk: customerWhatsAppResult.ok,
+      customerWhatsAppError,
       error: "Order has no real customer email yet",
     };
   }
@@ -467,6 +553,7 @@ export async function notifyOrderPaid(
       adminOk: adminResult.ok,
       whatsappOk: whatsappResult.ok,
       customerWhatsAppOk: customerWhatsAppResult.ok,
+      customerWhatsAppError,
       error: customerResult.error || "Customer email failed",
     };
   }
@@ -484,6 +571,7 @@ export async function notifyOrderPaid(
       adminOk: false,
       whatsappOk: whatsappResult.ok,
       customerWhatsAppOk: customerWhatsAppResult.ok,
+      customerWhatsAppError,
       error: adminResult.error || "Admin email failed",
     };
   }
@@ -494,6 +582,7 @@ export async function notifyOrderPaid(
     adminOk: true,
     whatsappOk: whatsappResult.ok,
     customerWhatsAppOk: customerWhatsAppResult.ok,
+    customerWhatsAppError,
   };
 }
 

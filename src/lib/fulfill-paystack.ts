@@ -13,6 +13,9 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   orderId?: string;
   emailSent?: boolean;
   emailError?: string;
+  whatsappOk?: boolean;
+  customerWhatsAppOk?: boolean;
+  whatsappError?: string;
 }> {
   const verified = await verifyPaystackTransaction(reference);
   const txn = verified.data;
@@ -56,22 +59,30 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   }
 
   if (order.confirmationEmailedAt) {
-    await ensureCustomerReceiptWhatsApp(order.id);
+    const whatsappResult = await ensureCustomerReceiptWhatsApp(order.id);
     return {
       ok: true,
       reason: "Already fulfilled",
       orderId: order.id,
       emailSent: true,
+      whatsappOk: whatsappResult.ok,
+      customerWhatsAppOk: whatsappResult.ok,
+      whatsappError:
+        "error" in whatsappResult ? whatsappResult.error : undefined,
     };
   }
 
   if (!email || !email.includes("@") || email.includes("pending@checkout")) {
+    const whatsappResult = await notifyOrderPaid(order.id);
     return {
       ok: true,
       reason: "Paid but email failed",
       orderId: order.id,
       emailSent: false,
       emailError: "No customer email on Paystack transaction",
+      whatsappOk: whatsappResult.whatsappOk,
+      customerWhatsAppOk: whatsappResult.customerWhatsAppOk,
+      whatsappError: whatsappResult.customerWhatsAppError,
     };
   }
 
@@ -90,6 +101,9 @@ export async function fulfillPaystackReference(reference: string): Promise<{
       orderId: order.id,
       emailSent: false,
       emailError: emailResult.error,
+      whatsappOk: emailResult.whatsappOk,
+      customerWhatsAppOk: emailResult.customerWhatsAppOk,
+      whatsappError: emailResult.customerWhatsAppError,
     };
   }
 
@@ -98,5 +112,7 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     reason: alreadyPaid ? "Already fulfilled" : undefined,
     orderId: order.id,
     emailSent: true,
+    whatsappOk: emailResult.whatsappOk,
+    customerWhatsAppOk: emailResult.customerWhatsAppOk,
   };
 }

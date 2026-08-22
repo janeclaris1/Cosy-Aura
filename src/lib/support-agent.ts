@@ -14,9 +14,9 @@ import {
 } from "@/lib/pricing";
 import { getActiveShippingMethods } from "@/lib/shipping-methods";
 import { formatPrice, fragranceFamilyLabel } from "@/lib/utils";
-import type { SupportCartLine } from "@/lib/support-types";
+import type { SupportCartLine, SupportCartRemoval, SupportCartSnapshot } from "@/lib/support-types";
 
-export type { SupportCartLine } from "@/lib/support-types";
+export type { SupportCartLine, SupportCartRemoval, SupportCartSnapshot } from "@/lib/support-types";
 
 export type SupportShopperLocale = {
   country?: string | null;
@@ -265,7 +265,8 @@ export function customerFacingRecs(
 
 export async function buildStoreContext(
   userQuestion: string,
-  locale?: SupportShopperLocale
+  locale?: SupportShopperLocale,
+  cart?: SupportCartSnapshot[]
 ) {
   const [methods, matches, featured] = await Promise.all([
     getActiveShippingMethods().catch(() => []),
@@ -300,7 +301,20 @@ export async function buildStoreContext(
     currency: locale?.currency,
   });
 
+  const cartSection =
+    cart && cart.length > 0
+      ? cart
+          .map(
+            (line) =>
+              `- ${line.brand} ${line.model} · slug \`${line.slug}\` · ${line.bottleSize ?? "?"}ml × ${line.quantity} · ${formatPrice(line.price, locale?.currency || "GHS")}`
+          )
+          .join("\n")
+      : "- Cart is empty.";
+
   const text = `SHOPPER MARKET: ${market || locale?.country || "unknown"} (only recommend in-stock oils for this market)
+
+SHOPPER CART (live — use for remove_from_cart; never invent items not listed here):
+${cartSection}
 
 SHIPPING OPTIONS (from /shipping):
 ${shipping}
@@ -348,6 +362,7 @@ Mirror the shopper. Do not restart with a full welcome after they already said h
 Never sound like a database, a ticket system, or a FAQ dump.
 
 HOW TO ANSWER
+0. CONTACT (email + WhatsApp): The UI shows a contact form after the shopper’s first reply and blocks further help until they submit it. When contact appears in the transcript, confirm briefly if needed and continue helping with their earlier request. Never ask for email/WhatsApp yourself in free text — the form handles that. Never offer to skip contact collection.
 1. Greetings only (“hi”, “hey”): one short line + one question. No policies. No contact dump. Do not mention samples.
 2. Product / occasion questions: pick 1-2 oils from MATCHING PRODUCTS IN STOCK or FEATURED / BESTSELLERS IN STOCK only. Never recommend an out-of-stock oil. Say why it fits *their* moment (date night, gift, daily) in mood language only - warm, fresh, evening, everyday. Mention inspired-by in plain language. Link with the real catalog path, e.g. [Hypnotic Poison](/fragrances/dior-hypnotic-poison-ca-oil-hp-50).
 3. When you recommend a fragrance, quote bottle sizes only: 30ml, 50ml, and 100ml with the live catalog prices.
@@ -398,6 +413,7 @@ Low stock: mention only if the live line says LOW STOCK. Missing or out of stock
 TOOLS
 lookup_product - when MATCHING PRODUCTS isn’t enough.
 add_to_cart(slug, quantity, size_ml ${sampleMl}|30|50|100) - only after they agree, and only if in stock. Use ${sampleMl} only when they asked for a sample.
+remove_from_cart(slug, size_ml ${sampleMl}|30|50|100) - when they ask to remove, drop, or delete something from cart. Check SHOPPER CART for slug and size; confirm what you removed.
 Then confirm and share [Checkout](${checkout}) and [Cart](${cart}).
 Never ask for card numbers. Payment link = ${checkout}.
 
@@ -439,13 +455,30 @@ export const SUPPORT_TOOLS = [
       required: ["slug", "quantity", "size_ml"],
     },
   },
+  {
+    name: "remove_from_cart",
+    description:
+      "Remove a line from the shopper's cart when they ask to drop or delete an item. Use slug and size_ml from SHOPPER CART.",
+    input_schema: {
+      type: "object",
+      properties: {
+        slug: { type: "string", description: "Fragrance slug from SHOPPER CART" },
+        size_ml: {
+          type: "integer",
+          enum: [3, 30, 50, 100],
+          description: "Bottle or sample size to remove",
+        },
+      },
+      required: ["slug", "size_ml"],
+    },
+  },
 ] as const;
 
 export async function runSupportTool(
   name: string,
   input: Record<string, unknown>,
   locale?: SupportShopperLocale
-): Promise<{ result: string; cartLine?: SupportCartLine }> {
+): Promise<{ result: string; cartLine?: SupportCartLine; cartRemoval?: SupportCartRemoval }> {
   if (name === "lookup_product") {
     const query = String(input.query || "");
     const row = await getFragranceBySlugOrName(query);
@@ -560,6 +593,52 @@ export async function runSupportTool(
         stockRemaining: row.stock,
       }),
       cartLine: line,
+    };
+  }
+
+  if (name === "remove_from_cart") {
+    const slug = String(input.slug || "").trim();
+    const sizeRaw = Number(input.size_ml);
+    const size =
+      sizeRaw === SAMPLE_SIZE_ML
+        ? SAMPLE_SIZE_ML
+        : isBottleSize(sizeRaw)
+          ? sizeRaw
+          : null;
+    if (!slug || size == null) {
+      return {
+        result: JSON.stringify({
+          ok: false,
+          error: "Provide slug and size_ml (3, 30, 50, or 100) from SHOPPER CART.",
+        }),
+      };
+    }
+    const row = await prisma.fragrance.findFirst({
+      where: { slug },
+      include: { brand: { select: { name: true } } },
+    });
+    if (!row) {
+      return {
+        result: JSON.stringify({
+          ok: false,
+          error: `No product matched slug "${slug}". Check SHOPPER CART.`,
+        }),
+      };
+    }
+    const removal: SupportCartRemoval = {
+      fragranceId: row.id,
+      slug: row.slug,
+      brand: row.brand.name,
+      model: row.model,
+      bottleSize: size,
+    };
+    return {
+      result: JSON.stringify({
+        ok: true,
+        removed: removal,
+        cartUrl: "/cart",
+      }),
+      cartRemoval: removal,
     };
   }
 

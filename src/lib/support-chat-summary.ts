@@ -40,7 +40,10 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
-export function buildSupportChatSummary(turns: SupportSummaryTurn[]): {
+export function buildSupportChatSummary(
+  turns: SupportSummaryTurn[],
+  contact?: { email?: string; whatsapp?: string } | null
+): {
   subject: string;
   text: string;
   html: string;
@@ -55,16 +58,34 @@ export function buildSupportChatSummary(turns: SupportSummaryTurn[]): {
     .filter((name, i, all) => all.indexOf(name) === i)
     .slice(0, 6);
 
+  const transcript = turns
+    .map((t) => `${t.role === "user" ? "Shopper" : "Enow"}: ${stripMarkdown(t.content)}`)
+    .join("\n\n");
+
   const bullets = [
     `Messages: ${shopper.length} from shopper`,
+    contact?.email ? `Email: ${contact.email}` : "",
+    contact?.whatsapp ? `WhatsApp: ${contact.whatsapp}` : "",
     `First ask: ${firstAsk}`,
     lastAsk && lastAsk !== firstAsk ? `Latest ask: ${lastAsk}` : "",
     recs.length ? `Oils mentioned: ${recs.join(", ")}` : "",
   ].filter(Boolean);
 
-  const transcript = turns
-    .map((t) => `${t.role === "user" ? "Shopper" : "Enow"}: ${stripMarkdown(t.content)}`)
-    .join("\n\n");
+  if (!contact?.email) {
+    const emailMatch = transcript.match(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
+    );
+    if (emailMatch) bullets.splice(1, 0, `Email: ${emailMatch[0]}`);
+  }
+  if (!contact?.whatsapp) {
+    const phoneMatch = transcript.match(/(?:\+|00)?[\d][\d\s().-]{7,}\d/);
+    if (phoneMatch) {
+      const phone = phoneMatch[0].replace(/\s+/g, " ").trim();
+      if (phone.replace(/\D/g, "").length >= 8) {
+        bullets.splice(contact?.email || bullets.some((b) => b.startsWith("Email:")) ? 2 : 1, 0, `WhatsApp / phone: ${phone}`);
+      }
+    }
+  }
 
   const subject = `Enow chat: ${firstAsk.slice(0, 70)}`;
   const text = `Cosy Aura support chat summary\n\n${bullets.join("\n")}\n\nTranscript\n${transcript}`.slice(
@@ -96,6 +117,7 @@ export function buildSupportChatSummary(turns: SupportSummaryTurn[]): {
 export async function notifySupportChatSummary(input: {
   sessionId: string;
   turns: SupportSummaryTurn[];
+  contact?: { email?: string; whatsapp?: string } | null;
 }): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   const turns = input.turns
     .map((t) => ({
@@ -115,7 +137,7 @@ export async function notifySupportChatSummary(input: {
   }
   sentHashes.set(hash, Date.now());
 
-  const { subject, text, html } = buildSupportChatSummary(turns);
+  const { subject, text, html } = buildSupportChatSummary(turns, input.contact);
   const emails = process.env.SUPPORT_SUMMARY_EMAIL
     ? process.env.SUPPORT_SUMMARY_EMAIL.split(/[,;]/)
         .map((entry) => entry.trim())

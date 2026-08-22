@@ -10,6 +10,7 @@ import { DeliveryDateSelect } from "@/components/checkout/DeliveryDateSelect";
 import { WhatsAppOrderButton } from "@/components/checkout/WhatsAppOrderButton";
 import { useWhatsAppCheckoutConfig } from "@/lib/whatsapp-checkout-client";
 import type { WhatsAppFulfillment } from "@/lib/store-config-client";
+import { PENDING_WHATSAPP_ORDER_KEY } from "@/lib/store-config-client";
 
 type Method = {
   id: string;
@@ -136,6 +137,7 @@ export function RegionalCheckoutForm({
   });
 
   const useGhanaCourier = country === "GH" && Boolean(ghanaDelivery?.enabled);
+  const ghanaSplitPayment = useGhanaCourier;
   const shipping = methods.find((method) => method.id === shippingId) || methods[0];
   const flatShippingGhs = shippingUsdToGhs(shipping?.price || 0, rates);
   const isAccraRegion = /greater\s*accra/i.test(destinationRegion);
@@ -221,13 +223,15 @@ export function RegionalCheckoutForm({
         ? "ShaQ Express"
         : undefined
     : shipping?.name;
-  const paymentMethodLabel = useGhanaCourier
+  const paymentMethodLabel = ghanaSplitPayment
     ? deliveryPayer === "recipient"
       ? t("checkout.payOrderNow")
       : deliveryPayer === "cod"
         ? t("checkout.cashOnDelivery")
         : t("checkout.payInFull")
-    : undefined;
+    : t("checkout.payInFull");
+  /** Always collect Paystack (order and/or delivery fee) before WhatsApp opens. */
+  const payBeforeWhatsApp = Boolean(whatsappEnabled);
   const whatsappFulfillment: WhatsAppFulfillment = {
     courier: courierLabel,
     deliveryFeeLabel: useGhanaCourier
@@ -243,15 +247,19 @@ export function RegionalCheckoutForm({
       ? formatDeliveryDateLabel(deliveryDate)
       : undefined,
     paymentMethod: paymentMethodLabel,
+    paymentStatus:
+      ghanaSplitPayment && deliveryPayer === "cod"
+        ? "Delivery fee paid via Paystack"
+        : "Paid via Paystack",
     orderTotalLabel: formatPrice(orderTotalGhs, currency),
     payNowLabel: formatPrice(payNowGhs, currency),
-    balanceOnDeliveryLabel: useGhanaCourier
+    balanceOnDeliveryLabel: ghanaSplitPayment
       ? balanceOnDeliveryGhs > 0
         ? deliveryPayer === "recipient"
           ? `${formatPrice(balanceOnDeliveryGhs, currency)} (delivery fee)`
           : `${formatPrice(balanceOnDeliveryGhs, currency)} (order)`
         : "None"
-      : undefined,
+      : "None",
   };
 
   useEffect(() => {
@@ -277,6 +285,7 @@ export function RegionalCheckoutForm({
     if (country !== "GH") {
       setGhanaDelivery(null);
       setCourierChoice(null);
+      setDeliveryPayer("partner");
       return;
     }
     let cancelled = false;
@@ -434,8 +443,7 @@ export function RegionalCheckoutForm({
     };
   }, [useGhanaCourier, destinationRegion, form.city, form.address, activeCourier, dawuroboOk]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function startOnlineCheckout() {
     setLoading(true);
     setError(null);
     try {
@@ -464,7 +472,7 @@ export function RegionalCheckoutForm({
           shippingMethodId: shippingId,
           deliveryDate,
           items,
-          ...(useGhanaCourier
+          ...(ghanaSplitPayment
             ? {
                 deliveryPayer: activeCourier === "pickup" ? "partner" : deliveryPayer,
                 destinationRegion,
@@ -495,6 +503,29 @@ export function RegionalCheckoutForm({
       setError(err instanceof Error ? err.message : "Checkout failed");
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      sessionStorage.removeItem(PENDING_WHATSAPP_ORDER_KEY);
+    } catch {
+      /* ignore */
+    }
+    await startOnlineCheckout();
+  }
+
+  async function handleWhatsAppPayFirst() {
+    if (
+      !form.name.trim() ||
+      !form.email.trim() ||
+      !form.phone.trim() ||
+      !form.address.trim()
+    ) {
+      setError(t("checkout.whatsappNeedDetails"));
+      return;
+    }
+    await startOnlineCheckout();
   }
 
   return (
@@ -683,7 +714,38 @@ export function RegionalCheckoutForm({
         </fieldset>
       ) : null}
 
-      {useGhanaCourier ? (
+      {!useGhanaCourier && methods.length > 0 ? (
+        <fieldset className="space-y-2">
+          <legend className="text-sm mb-1">{t("checkout.shipping")}</legend>
+          {methods.map((method) => (
+            <label
+              key={method.id}
+              className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso"
+            >
+              <input
+                type="radio"
+                name="shipping"
+                checked={shippingId === method.id}
+                onChange={() => setShippingId(method.id)}
+                className="mt-1"
+              />
+              <span className="flex-1">
+                <span className="block font-medium">
+                  {method.name} · {method.eta}
+                </span>
+                {method.description && (
+                  <span className="block text-xs text-wf-gray">{method.description}</span>
+                )}
+              </span>
+              <span className="shrink-0">
+                {formatPrice(shippingUsdToGhs(method.price, rates), currency)}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+
+      {ghanaSplitPayment ? (
         <fieldset className="space-y-2">
           <legend className="text-sm mb-1">{t("checkout.payment")}</legend>
           <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
@@ -743,36 +805,15 @@ export function RegionalCheckoutForm({
           ) : null}
         </fieldset>
       ) : (
-        methods.length > 0 && (
-          <fieldset className="space-y-2">
-            <legend className="text-sm mb-1">{t("checkout.shipping")}</legend>
-            {methods.map((method) => (
-              <label
-                key={method.id}
-                className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso"
-              >
-                <input
-                  type="radio"
-                  name="shipping"
-                  checked={shippingId === method.id}
-                  onChange={() => setShippingId(method.id)}
-                  className="mt-1"
-                />
-                <span className="flex-1">
-                  <span className="block font-medium">
-                    {method.name} · {method.eta}
-                  </span>
-                  {method.description && (
-                    <span className="block text-xs text-wf-gray">{method.description}</span>
-                  )}
-                </span>
-                <span className="shrink-0">
-                  {formatPrice(shippingUsdToGhs(method.price, rates), currency)}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-        )
+        <fieldset className="space-y-2">
+          <legend className="text-sm mb-1">{t("checkout.payment")}</legend>
+          <div className="flex items-center gap-3 border border-espresso px-3 py-2.5 text-sm bg-white">
+            <span className="flex-1 font-medium">{t("checkout.payInFull")}</span>
+            <span className="shrink-0 font-medium">
+              {formatPrice(subtotal + flatShippingGhs, currency)}
+            </span>
+          </div>
+        </fieldset>
       )}
 
       <DeliveryDateSelect
@@ -803,7 +844,16 @@ export function RegionalCheckoutForm({
             }))}
             total={orderTotalGhs}
             fulfillment={whatsappFulfillment}
-            label={t("checkout.whatsappSubmit")}
+            label={
+              payBeforeWhatsApp
+                ? t("checkout.whatsappPayFirst")
+                : t("checkout.whatsappSubmit")
+            }
+            hint={
+              payBeforeWhatsApp
+                ? t("checkout.whatsappPayFirstHint")
+                : undefined
+            }
             customer={{
               name: form.name,
               email: form.email,
@@ -822,6 +872,11 @@ export function RegionalCheckoutForm({
             onDisabledClick={() =>
               setError(t("checkout.whatsappNeedDetails"))
             }
+            payBeforeWhatsApp={payBeforeWhatsApp}
+            onPayBeforeWhatsApp={() => {
+              if (loading) return;
+              void handleWhatsAppPayFirst();
+            }}
           />
 
           <div className="relative my-2">

@@ -17,10 +17,14 @@ export type WhatsAppFulfillment = {
   deliveryFeeLabel?: string;
   deliveryDateLabel?: string;
   paymentMethod?: string;
+  paymentStatus?: string;
   orderTotalLabel?: string;
   payNowLabel?: string;
   balanceOnDeliveryLabel?: string;
 };
+
+/** sessionStorage key: open this WhatsApp order URL after Paystack success */
+export const PENDING_WHATSAPP_ORDER_KEY = "ca_pending_whatsapp_order";
 
 export function buildWhatsAppOrderMessage(input: {
   kind: "cart" | "product";
@@ -70,6 +74,9 @@ export function buildWhatsAppOrderMessage(input: {
     if (fulfillment.paymentMethod) {
       parts.push(`Payment method: ${fulfillment.paymentMethod}`);
     }
+    if (fulfillment.paymentStatus) {
+      parts.push(`Payment status: ${fulfillment.paymentStatus}`);
+    }
     if (fulfillment.payNowLabel) {
       parts.push(`Pay now: ${fulfillment.payNowLabel}`);
     }
@@ -93,6 +100,11 @@ export function buildWhatsAppOrderMessage(input: {
     parts.push(`Name: ${input.customerName}`);
   }
 
-  parts.push("", "Please confirm availability and payment details. Thank you!");
+  parts.push(
+    "",
+    fulfillment?.paymentStatus
+      ? "Payment is complete. Please confirm availability and arrange delivery. Thank you!"
+      : "Please confirm availability and payment details. Thank you!"
+  );
   return parts.join("\n");
 }

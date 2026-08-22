@@ -1,7 +1,11 @@
 "use client";
 
 import { useLocaleStore } from "@/lib/locale-store";
-import { buildWhatsAppOrderMessage, type WhatsAppFulfillment } from "@/lib/store-config-client";
+import {
+  buildWhatsAppOrderMessage,
+  PENDING_WHATSAPP_ORDER_KEY,
+  type WhatsAppFulfillment,
+} from "@/lib/store-config-client";
 import { useWhatsAppCheckoutConfig } from "@/lib/whatsapp-checkout-client";
 import { formatPrice, cn } from "@/lib/utils";
 
@@ -97,6 +101,10 @@ export function WhatsAppOrderButton({
   fulfillment,
   disabled = false,
   onDisabledClick,
+  /** When set, Paystack (or other online pay) must complete before WhatsApp opens. */
+  payBeforeWhatsApp = false,
+  onPayBeforeWhatsApp,
+  hint,
 }: {
   kind: "cart" | "product";
   lines: Line[];
@@ -118,6 +126,9 @@ export function WhatsAppOrderButton({
   fulfillment?: WhatsAppFulfillment;
   disabled?: boolean;
   onDisabledClick?: () => void;
+  payBeforeWhatsApp?: boolean;
+  onPayBeforeWhatsApp?: (whatsappHref: string) => void | Promise<void>;
+  hint?: string;
 }) {
   const localeCountry = useLocaleStore((s) => s.country);
   const currency = useLocaleStore((s) => s.currency);
@@ -147,85 +158,73 @@ export function WhatsAppOrderButton({
 
   const href = `${cfg.waMeUrl}?text=${encodeURIComponent(message)}`;
 
-  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+  function handleClick(e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) {
     e.stopPropagation();
     if (disabled) {
       e.preventDefault();
       onDisabledClick?.();
+      return;
+    }
+    if (payBeforeWhatsApp && onPayBeforeWhatsApp) {
+      e.preventDefault();
+      try {
+        sessionStorage.setItem(PENDING_WHATSAPP_ORDER_KEY, href);
+      } catch {
+        /* ignore */
+      }
+      void onPayBeforeWhatsApp(href);
     }
   }
 
-  if (disabled) {
-    const disabledBtn = (
+  const btnClass = cn(
+    compact
+      ? "inline-flex items-center justify-center gap-1.5 w-full min-h-9 px-2 py-1.5 text-[11px] font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors"
+      : "inline-flex items-center justify-center gap-2 w-full min-h-11 px-4 py-3 text-sm font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors",
+    disabled && "opacity-60 cursor-not-allowed hover:bg-[#25D366]",
+    className
+  );
+
+  const icon = (
+    <WhatsAppIcon className={compact ? "w-3.5 h-3.5 shrink-0" : "w-5 h-5 shrink-0"} />
+  );
+  const labelText = compact ? "WhatsApp" : label;
+
+  const control =
+    disabled || payBeforeWhatsApp ? (
       <button
         type="button"
         onClick={handleClick}
-        className={cn(
-          compact
-            ? "inline-flex items-center justify-center gap-1.5 w-full min-h-9 px-2 py-1.5 text-[11px] font-medium text-white bg-[#25D366] opacity-60 cursor-not-allowed"
-            : "inline-flex items-center justify-center gap-2 w-full min-h-11 px-4 py-3 text-sm font-medium text-white bg-[#25D366] opacity-60 cursor-not-allowed",
-          className
-        )}
+        className={btnClass}
         aria-label={label}
+        disabled={false}
       >
-        <WhatsAppIcon className={compact ? "w-3.5 h-3.5 shrink-0" : "w-5 h-5 shrink-0"} />
-        {compact ? "WhatsApp" : label}
+        {icon}
+        {labelText}
       </button>
-    );
-    if (!withDivider) return disabledBtn;
-    return (
-      <div>
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center" aria-hidden>
-            <div className="w-full border-t border-wf-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase tracking-wider">
-            <span className="bg-white px-3 text-wf-gray">or</span>
-          </div>
-        </div>
-        {disabledBtn}
-        <p className="mt-2 text-xs text-wf-gray text-center">
-          Fill in your checkout details first, then submit on WhatsApp.
-        </p>
-      </div>
-    );
-  }
-
-  if (compact) {
-    return (
+    ) : (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className={cn(
-          "inline-flex items-center justify-center gap-1.5 w-full min-h-9 px-2 py-1.5 text-[11px] font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors",
-          className
-        )}
+        className={btnClass}
         aria-label={label}
       >
-        <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-        WhatsApp
+        {icon}
+        {labelText}
       </a>
     );
+
+  if (!withDivider) {
+    return (
+      <div>
+        {control}
+        {hint ? (
+          <p className="mt-2 text-xs text-wf-gray text-center">{hint}</p>
+        ) : null}
+      </div>
+    );
   }
-
-  const button = (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        "inline-flex items-center justify-center gap-2 w-full min-h-11 px-4 py-3 text-sm font-medium text-white bg-[#25D366] hover:bg-[#1ebe57] transition-colors",
-        className
-      )}
-    >
-      <WhatsAppIcon className="w-5 h-5 shrink-0" />
-      {label}
-    </a>
-  );
-
-  if (!withDivider) return button;
 
   return (
     <div>
@@ -237,9 +236,14 @@ export function WhatsAppOrderButton({
           <span className="bg-white px-3 text-wf-gray">or</span>
         </div>
       </div>
-      {button}
+      {control}
       <p className="mt-2 text-xs text-wf-gray text-center">
-        Opens WhatsApp with your order and checkout details for the local Cosy Aura number.
+        {hint ||
+          (disabled
+            ? "Fill in your checkout details first, then submit on WhatsApp."
+            : payBeforeWhatsApp
+              ? "Complete Paystack payment first — WhatsApp opens after payment succeeds."
+              : "Opens WhatsApp with your order and checkout details for the local Cosy Aura number.")}
       </p>
     </div>
   );

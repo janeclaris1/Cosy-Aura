@@ -38,6 +38,13 @@ export async function POST(req: Request) {
     const result = await notifySupportChatSummary({
       sessionId,
       turns: messages.slice(-24),
+      contact:
+        body.contact && typeof body.contact === "object"
+          ? {
+              email: String(body.contact.email || "").slice(0, 120) || undefined,
+              whatsapp: String(body.contact.whatsapp || "").slice(0, 40) || undefined,
+            }
+          : null,
     });
 
     return NextResponse.json(result);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -50,39 +50,49 @@ export function StoreLocationsMap({ pins }: { pins: StorePin[] }) {
   const center: [number, number] = pins.length
     ? [pins[0].lat, pins[0].lng]
     : [5.6, 4.5];
+  // Avoid "Map container is already initialized" under React Strict Mode remounts.
+  const [mapKey, setMapKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMapKey(`${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    return () => setMapKey(null);
+  }, []);
 
   return (
     <div className="w-full overflow-hidden rounded-sm border border-white/15 bg-[#02033f] h-64 sm:h-80 lg:h-96 [&_.leaflet-container]:h-full [&_.leaflet-container]:w-full [&_.leaflet-container]:bg-[#e8eef5] [&_.leaflet-popup-content-wrapper]:rounded-sm [&_.leaflet-popup-content]:text-sm [&_.leaflet-popup-content]:text-[#03045e]">
-      <MapContainer
-        center={center}
-        zoom={6}
-        scrollWheelZoom={false}
-        className="h-full w-full z-0"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <FitBounds pins={pins} />
-        {pins.map((pin) => (
-          <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={icon}>
-            <Popup>
-              <strong>{pin.label}</strong>
-              <br />
-              {pin.address}
-              <br />
-              <a
-                href={pin.directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                {pin.directionsLabel}
-              </a>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      {mapKey ? (
+        <MapContainer
+          key={mapKey}
+          center={center}
+          zoom={6}
+          scrollWheelZoom={false}
+          className="h-full w-full z-0"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <FitBounds pins={pins} />
+          {pins.map((pin) => (
+            <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={icon}>
+              <Popup>
+                <strong>{pin.label}</strong>
+                <br />
+                {pin.address}
+                <br />
+                <a
+                  href={pin.directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {pin.directionsLabel}
+                </a>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      ) : null}
     </div>
   );
 }

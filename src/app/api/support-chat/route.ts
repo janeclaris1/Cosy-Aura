@@ -7,6 +7,8 @@ import {
   SUPPORT_TOOLS,
   type ChatTurn,
   type SupportCartLine,
+  type SupportCartRemoval,
+  type SupportCartSnapshot,
 } from "@/lib/support-agent";
 
 const MAX_MESSAGES = 12;
@@ -116,16 +118,39 @@ async function callAnthropic(messages: AnthropicMessage[], system: string) {
   };
 }
 
+function sanitizeCart(raw: unknown): SupportCartSnapshot[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SupportCartSnapshot[] = [];
+  for (const line of raw) {
+    const fragranceId = String(line?.fragranceId || "").trim();
+    const slug = String(line?.slug || "").trim();
+    if (!fragranceId || !slug) continue;
+    const bottleSizeRaw = Number(line?.bottleSize);
+    out.push({
+      fragranceId,
+      slug,
+      brand: String(line?.brand || "").trim(),
+      model: String(line?.model || "").trim(),
+      ...(Number.isFinite(bottleSizeRaw) ? { bottleSize: bottleSizeRaw } : {}),
+      quantity: Math.min(99, Math.max(1, Number(line?.quantity) || 1)),
+      price: Number(line?.price) || 0,
+    });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
 async function replyWithEnow(
   history: ChatTurn[],
   context: string,
   locale?: { country?: string | null; currency?: string | null; language?: string | null }
-): Promise<{ text: string; cartLines: SupportCartLine[] } | null> {
+): Promise<{ text: string; cartLines: SupportCartLine[]; cartRemovals: SupportCartRemoval[] } | null> {
   const messages = toAnthropicMessages(history);
   if (!messages.length) return null;
 
   const system = `${enowSystemPrompt(locale?.language || "en")}\n\nLive store data for this turn:\n\n${context}`;
   const cartLines: SupportCartLine[] = [];
+  const cartRemovals: SupportCartRemoval[] = [];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     const data = await callAnthropic(messages, system);
@@ -137,19 +162,20 @@ async function replyWithEnow(
 
     if (!toolUses.length || data.stop_reason === "end_turn") {
       const text = extractText(data.content);
-      return text ? { text, cartLines } : null;
+      return text ? { text, cartLines, cartRemovals } : null;
     }
 
     messages.push({ role: "assistant", content: data.content });
 
     const toolResults: AnthropicContent[] = [];
     for (const tool of toolUses) {
-      const { result, cartLine } = await runSupportTool(
+      const { result, cartLine, cartRemoval } = await runSupportTool(
         tool.name,
         tool.input || {},
         locale
       );
       if (cartLine) cartLines.push(cartLine);
+      if (cartRemoval) cartRemovals.push(cartRemoval);
       toolResults.push({
         type: "tool_result",
         tool_use_id: tool.id,
@@ -178,18 +204,20 @@ export async function POST(req: Request) {
       currency: typeof body.currency === "string" ? body.currency : null,
       language: typeof body.language === "string" ? body.language : null,
     };
+    const cart = sanitizeCart(body.cart);
     const lastUser = [...history].reverse().find((m) => m.role === "user");
     if (!lastUser) {
       return NextResponse.json({ error: "Please enter a question." }, { status: 400 });
     }
 
-    const store = await buildStoreContext(lastUser.content, locale);
+    const store = await buildStoreContext(lastUser.content, locale, cart);
     const enow = await replyWithEnow(history, store.text, locale);
 
     if (enow) {
       return NextResponse.json({
         reply: enow.text,
         cartLines: enow.cartLines,
+        cartRemovals: enow.cartRemovals,
         source: "anthropic",
       });
     }
@@ -202,6 +230,7 @@ export async function POST(req: Request) {
         locale
       ),
       cartLines: [],
+      cartRemovals: [],
       source: "fallback",
     });
   } catch {

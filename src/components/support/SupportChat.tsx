@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Send, X } from "lucide-react";
@@ -9,9 +10,56 @@ import { useCartStore } from "@/lib/store";
 import { usePremiumStore } from "@/lib/premium-store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { readConsent } from "@/lib/cookie-consent";
-import type { SupportCartLine } from "@/lib/support-types";
+import type { SupportCartLine, SupportCartRemoval } from "@/lib/support-types";
 
 type Turn = { role: "user" | "assistant"; content: string };
+
+const ENOW_AVATAR = "/images/support/enow-avatar.png";
+
+function EnowAvatar({
+  size = 40,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 overflow-hidden rounded-full bg-white/10",
+        className
+      )}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
+    >
+      <Image
+        src={ENOW_AVATAR}
+        alt="Enow"
+        width={size}
+        height={size}
+        className="h-full w-full object-cover"
+        priority
+      />
+    </span>
+  );
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeWhatsApp(raw: string): string {
+  return String(raw || "").replace(/[^\d+]/g, "");
+}
+
+function isValidWhatsApp(raw: string): boolean {
+  const digits = String(raw || "").replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+}
+
+function firstNameFromEmail(email: string): string | null {
+  const local = email.split("@")[0] || "";
+  const token = local.split(/[._+-]/)[0]?.replace(/\d+/g, "") || "";
+  if (token.length < 2) return null;
+  return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+}
 
 function renderInline(text: string) {
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*)/g);
@@ -71,6 +119,8 @@ function MessageBody({ content }: { content: string }) {
 export function SupportChat() {
   const pathname = usePathname();
   const addItem = useCartStore((s) => s.addItem);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const cartItems = useCartStore((s) => s.items);
   const compareCount = usePremiumStore((s) => s.compare.length);
   const country = useLocaleStore((s) => s.country);
   const currency = useLocaleStore((s) => s.currency);
@@ -86,6 +136,14 @@ export function SupportChat() {
   const [error, setError] = useState<string | null>(null);
   const [cookieBanner, setCookieBanner] = useState(false);
   const [messages, setMessages] = useState<Turn[]>([]);
+  const [contactPrompted, setContactPrompted] = useState(false);
+  const [contactCollected, setContactCollected] = useState(false);
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactWhatsapp, setContactWhatsapp] = useState("");
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [contact, setContact] = useState<{ email: string; whatsapp: string } | null>(
+    null
+  );
   const scroller = useRef<HTMLDivElement>(null);
   const sessionId = useRef(
     typeof crypto !== "undefined" && crypto.randomUUID
@@ -94,6 +152,8 @@ export function SupportChat() {
   );
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const contactRef = useRef(contact);
+  contactRef.current = contact;
 
   useEffect(() => {
     setMessages((prev) => {
@@ -127,11 +187,14 @@ export function SupportChat() {
         : "bottom-5";
 
   function flushSummary() {
-    const turns = messagesRef.current.filter((m, i) => !(i === 0 && m.role === "assistant") && m.content.trim());
+    const turns = messagesRef.current.filter(
+      (m, i) => !(i === 0 && m.role === "assistant") && m.content.trim()
+    );
     if (!turns.some((m) => m.role === "user")) return;
     const payload = JSON.stringify({
       sessionId: sessionId.current,
       messages: turns,
+      contact: contactRef.current,
     });
     const url = "/api/support-chat/summary";
     if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
@@ -161,21 +224,9 @@ export function SupportChat() {
   useEffect(() => {
     if (!open) return;
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [messages, open, loading]);
+  }, [messages, open, loading, contactPrompted, contactCollected]);
 
-  if (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/maintenance")
-  ) {
-    return null;
-  }
-
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
-    const next: Turn[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setInput("");
+  async function askAssistant(history: Turn[]) {
     setLoading(true);
     setError(null);
     try {
@@ -183,14 +234,28 @@ export function SupportChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: next.filter((m, i) => !(i === 0 && m.role === "assistant")),
+          messages: history.filter((m, i) => !(i === 0 && m.role === "assistant")),
           language,
           country,
           currency,
+          contact: contactRef.current,
+          cart: cartItems.map((item) => ({
+            fragranceId: item.fragranceId,
+            slug: item.slug,
+            brand: item.brand,
+            model: item.model,
+            bottleSize: item.bottleSize,
+            quantity: item.quantity,
+            price: item.price,
+          })),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not reply");
+      const removals = (data.cartRemovals || []) as SupportCartRemoval[];
+      for (const removal of removals) {
+        removeItem(removal.fragranceId, removal.bottleSize);
+      }
       const lines = (data.cartLines || []) as SupportCartLine[];
       for (const line of lines) {
         for (let n = 0; n < (line.quantity || 1); n += 1) {
@@ -205,13 +270,86 @@ export function SupportChat() {
           });
         }
       }
-      setMessages([...next, { role: "assistant", content: data.reply }]);
+      setMessages([...history, { role: "assistant", content: data.reply }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reply");
     } finally {
       setLoading(false);
     }
   }
+
+  async function send() {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    // First reply after greeting → show contact form (no AI yet).
+    if (!contactPrompted) {
+      const next: Turn[] = [...messages, { role: "user", content: text }];
+      setMessages([
+        ...next,
+        { role: "assistant", content: `${t("support.askContact")} 😊` },
+      ]);
+      setInput("");
+      setContactPrompted(true);
+      setContactError(null);
+      return;
+    }
+
+    // Enforce form completion before normal chat continues.
+    if (!contactCollected) {
+      const next: Turn[] = [
+        ...messages,
+        { role: "user", content: text },
+        { role: "assistant", content: t("support.contactRequired") },
+      ];
+      setMessages(next);
+      setInput("");
+      return;
+    }
+
+    const next: Turn[] = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setInput("");
+    await askAssistant(next);
+  }
+
+  async function submitContact(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading || contactCollected) return;
+
+    const email = contactEmail.trim().toLowerCase();
+    const whatsapp = normalizeWhatsApp(contactWhatsapp.trim());
+    if (!EMAIL_RE.test(email) || !isValidWhatsApp(whatsapp)) {
+      setContactError(t("support.contactInvalid"));
+      return;
+    }
+
+    setContactError(null);
+    const saved = { email, whatsapp };
+    setContact(saved);
+    contactRef.current = saved;
+    setContactCollected(true);
+
+    const name = firstNameFromEmail(email);
+    const thanksLine = t("support.contactThanks", {
+      name: name ? `, ${name}` : "",
+    });
+
+    const contactLine = `Email: ${email}\nWhatsApp: ${whatsapp}`;
+    const next: Turn[] = [
+      ...messages,
+      { role: "user", content: contactLine },
+      { role: "assistant", content: thanksLine },
+    ];
+    setMessages(next);
+    await askAssistant(next);
+  }
+
+  if (pathname.startsWith("/admin") || pathname.startsWith("/maintenance")) {
+    return null;
+  }
+
+  const chatLocked = contactPrompted && !contactCollected;
 
   return (
     <div
@@ -224,11 +362,14 @@ export function SupportChat() {
       {open && (
         <div className="w-[min(100vw-2rem,22rem)] h-[min(70vh,32rem)] bg-ivory border border-wf-border shadow-2xl flex flex-col overflow-hidden">
           <div className="bg-espresso text-ivory px-4 py-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="font-playfair text-lg leading-tight">Enow</p>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-ivory/70 mt-0.5">
-                Cosy Aura support
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <EnowAvatar size={44} className="ring-2 ring-[#FFD200]/80" />
+              <div className="min-w-0">
+                <p className="font-playfair text-lg leading-tight">Enow</p>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-ivory/70 mt-0.5">
+                  {t("support.subtitle")}
+                </p>
+              </div>
             </div>
             <button
               type="button"
@@ -248,21 +389,81 @@ export function SupportChat() {
               <div
                 key={i}
                 className={cn(
-                  "max-w-[90%] text-sm leading-relaxed px-3 py-2",
-                  m.role === "user"
-                    ? "ml-auto bg-espresso text-ivory"
-                    : "bg-white border border-wf-border text-espresso"
+                  "flex gap-2 max-w-[95%] items-start",
+                  m.role === "user" ? "ml-auto justify-end" : "justify-start"
                 )}
               >
                 {m.role === "assistant" ? (
-                  <MessageBody content={m.content} />
-                ) : (
-                  m.content
-                )}
+                  <EnowAvatar size={28} className="mt-0.5 ring-1 ring-wf-border" />
+                ) : null}
+                <div
+                  className={cn(
+                    "max-w-[90%] text-sm leading-relaxed px-3 py-2",
+                    m.role === "user"
+                      ? "bg-espresso text-ivory"
+                      : "bg-white border border-wf-border text-espresso"
+                  )}
+                >
+                  {m.role === "assistant" ? (
+                    <MessageBody content={m.content} />
+                  ) : (
+                    <span className="whitespace-pre-wrap">{m.content}</span>
+                  )}
+                </div>
               </div>
             ))}
+
+            {chatLocked && (
+              <form
+                onSubmit={(e) => void submitContact(e)}
+                className="max-w-[95%] bg-white border border-wf-border p-3 space-y-2.5 shadow-sm"
+              >
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-mocha mb-1">
+                    {t("support.contactEmail")}
+                  </label>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    className="w-full bg-[#F9F9F9] border border-wf-border px-3 py-2 text-sm text-espresso outline-none focus:border-espresso"
+                    placeholder="you@email.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] uppercase tracking-wider text-mocha mb-1">
+                    {t("support.contactWhatsapp")}
+                  </label>
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    value={contactWhatsapp}
+                    onChange={(e) => setContactWhatsapp(e.target.value)}
+                    className="w-full bg-[#F9F9F9] border border-wf-border px-3 py-2 text-sm text-espresso outline-none focus:border-espresso"
+                    placeholder={t("support.contactWhatsappHint")}
+                    required
+                  />
+                </div>
+                {contactError && (
+                  <p className="text-xs text-[#c8102e]">{contactError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#03045e] text-white text-sm font-medium py-2.5 hover:bg-[#02033f] disabled:opacity-50 transition-colors"
+                >
+                  {t("support.contactContinue")}
+                </button>
+              </form>
+            )}
+
             {loading && (
-              <p className="text-xs text-mocha px-1">{t("support.thinking")}</p>
+              <div className="flex items-center gap-2 px-1">
+                <EnowAvatar size={24} className="ring-1 ring-wf-border opacity-80" />
+                <p className="text-xs text-mocha">{t("support.thinking")}</p>
+              </div>
             )}
             {error && (
               <p className="text-xs text-[#c8102e] px-1">
@@ -284,9 +485,12 @@ export function SupportChat() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t("support.placeholder")}
-              className="flex-1 min-w-0 bg-white border border-wf-border px-3 py-2 text-sm outline-none focus:border-espresso"
+              placeholder={
+                chatLocked ? t("support.placeholderLocked") : t("support.placeholder")
+              }
+              className="flex-1 min-w-0 bg-white border border-wf-border px-3 py-2 text-sm outline-none focus:border-espresso disabled:bg-[#F9F9F9] disabled:text-mocha"
               maxLength={1200}
+              disabled={loading}
             />
             <button
               type="submit"
@@ -302,34 +506,49 @@ export function SupportChat() {
 
       <div className="flex items-end gap-3">
         {!open && (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="relative max-w-[14rem] rounded-2xl rounded-br-sm bg-white border border-wf-border px-4 py-2.5 text-left shadow-lg hover:border-[#03045e]/40 transition-colors animate-fade-up"
-          >
-            <span className="block font-inter text-sm font-medium text-[#03045e] leading-snug">
-              {t("support.teaser")}
-            </span>
-            <span
-              className="pointer-events-none absolute top-1/2 -right-1.5 w-3 h-3 -translate-y-1/2 rotate-45 bg-white border-r border-t border-wf-border"
-              aria-hidden
-            />
-          </button>
+          <div className="motion-safe:animate-chat-teaser-float motion-reduce:animate-none">
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="relative max-w-[14rem] rounded-2xl rounded-br-sm bg-white border border-wf-border px-4 py-2.5 text-left shadow-lg hover:border-[#03045e]/40 transition-colors animate-chat-teaser-in motion-reduce:animate-none"
+            >
+              <span className="block font-inter text-sm font-medium text-[#03045e] leading-snug">
+                {t("support.teaser")}
+              </span>
+              <span
+                className="pointer-events-none absolute top-1/2 -right-1.5 w-3 h-3 -translate-y-1/2 rotate-45 bg-white border-r border-t border-wf-border"
+                aria-hidden
+              />
+            </button>
+          </div>
         )}
 
-        <button
-          type="button"
-          onClick={() =>
-            setOpen((v) => {
-              if (v) flushSummary();
-              return !v;
-            })
-          }
-          className="w-14 h-14 shrink-0 rounded-full bg-[#FFD200] text-[#03045e] shadow-lg flex items-center justify-center hover:bg-[#E6BC00] transition-colors"
-          aria-label={open ? t("support.close") : t("support.open")}
+        <div
+          className={cn(
+            !open && "motion-safe:animate-chat-fab-pulse motion-reduce:animate-none"
+          )}
         >
-          {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-        </button>
+          <button
+            type="button"
+            onClick={() =>
+              setOpen((v) => {
+                if (v) flushSummary();
+                return !v;
+              })
+            }
+            className={cn(
+              "w-14 h-14 shrink-0 rounded-full bg-[#FFD200] text-[#03045e] shadow-lg flex items-center justify-center hover:bg-[#E6BC00] transition-transform duration-200 hover:scale-105 active:scale-95",
+              !open && "animate-chat-fab-in motion-reduce:animate-none"
+            )}
+            aria-label={open ? t("support.close") : t("support.open")}
+          >
+            {open ? (
+              <X className="w-6 h-6 transition-transform duration-200" />
+            ) : (
+              <MessageCircle className="w-6 h-6 transition-transform duration-200" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

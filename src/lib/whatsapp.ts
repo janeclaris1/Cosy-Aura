@@ -187,10 +187,14 @@ export async function sendWhatsAppDocument(input: {
       ? sendCustomerWhatsAppText(text, input.to, input.countryHint, mediaUrl)
       : sendWhatsAppText(text, input.to, input.countryHint, mediaUrl);
 
-  if (input.imageUrl) {
-    const withImage = await send(input.text, input.imageUrl);
-    if (withImage.ok) return withImage;
-    console.warn("[whatsapp] image receipt failed, sending text only:", withImage.error);
+  const mediaCandidates = [input.imageUrl, input.pdfUrl].filter(
+    (url): url is string => Boolean(url)
+  );
+
+  for (const mediaUrl of mediaCandidates) {
+    const withMedia = await send(input.text, mediaUrl);
+    if (withMedia.ok) return withMedia;
+    console.warn("[whatsapp] media send failed, trying next:", withMedia.error);
   }
 
   return send(input.text);
