@@ -7,6 +7,7 @@ import {
   defaultCountryStocksFromGlobal,
   syncFragranceCountryStocks,
 } from "@/lib/sync-country-stock";
+import { initialEngagementCounts } from "@/lib/product-engagement";
 
 export async function POST(req: Request) {
   const { ctx, error } = await requireAdminApi("catalog.write", { req });
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
 
   const slug = slugify(`${brand.name}-${body.model}-${body.reference}`);
   const stock = body.stock ?? 0;
+  const engagement = initialEngagementCounts();
 
   const fragrance = await prisma.fragrance.create({
     data: {
@@ -54,6 +56,9 @@ export async function POST(req: Request) {
       collection: body.collection || null,
       stock,
       rating: body.rating ?? null,
+      viewCount: engagement.viewCount,
+      likeCount: engagement.likeCount,
+      explainerVideoUrl: body.explainerVideoUrl?.trim() || null,
       featured: body.featured,
       category: body.category || null,
       images: body.imageUrl

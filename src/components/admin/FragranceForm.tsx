@@ -46,6 +46,7 @@ interface FragranceFormProps {
     rating: number | null;
     featured: boolean;
     category: string | null;
+    explainerVideoUrl?: string | null;
     images: { url: string }[];
     countryStocks?: { country: string; inStock: boolean }[];
   };
@@ -112,6 +113,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     featured: fragrance?.featured || false,
     category: fragrance?.category || "Floral",
     imageUrl: fragrance?.images[0]?.url || "",
+    explainerVideoUrl: fragrance?.explainerVideoUrl || "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -525,6 +527,19 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           className={inputClass}
           placeholder="/images/fragrances/..."
         />
+      </div>
+
+      <div>
+        <label className={labelClass}>Explainer video URL (optional)</label>
+        <input
+          value={form.explainerVideoUrl}
+          onChange={(e) => setForm({ ...form, explainerVideoUrl: e.target.value })}
+          className={inputClass}
+          placeholder="YouTube link or /videos/product-explainer.mp4"
+        />
+        <p className="mt-1 text-xs text-mocha">
+          Shows as a play-button thumbnail in the product gallery. Supports YouTube and direct MP4/WebM URLs.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-6">

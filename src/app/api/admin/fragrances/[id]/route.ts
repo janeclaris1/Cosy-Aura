@@ -46,6 +46,7 @@ export async function PUT(
       collection: body.collection || null,
       stock: body.stock ?? 0,
       rating: body.rating ?? null,
+      explainerVideoUrl: body.explainerVideoUrl?.trim() || null,
       featured: body.featured,
       category: body.category || null,
     },

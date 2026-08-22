@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, cn } from "@/lib/utils";
@@ -13,12 +13,12 @@ import { STORE_DISCOUNT_PERCENT, listPriceForSize, salePriceForSize } from "@/li
 import {
   cardConcentrationLabel,
   inspiredByImageSrc,
-  inspiredByLine,
   inspiredByOriginalLabel,
   isHouseOriginal,
 } from "@/lib/inspired-by";
 import { WhatsAppToCheckoutButton } from "@/components/checkout/WhatsAppOrderButton";
 import { isInStockForCountry } from "@/lib/country-stock";
+import { ProductEngagementStats } from "@/components/products/ProductEngagementStats";
 
 interface ProductCardProps {
   fragrance: {
@@ -39,6 +39,8 @@ interface ProductCardProps {
     brand: { name: string; slug?: string };
     images: { url: string; alt?: string | null }[];
     countryStocks?: { country: string; inStock: boolean }[];
+    viewCount?: number;
+    likeCount?: number;
   };
   currency?: string;
   animate?: boolean;
@@ -153,7 +155,7 @@ export function ProductCard({
             className="absolute top-0 right-0 min-h-11 min-w-11 flex items-center justify-center bg-transparent hover:opacity-80 transition-opacity"
             aria-label={isWishlisted ? t("product.wishlistRemove") : t("product.wishlistAdd")}
           >
-            <Heart
+            <Bookmark
               className={cn(
                 "w-3.5 h-3.5",
                 isWishlisted ? "fill-highlight text-highlight" : "text-mocha"
@@ -169,11 +171,6 @@ export function ProductCard({
           <h3 className="font-playfair text-sm sm:text-[15px] text-black leading-snug">
             {fragrance.model} | {concentration}
           </h3>
-          {!house && (
-            <p className="text-[11px] text-mocha leading-snug">
-              {inspiredByLine(fragrance.brand.name, fragrance.model)}
-            </p>
-          )}
 
           <div className="w-8 h-px bg-black mx-auto my-1.5" />
           <p className="font-playfair text-xl leading-none text-[#c8102e]">
@@ -184,6 +181,15 @@ export function ProductCard({
           </p>
         </div>
       </Link>
+
+      <ProductEngagementStats
+        fragranceId={fragrance.id}
+        viewCount={fragrance.viewCount ?? 0}
+        likeCount={fragrance.likeCount ?? 0}
+        compact
+        className="mt-1 px-1"
+      />
+
       {inStock ? (
         <div className="mt-2 px-0.5" onClick={(e) => e.stopPropagation()}>
           <WhatsAppToCheckoutButton

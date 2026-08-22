@@ -17,6 +17,30 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   customerWhatsAppOk?: boolean;
   whatsappError?: string;
 }> {
+  const freeCheckoutOrder = await prisma.order.findFirst({
+    where: { paystackReference: reference, stripePaymentId: "free-checkout" },
+  });
+
+  if (freeCheckoutOrder) {
+    const order =
+      freeCheckoutOrder.status === "PENDING"
+        ? await prisma.order.update({
+            where: { id: freeCheckoutOrder.id },
+            data: { status: "PAID" },
+          })
+        : freeCheckoutOrder;
+
+    if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {
+      void dispatchGhanaForOrder(order.id).then((result) => {
+        if (!result.ok) {
+          console.error("[fulfill-paystack] ghana dispatch", order.id, result.reason);
+        }
+      });
+    }
+
+    return finalizePaidOrderNotifications(order);
+  }
+
   const verified = await verifyPaystackTransaction(reference);
   const txn = verified.data;
   if (!verified.status || !txn || txn.status !== "success") {
@@ -58,6 +82,22 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     });
   }
 
+  return finalizePaidOrderNotifications(order, alreadyPaid);
+}
+
+async function finalizePaidOrderNotifications(
+  order: { id: string; email: string; confirmationEmailedAt: Date | null; status: string },
+  alreadyPaid = false
+): Promise<{
+  ok: boolean;
+  reason?: string;
+  orderId?: string;
+  emailSent?: boolean;
+  emailError?: string;
+  whatsappOk?: boolean;
+  customerWhatsAppOk?: boolean;
+  whatsappError?: string;
+}> {
   if (order.confirmationEmailedAt) {
     const whatsappResult = await ensureCustomerReceiptWhatsApp(order.id);
     return {
@@ -72,7 +112,7 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     };
   }
 
-  if (!email || !email.includes("@") || email.includes("pending@checkout")) {
+  if (!order.email || !order.email.includes("@") || order.email.includes("pending@checkout")) {
     const whatsappResult = await notifyOrderPaid(order.id);
     return {
       ok: true,

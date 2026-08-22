@@ -24,6 +24,9 @@ export const EXTRA_EN: Messages = {
   "checkout.orPayOnline": "or pay online",
   "checkout.ghanaHint":
     "Cards and mobile money (MTN, Telecel, AirtelTigo). Next-day delivery in Ghana.",
+  "checkout.freeDelivery": "Free delivery",
+  "checkout.freeDeliveryGh":
+    "Free delivery on Ghana orders over {amount} (products subtotal).",
   "checkout.nigeriaHint": "Cards, bank, USSD, and transfer. Shipping to {country}.",
   "checkout.flutterwaveHint":
     "Cards and mobile money (Orange / MTN) for CEMAC. Shipping to {country}. Charged in XAF.",

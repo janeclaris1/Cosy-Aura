@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -111,6 +112,7 @@ model User {
   sessions         Session[]
   orders           Order[]
   wishlist         WishlistItem[]
+  reviews          FragranceReview[]
   staffAssignments StaffAssignment[]
   auditLogs        AuditLog[]
   stockTransfers   StockTransfer[]       @relation("TransferCreatedBy")
@@ -224,6 +226,9 @@ model Fragrance {
   collection          String?
   stock               Int              @default(0)
   rating              Float?
+  viewCount           Int              @default(0)
+  likeCount           Int              @default(0)
+  explainerVideoUrl   String?
   featured            Boolean          @default(false)
   category            String?
   createdAt           DateTime         @default(now())
@@ -237,6 +242,7 @@ model Fragrance {
   stockTransfers StockTransfer[]
   orderItems    OrderItem[]
   wishlistItems WishlistItem[]
+  reviews       FragranceReview[]
 
   @@index([brandId])
   @@index([seriesId])
@@ -464,6 +470,7 @@ model Order {
   user              User?       @relation(fields: [userId], references: [id])
   fulfillmentBranch Branch?     @relation(fields: [fulfillmentBranchId], references: [id], onDelete: SetNull)
   items             OrderItem[]
+  reviews           FragranceReview[]
 
   @@index([userId])
   @@index([status])
@@ -490,6 +497,30 @@ model OrderItem {
 
   @@index([orderId])
   @@index([fragranceId])
+}
+
+model FragranceReview {
+  id          String   @id @default(cuid())
+  fragranceId String
+  orderId     String
+  userId      String?
+  email       String
+  authorName  String
+  rating      Int
+  title       String?
+  body        String   @db.Text
+  verified    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fragrance Fragrance @relation(fields: [fragranceId], references: [id], onDelete: Cascade)
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([fragranceId, orderId])
+  @@index([fragranceId, createdAt])
+  @@index([orderId])
+  @@index([userId])
 }
 
 model WishlistItem {

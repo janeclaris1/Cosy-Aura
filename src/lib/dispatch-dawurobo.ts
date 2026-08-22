@@ -7,6 +7,7 @@ import {
   type DawuroboPayer,
 } from "@/lib/dawurobo";
 import type { GhanaPaymentMode } from "@/lib/ghana-delivery";
+import { qualifiesForGhanaFreeDelivery } from "@/lib/ghana-delivery";
 import { resolveGhanaDeliveryLocation } from "@/lib/ghana-geo";
 import { deliveryDateIso } from "@/lib/delivery-dates";
 
@@ -80,6 +81,11 @@ export async function dispatchDawuroboForOrder(orderId: string): Promise<{
 
   const deliveryFee = order.shippingCost || 0;
   const productValue = Math.max(order.total - deliveryFee, 0);
+  const itemsTotal = order.items.reduce(
+    (sum, line) => sum + line.price * line.quantity,
+    0
+  );
+  const freeDelivery = qualifiesForGhanaFreeDelivery(itemsTotal);
 
   // Map Cosy Aura payment mode → Dawurobo delivery-fee payer
   let dawuroboPayer: DawuroboPayer;
@@ -97,7 +103,9 @@ export async function dispatchDawuroboForOrder(orderId: string): Promise<{
       ? `COD — delivery fee prepaid online. Collect GHS ${productValue.toFixed(2)} for products only. Do not collect delivery fee.`
       : mode === "partner"
         ? "Fully prepaid — no cash on delivery."
-        : "Product prepaid — collect delivery fee only.",
+        : freeDelivery
+          ? "Fully prepaid — free delivery included."
+          : "Product prepaid — collect delivery fee only.",
   ].join(" ");
 
   const created = await createDawuroboOrder({

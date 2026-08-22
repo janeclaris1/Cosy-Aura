@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { deliveryDateIso } from "@/lib/delivery-dates";
 import type { GhanaPaymentMode } from "@/lib/ghana-delivery";
+import { qualifiesForGhanaFreeDelivery } from "@/lib/ghana-delivery";
 import { createShaqexpressPackage, shaqexpressConfigured } from "@/lib/shaqexpress";
 
 /**
@@ -63,8 +64,19 @@ export async function dispatchShaqexpressForOrder(orderId: string): Promise<{
 
   const deliveryFee = order.shippingCost || 0;
   const productValue = Math.max(order.total - deliveryFee, 0);
+  const itemsTotal = order.items.reduce(
+    (sum, line) => sum + line.price * line.quantity,
+    0
+  );
+  const freeDelivery = qualifiesForGhanaFreeDelivery(itemsTotal);
   const amountToCollect =
-    mode === "cod" ? productValue : mode === "recipient" ? deliveryFee : 0;
+    mode === "cod"
+      ? productValue
+      : mode === "recipient"
+        ? freeDelivery
+          ? 0
+          : deliveryFee
+        : 0;
 
   const dateIso = deliveryDateIso(order.deliveryDate);
   const instructions = [
@@ -73,7 +85,9 @@ export async function dispatchShaqexpressForOrder(orderId: string): Promise<{
     mode === "cod"
       ? `COD — delivery fee prepaid. Collect GHS ${productValue.toFixed(2)} for products only.`
       : mode === "recipient"
-        ? "Product prepaid — collect delivery fee only."
+        ? freeDelivery
+          ? "Fully prepaid — free delivery included."
+          : "Product prepaid — collect delivery fee only."
         : "Fully prepaid — no cash on delivery.",
   ]
     .filter(Boolean)

@@ -68,6 +68,7 @@ type GhanaDeliveryConfig = {
     accraGhs: number;
     outsideAccraGhs: number;
   };
+  freeDeliveryThresholdGhs?: number;
 };
 
 type CourierChoice = "dawurobo" | "shaqexpress" | "pickup";
@@ -179,7 +180,7 @@ export function RegionalCheckoutForm({
         : null
       : null;
   /** Prepaid delivery: Dawurobo live rate when chosen; ShaQ flat fee otherwise. */
-  const prepaidDeliveryGhs =
+  const rawPrepaidDeliveryGhs =
     activeCourier === "pickup"
       ? 0
       : activeCourier === "dawurobo"
@@ -193,6 +194,12 @@ export function RegionalCheckoutForm({
             ? estimateGhs
             : shaqFeeGhs
           : 0;
+  const freeDeliveryThresholdGhs = ghanaDelivery?.freeDeliveryThresholdGhs ?? 1000;
+  const ghanaFreeDelivery =
+    useGhanaCourier &&
+    activeCourier !== "pickup" &&
+    subtotal >= freeDeliveryThresholdGhs;
+  const prepaidDeliveryGhs = ghanaFreeDelivery ? 0 : rawPrepaidDeliveryGhs;
   const shippingGhs = useGhanaCourier
     ? deliveryPayer === "recipient"
       ? 0
@@ -235,11 +242,13 @@ export function RegionalCheckoutForm({
   const whatsappFulfillment: WhatsAppFulfillment = {
     courier: courierLabel,
     deliveryFeeLabel: useGhanaCourier
-      ? prepaidDeliveryGhs > 0
-        ? formatPrice(prepaidDeliveryGhs, currency)
-        : estimating
-          ? "Confirming…"
-          : undefined
+      ? ghanaFreeDelivery
+        ? t("checkout.freeDelivery")
+        : prepaidDeliveryGhs > 0
+          ? formatPrice(prepaidDeliveryGhs, currency)
+          : estimating
+            ? "Confirming…"
+            : undefined
       : flatShippingGhs > 0
         ? formatPrice(flatShippingGhs, currency)
         : undefined,
@@ -454,7 +463,8 @@ export function RegionalCheckoutForm({
         useGhanaCourier &&
         activeCourier !== "pickup" &&
         (deliveryPayer === "partner" || deliveryPayer === "cod") &&
-        prepaidDeliveryGhs <= 0
+        prepaidDeliveryGhs <= 0 &&
+        !ghanaFreeDelivery
       ) {
         throw new Error(
           activeCourier === "dawurobo"
@@ -661,11 +671,13 @@ export function RegionalCheckoutForm({
               />
               <span className="flex-1 font-medium">Dawurobo</span>
               <span className="shrink-0 font-medium">
-                {dawuroboDisplayGhs != null && dawuroboDisplayGhs > 0
-                  ? formatPrice(dawuroboDisplayGhs, currency)
-                  : estimating
-                    ? "…"
-                    : "—"}
+                {ghanaFreeDelivery
+                  ? t("checkout.freeDelivery")
+                  : dawuroboDisplayGhs != null && dawuroboDisplayGhs > 0
+                    ? formatPrice(dawuroboDisplayGhs, currency)
+                    : estimating
+                      ? "…"
+                      : "—"}
               </span>
             </label>
           ) : null}
@@ -679,7 +691,9 @@ export function RegionalCheckoutForm({
               />
               <span className="flex-1 font-medium">ShaQ Express</span>
               <span className="shrink-0 font-medium">
-                {formatPrice(shaqFeeGhs, currency)}
+                {ghanaFreeDelivery
+                  ? t("checkout.freeDelivery")
+                  : formatPrice(shaqFeeGhs, currency)}
               </span>
             </label>
           ) : null}
@@ -711,6 +725,13 @@ export function RegionalCheckoutForm({
           {!dawuroboOk && !shaqOk && !pickupOk ? (
             <p className="text-sm text-red-600">{t("checkout.noDelivery")}</p>
           ) : null}
+          <p className="text-xs text-mocha leading-snug border border-dashed border-wf-border px-3 py-2">
+            {ghanaFreeDelivery
+              ? t("checkout.freeDelivery")
+              : t("checkout.freeDeliveryGh", {
+                  amount: formatPrice(freeDeliveryThresholdGhs, currency),
+                })}
+          </p>
         </fieldset>
       ) : null}
 
@@ -776,7 +797,9 @@ export function RegionalCheckoutForm({
                 </span>
               </span>
               <span className="shrink-0 font-medium mt-0.5">
-                {formatPrice(prepaidDeliveryGhs, currency)}
+                {ghanaFreeDelivery && prepaidDeliveryGhs === 0
+                  ? t("checkout.freeDelivery")
+                  : formatPrice(prepaidDeliveryGhs, currency)}
               </span>
             </label>
           ) : null}

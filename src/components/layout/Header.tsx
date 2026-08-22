@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Heart,
+  Bookmark,
   ShoppingCart,
   User,
   Menu,
@@ -166,7 +166,7 @@ export function Header() {
               href="/wishlist"
               className="relative inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
-              <Heart className="w-5 h-5" />
+              <Bookmark className="w-5 h-5" />
               {wishlistCount > 0 && (
                 <span className="absolute top-1 right-1 bg-[#FFD200] text-[#03045e] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                   {wishlistCount}

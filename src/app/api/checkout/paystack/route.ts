@@ -14,8 +14,10 @@ import { formatDeliveryDateLabel, parseDeliveryDate } from "@/lib/delivery-dates
 import { cartLinesTotal, getCheckoutMemberContext, priceCartLines } from "@/lib/checkout-pricing";
 import { fetchRatesFromGhs, shippingUsdToGhs } from "@/lib/fx";
 import {
+  applyGhanaFreeDelivery,
   estimateGhanaDelivery,
   ghanaDeliveryConfigured,
+  qualifiesForGhanaFreeDelivery,
   resolveGhanaDeliveryProvider,
   type GhanaDeliveryProvider,
   type GhanaPaymentMode,
@@ -291,20 +293,21 @@ export async function POST(req: Request) {
       fetchRatesFromGhs(),
     ]);
     const itemsTotal = cartLinesTotal(pricedItems);
+    const freeDelivery =
+      useGhanaCourier &&
+      deliveryProvider !== "pickup" &&
+      qualifiesForGhanaFreeDelivery(itemsTotal);
     const shippingGhs = useGhanaCourier
-      ? courierFeeGhs
+      ? applyGhanaFreeDelivery(courierFeeGhs, itemsTotal)
       : shippingUsdToGhs(shipping!.price, fx.rates);
     // Record full order value; Paystack charge may be delivery-only for COD
     const orderTotal = itemsTotal + shippingGhs;
     const chargeTotal =
       useGhanaCourier && deliveryPayer === "cod" ? shippingGhs : orderTotal;
-    if (chargeTotal <= 0) {
-      return NextResponse.json(
-        { error: "Checkout amount must be greater than zero." },
-        { status: 400 }
-      );
-    }
-    const charge = paystackCharge(chargeTotal, country as PaystackCountry, fx.rates);
+    const charge =
+      chargeTotal > 0
+        ? paystackCharge(chargeTotal, country as PaystackCountry, fx.rates)
+        : null;
     const dest = country as PaystackCountry;
 
     const providerLabel =
@@ -316,14 +319,16 @@ export async function POST(req: Request) {
             ? "Dawurobo"
             : null;
 
+    const freeDeliverySuffix = freeDelivery ? " · Free delivery" : "";
+
     const shippingMethodLabel = useGhanaCourier
       ? deliveryProvider === "pickup"
         ? "Pickup at shop · paid in full"
         : deliveryPayer === "cod"
-          ? `${providerLabel} · COD (delivery prepaid)`
+          ? `${providerLabel} · COD (delivery prepaid)${freeDeliverySuffix}`
           : deliveryPayer === "partner"
-            ? `${providerLabel} · paid in full`
-            : `${providerLabel} · pay rider`
+            ? `${providerLabel} · paid in full${freeDeliverySuffix}`
+            : `${providerLabel} · pay rider${freeDeliverySuffix}`
       : `${shipping!.name} · ${shipping!.eta}`;
 
     const fulfillmentBranchId = await resolveFulfillmentBranchId(dest);
@@ -366,11 +371,40 @@ export async function POST(req: Request) {
     const reference = `ca_${order.id}`;
     const baseUrl = checkoutBaseUrl(req);
 
+    if (chargeTotal <= 0) {
+      if (itemsTotal <= 0) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: "CANCELLED" },
+        });
+        return NextResponse.json(
+          { error: "Checkout amount must be greater than zero." },
+          { status: 400 }
+        );
+      }
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paystackReference: reference,
+          status: "PAID",
+          stripePaymentId: "free-checkout",
+        },
+      });
+
+      return NextResponse.json({
+        authorizationUrl: `${baseUrl}/checkout/success?reference=${encodeURIComponent(reference)}`,
+        reference,
+        orderId: order.id,
+        currency: "GHS",
+      });
+    }
+
     const init = await initializePaystackTransaction({
       secret,
       email: customerEmail,
-      amount: charge.amount,
-      currency: charge.currency,
+      amount: charge!.amount,
+      currency: charge!.currency,
       reference,
       callbackUrl: `${baseUrl}/checkout/success`,
       channels: paystackChannels(dest),
@@ -428,7 +462,7 @@ export async function POST(req: Request) {
       authorizationUrl: init.data.authorization_url,
       reference: init.data.reference,
       orderId: order.id,
-      currency: charge.currency,
+      currency: charge!.currency,
     });
   } catch (error) {
     console.error("[checkout/paystack]", error);

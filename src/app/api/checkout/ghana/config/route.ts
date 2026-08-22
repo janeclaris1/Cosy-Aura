@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   dawuroboAvailable,
+  ghanaFreeDeliveryThresholdGhs,
   shaqexpressAccraFeeGhs,
   shaqexpressOutsideAccraFeeGhs,
 } from "@/lib/ghana-delivery";
@@ -83,5 +84,6 @@ export async function GET() {
       accraGhs: shaqexpressAccraFeeGhs(),
       outsideAccraGhs: shaqexpressOutsideAccraFeeGhs(),
     },
+    freeDeliveryThresholdGhs: ghanaFreeDeliveryThresholdGhs(),
   });
 }

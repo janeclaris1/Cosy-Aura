@@ -22,6 +22,28 @@ export function dawuroboAvailable(): boolean {
   return dawuroboConfigured() && Boolean(dawuroboPickupConfig());
 }
 
+/** Ghana-only: product subtotal (GHS) at or above this gets free delivery. */
+export const GHANA_FREE_DELIVERY_THRESHOLD_GHS = Number(
+  process.env.GHANA_FREE_DELIVERY_THRESHOLD_GHS ?? 1000
+);
+
+export function ghanaFreeDeliveryThresholdGhs(): number {
+  const n = GHANA_FREE_DELIVERY_THRESHOLD_GHS;
+  return Number.isFinite(n) && n > 0 ? n : 1000;
+}
+
+export function qualifiesForGhanaFreeDelivery(itemsTotalGhs: number): boolean {
+  return itemsTotalGhs >= ghanaFreeDeliveryThresholdGhs();
+}
+
+export function applyGhanaFreeDelivery(
+  deliveryFeeGhs: number,
+  itemsTotalGhs: number
+): number {
+  if (qualifiesForGhanaFreeDelivery(itemsTotalGhs)) return 0;
+  return Math.max(0, deliveryFeeGhs);
+}
+
 /** ShaQ is always available as a flat-fee option; no API credentials needed to show it. */
 export function shaqexpressAvailable(): boolean {
   return true;

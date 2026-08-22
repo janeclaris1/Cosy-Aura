@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { ChevronDown, Heart, Shield, Truck, RotateCcw } from "lucide-react";
+import { ChevronDown, Bookmark, Shield, Truck, RotateCcw, Play } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
 import { usePremiumStore } from "@/lib/premium-store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
@@ -22,7 +22,6 @@ import { ScentPyramid } from "@/components/perfume/ScentPyramid";
 import {
   cardConcentrationLabel,
   inspiredByImageSrc,
-  inspiredByLine,
   inspiredByOriginalLabel,
   isHouseOriginal,
 } from "@/lib/inspired-by";
@@ -49,8 +48,15 @@ import {
 } from "@/lib/pricing";
 import { BottleProductImage } from "@/components/products/BottleProductImage";
 import { MetaViewContent } from "@/components/analytics/MetaViewContent";
+import { ProductEngagementStats } from "@/components/products/ProductEngagementStats";
 import { useRegionalPrice } from "@/lib/use-regional-price";
 import { useMemberDiscount } from "@/lib/use-member-discount";
+import { parseProductVideoUrl } from "@/lib/product-video";
+
+type GalleryMode =
+  | { kind: "image"; index: number }
+  | { kind: "video" }
+  | { kind: "size" };
 
 interface ProductGalleryProps {
   images: { url: string; alt: string | null }[];
@@ -59,6 +65,7 @@ interface ProductGalleryProps {
   brandSlug?: string;
   size?: BottleSize;
   onSizeChange?: (size: BottleSize) => void;
+  explainerVideoUrl?: string | null;
 }
 
 export function ProductGallery({
@@ -68,44 +75,142 @@ export function ProductGallery({
   brandSlug,
   size = 50,
   onSizeChange,
+  explainerVideoUrl,
 }: ProductGalleryProps) {
   const [zoomed, setZoomed] = useState(false);
-  const [showOriginal, setShowOriginal] = useState(true);
-  const [originalIndex, setOriginalIndex] = useState(0);
+  const [mode, setMode] = useState<GalleryMode>({ kind: "image", index: 0 });
   const [inspiredUrl, setInspiredUrl] = useState(inspiredByImageSrc(brandSlug));
   const house = isHouseOriginal(brandSlug);
-  const original = images[originalIndex] || images[0];
+  const video = parseProductVideoUrl(explainerVideoUrl);
+  const activeImage = images[mode.kind === "image" ? mode.index : 0] || images[0];
   const prevSize = useRef(size);
 
   useEffect(() => {
     if (prevSize.current !== size) {
       prevSize.current = size;
-      setShowOriginal(false);
+      setMode({ kind: "size" });
     }
   }, [size]);
 
-  function selectOriginal(index: number) {
-    setOriginalIndex(index);
-    setShowOriginal(true);
+  function selectImage(index: number) {
+    setMode({ kind: "image", index });
+  }
+
+  function selectVideo() {
+    setMode({ kind: "video" });
   }
 
   function selectVariation(ml: BottleSize) {
-    setShowOriginal(false);
+    setMode({ kind: "size" });
     onSizeChange?.(ml);
   }
 
+  const showZoom = mode.kind !== "video";
+  const thumbClass = (active: boolean) =>
+    cn(
+      "relative aspect-square w-full overflow-hidden border bg-ivory transition-colors",
+      active ? "border-espresso" : "border-transparent hover:border-wf-border"
+    );
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-3 sm:gap-5">
+    <div className="flex items-start gap-3 sm:gap-4">
+      <div className="flex w-[72px] shrink-0 flex-col gap-2 overflow-y-auto sm:w-20 max-h-[min(70vh,560px)]">
+        {images.map((img, i) => (
+          <button
+            key={`photo-${i}`}
+            type="button"
+            onClick={() => selectImage(i)}
+            className={thumbClass(mode.kind === "image" && mode.index === i)}
+            aria-label={`${model} photo ${i + 1}`}
+          >
+            <Image
+              src={img.url}
+              alt={img.alt || model}
+              fill
+              className="object-contain"
+              sizes="80px"
+            />
+          </button>
+        ))}
+        {video ? (
+          <button
+            type="button"
+            onClick={selectVideo}
+            className={cn(
+              thumbClass(mode.kind === "video"),
+              "bg-espresso/5"
+            )}
+            aria-label={`${model} product video`}
+          >
+            {video.kind === "youtube" ? (
+              <Image
+                src={video.thumbUrl}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="80px"
+              />
+            ) : (
+              <span className="absolute inset-0 bg-espresso/10" aria-hidden />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/20">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/95 shadow-sm">
+                <Play className="ml-0.5 h-3.5 w-3.5 fill-espresso text-espresso" />
+              </span>
+            </span>
+          </button>
+        ) : null}
+        {BOTTLE_SIZES.map((ml) => (
+          <button
+            key={ml}
+            type="button"
+            onClick={() => selectVariation(ml)}
+            className={thumbClass(mode.kind === "size" && size === ml)}
+            aria-label={`${ml} ml`}
+          >
+            <BottleProductImage
+              brand={brandName || "Cosy Aura"}
+              model={model}
+              size={ml}
+              alt={`${model} ${ml}ml`}
+              fillParent
+              sizes="80px"
+            />
+          </button>
+        ))}
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-5">
         <div
-          className="relative aspect-square flex-1 overflow-hidden bg-ivory cursor-zoom-in"
-          onMouseEnter={() => setZoomed(true)}
+          className={cn(
+            "relative aspect-square min-w-0 flex-1 overflow-hidden bg-ivory",
+            showZoom && "cursor-zoom-in"
+          )}
+          onMouseEnter={() => showZoom && setZoomed(true)}
           onMouseLeave={() => setZoomed(false)}
         >
-          {showOriginal ? (
+          {mode.kind === "video" && video ? (
+            video.kind === "youtube" ? (
+              <iframe
+                src={video.embedUrl}
+                title={`${model} product video`}
+                className="absolute inset-0 h-full w-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                src={video.url}
+                controls
+                playsInline
+                className="absolute inset-0 h-full w-full object-contain bg-black"
+                title={`${model} product video`}
+              />
+            )
+          ) : mode.kind === "image" ? (
             <Image
-              src={original?.url || "/images/placeholders/fragrance.svg"}
-              alt={original?.alt || model}
+              src={activeImage?.url || "/images/placeholders/fragrance.svg"}
+              alt={activeImage?.alt || model}
               fill
               priority
               className={cn(
@@ -151,51 +256,6 @@ export function ProductGallery({
           </div>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-2 max-w-md">
-        {images.slice(0, 1).map((img, i) => (
-          <button
-            key={`orig-${i}`}
-            type="button"
-            onClick={() => selectOriginal(i)}
-            className={cn(
-              "relative aspect-square overflow-hidden border bg-ivory transition-colors",
-              showOriginal ? "border-espresso" : "border-transparent hover:border-wf-border"
-            )}
-            aria-label={`${model} photo`}
-          >
-            <Image
-              src={img.url}
-              alt={img.alt || model}
-              fill
-              className="object-contain"
-              sizes="100px"
-            />
-          </button>
-        ))}
-        {BOTTLE_SIZES.map((ml) => (
-          <button
-            key={ml}
-            type="button"
-            onClick={() => selectVariation(ml)}
-            className={cn(
-              "relative aspect-square overflow-hidden border bg-ivory transition-colors",
-              !showOriginal && size === ml
-                ? "border-espresso"
-                : "border-transparent hover:border-wf-border"
-            )}
-            aria-label={`${ml} ml`}
-          >
-            <BottleProductImage
-              brand={brandName || "Cosy Aura"}
-              model={model}
-              size={ml}
-              alt={`${model} ${ml}ml`}
-              fillParent
-              sizes="100px"
-            />
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -233,6 +293,9 @@ interface ProductInfoProps {
     brand: { name: string; slug: string };
     images: { url: string; alt: string | null }[];
     countryStocks?: { country: string; inStock: boolean }[];
+    viewCount?: number;
+    likeCount?: number;
+    explainerVideoUrl?: string | null;
   };
 }
 
@@ -539,7 +602,6 @@ export function ProductInfo({
   const { toggleItem, hasItem } = useWishlistStore();
   const isWishlisted = hasItem(fragrance.id);
   const primaryImage = fragrance.images[0]?.url || "";
-  const house = isHouseOriginal(fragrance.brand.slug);
   const concentration = cardConcentrationLabel(fragrance.concentration);
   const originalPrice = useRegionalPrice(listPriceForSize(selectedSize, fragrance.slug));
   const regionalSampleBase = useRegionalPrice(sampleSalePrice());
@@ -648,11 +710,13 @@ export function ProductInfo({
       >
         {fragrance.model} | {concentration}
       </h1>
-      {!house && (
-        <p className="text-sm text-mocha mb-3">
-          {inspiredByLine(fragrance.brand.name, fragrance.model)}
-        </p>
-      )}
+      <ProductEngagementStats
+        fragranceId={fragrance.id}
+        viewCount={fragrance.viewCount ?? 0}
+        likeCount={fragrance.likeCount ?? 0}
+        trackView
+        className="mb-4 max-w-sm"
+      />
       <ProductPromises
         className="text-sm text-espresso mb-5"
         badgeClassName="w-3.5 h-3.5 text-espresso shrink-0"
@@ -721,7 +785,7 @@ export function ProductInfo({
           className="w-12 h-12 border border-espresso flex items-center justify-center hover:bg-espresso hover:text-ivory transition-colors"
           aria-label={isWishlisted ? t("product.wishlistRemove") : t("product.wishlistAdd")}
         >
-          <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
+          <Bookmark className={cn("w-5 h-5", isWishlisted && "fill-current")} />
         </button>
         <CompareToggle
           item={{
@@ -786,7 +850,7 @@ export function ProductInfo({
           className="min-h-11 min-w-11 border border-espresso flex items-center justify-center"
           aria-label={isWishlisted ? t("product.wishlistRemove") : t("product.wishlistAdd")}
         >
-          <Heart className={cn("w-5 h-5", isWishlisted && "fill-current")} />
+          <Bookmark className={cn("w-5 h-5", isWishlisted && "fill-current")} />
         </button>
       </div>
 

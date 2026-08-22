@@ -25,7 +25,16 @@ function internalNavHref(event: MouseEvent): string | null {
     return null;
   }
 
-  const anchor = (event.target as Element | null)?.closest?.("a");
+  const target = event.target as Element | null;
+  if (
+    target?.closest?.(
+      "button, input, textarea, select, label, [role='button'], [data-no-nav]"
+    )
+  ) {
+    return null;
+  }
+
+  const anchor = target?.closest?.("a");
   if (!anchor) return null;
 
   const href = anchor.getAttribute("href");
