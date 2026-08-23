@@ -4,11 +4,28 @@ import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice, conditionLabel } from "@/lib/utils";
 import { DeleteFragranceButton } from "@/components/admin/DeleteFragranceButton";
+import type { Prisma } from "@prisma/client";
 
-export default async function AdminFragrancesPage() {
+export default async function AdminFragrancesPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
   await requireAdminPage();
 
+  const q = searchParams.q?.trim();
+  const where: Prisma.FragranceWhereInput = q
+    ? {
+        OR: [
+          { model: { contains: q, mode: "insensitive" } },
+          { brand: { name: { contains: q, mode: "insensitive" } } },
+          { reference: { contains: q, mode: "insensitive" } },
+        ],
+      }
+    : {};
+
   const fragrances = await prisma.fragrance.findMany({
+    where,
     include: {
       brand: true,
       images: {
@@ -21,12 +38,37 @@ export default async function AdminFragrancesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="font-playfair text-3xl">Fragrances</h1>
         <Link href="/admin/fragrances/new" className="btn-gold">
           Add Fragrance
         </Link>
       </div>
+
+      <form className="mb-6" action="/admin/fragrances" method="get">
+        <div className="flex flex-wrap gap-2 max-w-lg">
+          <input
+            name="q"
+            defaultValue={q || ""}
+            placeholder="Search by name, brand, or reference…"
+            className="flex-1 min-w-[200px] px-3 py-2 border border-wf-border rounded text-sm bg-white focus:outline-none focus:border-gold"
+          />
+          <button type="submit" className="btn-outline text-sm py-2 px-4">
+            Search
+          </button>
+          {q ? (
+            <Link href="/admin/fragrances" className="btn-outline text-sm py-2 px-4">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+
+      {q ? (
+        <p className="text-sm text-wf-gray mb-4">
+          {fragrances.length} result{fragrances.length === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
+        </p>
+      ) : null}
 
       <div className="border border-wf-border rounded-lg overflow-hidden bg-white overflow-x-auto">
         <table className="w-full text-sm min-w-[880px]">
@@ -44,7 +86,14 @@ export default async function AdminFragrancesPage() {
             </tr>
           </thead>
           <tbody>
-            {fragrances.map((fragrance) => {
+            {fragrances.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="p-8 text-center text-wf-gray">
+                  {q ? `No fragrances match “${q}”.` : "No fragrances yet."}
+                </td>
+              </tr>
+            ) : (
+              fragrances.map((fragrance) => {
               const image = fragrance.images[0];
               return (
                 <tr key={fragrance.id} className="border-t border-wf-border">
@@ -89,7 +138,8 @@ export default async function AdminFragrancesPage() {
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
       </div>
