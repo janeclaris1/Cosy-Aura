@@ -35,6 +35,7 @@ export const UI_EN: Messages = {
   "home.hero1.subtitle":
     "Alcohol-free, undiluted perfume oils - dab on, live with it, linger all day.",
   "home.hero1.cta": "Browse collection",
+  "home.closeVideo": "Close video",
   "home.hero2.eyebrow": "Intimate luxury",
   "home.hero2.title": "Close to skin.\nImpossible to ignore.",
   "home.hero2.subtitle":
@@ -254,6 +255,7 @@ export const UI_FR: Messages = {
   "home.hero1.subtitle":
     "Huiles parfumées pures et sans alcool - appliquez, vivez avec, restez toute la journée.",
   "home.hero1.cta": "Parcourir la collection",
+  "home.closeVideo": "Fermer la vidéo",
   "home.hero2.eyebrow": "Luxe intime",
   "home.hero2.title": "Près de la peau.\nImpossible à ignorer.",
   "home.hero2.subtitle":
@@ -473,6 +475,7 @@ export const UI_ES: Messages = {
   "home.hero1.subtitle":
     "Aceites de perfume sin alcohol y sin diluir - aplícalos, vive con ellos, dura todo el día.",
   "home.hero1.cta": "Ver colección",
+  "home.closeVideo": "Cerrar vídeo",
   "home.hero2.eyebrow": "Lujo íntimo",
   "home.hero2.title": "Cerca de la piel.\nImposible de ignorar.",
   "home.hero2.subtitle":
@@ -692,6 +695,7 @@ export const UI_PT: Messages = {
   "home.hero1.subtitle":
     "Óleos de perfume sem álcool e não diluídos - aplique, viva com eles, dure o dia todo.",
   "home.hero1.cta": "Ver coleção",
+  "home.closeVideo": "Fechar vídeo",
   "home.hero2.eyebrow": "Luxo íntimo",
   "home.hero2.title": "Perto da pele.\nImpossível ignorar.",
   "home.hero2.subtitle":
@@ -911,6 +915,7 @@ export const UI_DE: Messages = {
   "home.hero1.subtitle":
     "Alkoholfreie, unverdünnte Parfümöle - auftragen, leben, den ganzen Tag genießen.",
   "home.hero1.cta": "Kollektion entdecken",
+  "home.closeVideo": "Video schließen",
   "home.hero2.eyebrow": "Intimer Luxus",
   "home.hero2.title": "Hautnah.\nUnmöglich zu ignorieren.",
   "home.hero2.subtitle":

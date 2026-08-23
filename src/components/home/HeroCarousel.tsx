@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/locale-store";
 
@@ -75,9 +75,11 @@ function youtubeEmbedSrc() {
 }
 
 function HeroMiniPlayer() {
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [useYoutube, setUseYoutube] = useState(!HERO_VIDEO_SRC);
   const [muted, setMuted] = useState(true);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -104,6 +106,13 @@ function HeroMiniPlayer() {
     }
   }
 
+  function closeVideo() {
+    videoRef.current?.pause();
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
   return (
     <div
       className={cn(
@@ -114,6 +123,14 @@ function HeroMiniPlayer() {
           : "w-[48vw] max-w-[280px] sm:w-[250px] md:w-[300px] aspect-[9/16] md:aspect-[3/4]"
       )}
     >
+      <button
+        type="button"
+        onClick={closeVideo}
+        className="absolute top-1.5 right-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors"
+        aria-label={t("home.closeVideo")}
+      >
+        <X className="h-4 w-4" aria-hidden />
+      </button>
       {useYoutube ? (
         <iframe
           title="Cosy Aura hero video"
