@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Bookmark,
-  ShoppingCart,
+  ShoppingBag,
   User,
   Menu,
   X,
@@ -185,7 +185,7 @@ export function Header() {
               onClick={toggleCart}
               className="relative inline-flex items-center justify-center min-h-11 min-w-11 text-white hover:text-[#FFD200] transition-colors"
             >
-              <ShoppingCart className="w-5 h-5" />
+              <ShoppingBag className="w-5 h-5" />
               <span className="absolute top-1 right-1 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-4 h-4 px-0.5 rounded-full flex items-center justify-center">
                 {cartCount}
               </span>

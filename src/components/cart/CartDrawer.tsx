@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { X, Minus, Plus, ShoppingCart } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, cn, inspiredByBrandLine } from "@/lib/utils";
@@ -61,7 +61,7 @@ export function CartDrawer() {
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <ShoppingCart className="w-12 h-12 text-secondary mb-4" />
+            <ShoppingBag className="w-12 h-12 text-secondary mb-4" />
             <p className="text-wf-gray mb-4">{t("cart.empty")}</p>
             <button onClick={closeCart} className="btn-gold">
               {t("cart.continue")}
