@@ -43,8 +43,7 @@ export function formatWhatsAppDisplay(
 ): string {
   const digits = normalizeWhatsAppPhone(phone);
   if (key === "GH" && digits.startsWith("233") && digits.length >= 12) {
-    const local = `0${digits.slice(3)}`;
-    return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`.trim();
+    return `+233(0) ${digits.slice(3)}`;
   }
   if (key === "NG" && digits.startsWith("234") && digits.length >= 13) {
     const local = `0${digits.slice(3)}`;

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useT } from "@/lib/locale-store";
 import { ProductCard } from "@/components/products/ProductCard";
 
 type CarouselFragrance = Parameters<typeof ProductCard>[0]["fragrance"];
@@ -11,10 +12,9 @@ interface ProductCarouselProps {
   fragrances: CarouselFragrance[];
 }
 
-export function ProductCarousel({
-  title = "You May Also Like",
-  fragrances,
-}: ProductCarouselProps) {
+export function ProductCarousel({ title, fragrances }: ProductCarouselProps) {
+  const t = useT();
+  const heading = title ?? t("product.pairsWell");
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
 
@@ -52,7 +52,7 @@ export function ProductCarousel({
   return (
     <section className="mt-20">
       <div className="flex items-center justify-between gap-4 mb-6">
-        <h2 className="font-playfair text-2xl">{title}</h2>
+        <h2 className="font-playfair text-2xl">{heading}</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"

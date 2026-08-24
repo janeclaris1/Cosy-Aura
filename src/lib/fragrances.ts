@@ -352,17 +352,33 @@ export async function getRelatedFragrances(
   });
 }
 
-/** Suggested products for PDP carousel — capped to keep page loads fast. */
+/** Suggested products for PDP carousel — complementary families, in stock. */
 export async function getSuggestedFragrances(
   fragranceId: string,
-  limit = 24
+  limit = 24,
+  options?: { country?: string | null; currency?: string | null }
 ) {
   try {
-    return await prisma.fragrance.findMany({
-      where: { NOT: { id: fragranceId } },
-      include: fragranceListInclude,
-      orderBy: { createdAt: "desc" },
-      take: limit,
+    const anchor = await prisma.fragrance.findUnique({
+      where: { id: fragranceId },
+      select: {
+        id: true,
+        fragranceFamily: true,
+        gender: true,
+        brandId: true,
+        price: true,
+      },
+    });
+    if (!anchor) return [];
+
+    const { getCrossSellFragrances } = await import("./cross-sell");
+    return getCrossSellFragrances({
+      anchors: [anchor],
+      excludeIds: [fragranceId],
+      context: "pdp",
+      limit,
+      country: options?.country,
+      currency: options?.currency,
     });
   } catch {
     return [];

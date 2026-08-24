@@ -8,6 +8,7 @@ import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, cn, inspiredByBrandLine } from "@/lib/utils";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
+import { CartCrossSell } from "@/components/cart/CartCrossSell";
 import Image from "next/image";
 
 export function CartDrawer() {
@@ -158,6 +159,10 @@ export function CartDrawer() {
                   </div>
                 </div>
               ))}
+              <CartCrossSell
+                items={items}
+                subtotalGhs={currency === "GHS" ? subtotal : 0}
+              />
             </div>
 
             <div className="border-t border-wf-border p-6 space-y-4">
