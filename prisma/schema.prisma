@@ -620,6 +620,8 @@ model StoreConfig {
   whatsappCheckoutEnabled Boolean @default(false)
   /// ISO country code → WhatsApp number digits, e.g. { "GH": "233500741699", "CM": "2376..." }
   whatsappCheckoutNumbers Json    @default("{}")
+  /// When true, storefront redirects to /maintenance (admin stays available).
+  maintenanceMode        Boolean  @default(false)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }

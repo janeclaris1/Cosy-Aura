@@ -25,6 +25,7 @@ export async function PATCH(req: Request) {
     nonAfricaMarkupUsd?: number;
     whatsappCheckoutEnabled?: boolean;
     whatsappCheckoutNumbers?: WhatsAppCheckoutNumbers;
+    maintenanceMode?: boolean;
   };
 
   const markupUsd = Number(body.nonAfricaMarkupUsd);
@@ -52,6 +53,7 @@ export async function PATCH(req: Request) {
     nonAfricaMarkupUsd: body.nonAfricaMarkupUsd,
     whatsappCheckoutEnabled: body.whatsappCheckoutEnabled,
     whatsappCheckoutNumbers: body.whatsappCheckoutNumbers,
+    maintenanceMode: body.maintenanceMode,
   });
 
   await writeAuditLog({
@@ -65,6 +67,7 @@ export async function PATCH(req: Request) {
       nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
       nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
       whatsappCheckoutEnabled: config.whatsappCheckoutEnabled,
+      maintenanceMode: config.maintenanceMode,
     },
   });
 

@@ -12,7 +12,13 @@ export type StoreWhatsAppCheckoutConfig = {
   whatsappCheckoutNumbers: WhatsAppCheckoutNumbers;
 };
 
-export type StoreConfigPayload = StorePricingConfig & StoreWhatsAppCheckoutConfig;
+export type StoreMaintenanceConfig = {
+  maintenanceMode: boolean;
+};
+
+export type StoreConfigPayload = StorePricingConfig &
+  StoreWhatsAppCheckoutConfig &
+  StoreMaintenanceConfig;
 
 const DEFAULT_MARKUP_USD = Number(process.env.NON_AFRICA_MARKUP_USD) || 10;
 
@@ -29,6 +35,7 @@ export const DEFAULT_WHATSAPP_CHECKOUT: StoreWhatsAppCheckoutConfig = {
 export const DEFAULT_STORE_CONFIG: StoreConfigPayload = {
   ...DEFAULT_STORE_PRICING,
   ...DEFAULT_WHATSAPP_CHECKOUT,
+  maintenanceMode: false,
 };
 
 let cache: { at: number; value: StoreConfigPayload } | null = null;
@@ -62,12 +69,14 @@ function rowToConfig(row: {
   nonAfricaMarkupUsd: number;
   whatsappCheckoutEnabled?: boolean;
   whatsappCheckoutNumbers?: unknown;
+  maintenanceMode?: boolean;
 }): StoreConfigPayload {
   return {
     nonAfricaMarkupEnabled: row.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: row.nonAfricaMarkupUsd,
     whatsappCheckoutEnabled: Boolean(row.whatsappCheckoutEnabled),
     whatsappCheckoutNumbers: parseWhatsAppCheckoutNumbers(row.whatsappCheckoutNumbers),
+    maintenanceMode: Boolean(row.maintenanceMode),
   };
 }
 
@@ -141,6 +150,7 @@ export async function upsertStoreConfig(
         Number.isFinite(markupUsd) && markupUsd >= 0 ? markupUsd : DEFAULT_MARKUP_USD,
       whatsappCheckoutEnabled: Boolean(input.whatsappCheckoutEnabled),
       whatsappCheckoutNumbers: numbers ?? {},
+      maintenanceMode: Boolean(input.maintenanceMode),
     },
     update: {
       ...(input.nonAfricaMarkupEnabled !== undefined
@@ -153,6 +163,9 @@ export async function upsertStoreConfig(
         ? { whatsappCheckoutEnabled: Boolean(input.whatsappCheckoutEnabled) }
         : {}),
       ...(numbers !== undefined ? { whatsappCheckoutNumbers: numbers } : {}),
+      ...(input.maintenanceMode !== undefined
+        ? { maintenanceMode: Boolean(input.maintenanceMode) }
+        : {}),
     },
   });
 
@@ -182,6 +195,7 @@ export async function ensureDefaultStoreConfig() {
       nonAfricaMarkupUsd: DEFAULT_STORE_CONFIG.nonAfricaMarkupUsd,
       whatsappCheckoutEnabled: DEFAULT_STORE_CONFIG.whatsappCheckoutEnabled,
       whatsappCheckoutNumbers: {},
+      maintenanceMode: DEFAULT_STORE_CONFIG.maintenanceMode,
     },
     update: {},
   });
