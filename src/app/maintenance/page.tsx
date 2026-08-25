@@ -26,7 +26,7 @@ export default function MaintenancePage() {
           Need help?{" "}
           <a
             href="mailto:support@cosyaura.com"
-            className="text-gold hover:text-gold-light underline underline-offset-2"
+            className="text-[#3b66a0] hover:text-[#3b66a0] visited:text-[#3b66a0] underline underline-offset-2"
           >
             support@cosyaura.com
           </a>
