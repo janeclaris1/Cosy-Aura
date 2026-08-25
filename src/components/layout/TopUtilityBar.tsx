@@ -75,7 +75,7 @@ export function TopUtilityBar() {
         <div className="hidden md:flex items-center gap-3 shrink-0 text-white/80">
           <a
             href="mailto:support@cosyaura.com"
-            className="font-semibold text-white hover:text-[#FFD200] transition-colors duration-organic ease-organic"
+            className="font-semibold text-[#3b66a0] hover:text-[#3b66a0] underline underline-offset-2 transition-colors duration-organic ease-organic"
           >
             support@cosyaura.com
           </a>

@@ -13,8 +13,10 @@ import {
 } from "@/lib/scent-intelligence";
 import { formatPrice, cn } from "@/lib/utils";
 import { useLocaleStore } from "@/lib/locale-store";
+import { ProductCard } from "@/components/products/ProductCard";
 import Image from "next/image";
 
+/** Minimal card used by occasion / gift finders. */
 function ResultGrid({ items }: { items: CatalogFragrance[] }) {
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
@@ -42,6 +44,45 @@ function ResultGrid({ items }: { items: CatalogFragrance[] }) {
           <p className="text-sm font-semibold">{f.model}</p>
           <p className="text-sm text-gold">{formatPrice(f.price, currency)}</p>
         </Link>
+      ))}
+    </div>
+  );
+}
+
+export type RecommendCatalogFragrance = CatalogFragrance & {
+  stock?: number;
+  brand: { name: string; slug?: string };
+  countryStocks?: { country: string; inStock: boolean }[];
+  viewCount?: number;
+  likeCount?: number;
+};
+
+/** @deprecated Use RecommendCatalogFragrance */
+export type SeasonalCatalogFragrance = RecommendCatalogFragrance;
+
+function RecommendProductGrid({
+  items,
+  emptyHint = "try another option",
+}: {
+  items: RecommendCatalogFragrance[];
+  emptyHint?: string;
+}) {
+  if (!items.length) {
+    return (
+      <p className="text-sm text-wf-gray py-8">
+        No strong matches yet - {emptyHint} or{" "}
+        <Link href="/fragrances" className="text-gold hover:underline">
+          browse the full catalog
+        </Link>
+        .
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-4 gap-y-8 md:gap-x-6">
+      {items.map((f) => (
+        <ProductCard key={f.id} fragrance={f} animate={false} />
       ))}
     </div>
   );
@@ -82,15 +123,21 @@ export function OccasionRecs({ catalog }: { catalog: CatalogFragrance[] }) {
   );
 }
 
-export function SeasonalGuide({ catalog }: { catalog: CatalogFragrance[] }) {
+export function SeasonalGuide({
+  catalog,
+}: {
+  catalog: RecommendCatalogFragrance[];
+}) {
   const [id, setId] = useState<string>(SEASONS[0].id);
   const season = SEASONS.find((s) => s.id === id)!;
   const results = useMemo(() => {
     return [...catalog]
       .map((f) => ({ f, score: scoreForSeason(f, id) }))
       .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
+      .sort(
+        (a, b) =>
+          b.score - a.score || a.f.brand.name.localeCompare(b.f.brand.name)
+      )
       .map((x) => x.f);
   }, [catalog, id]);
 
@@ -104,7 +151,9 @@ export function SeasonalGuide({ catalog }: { catalog: CatalogFragrance[] }) {
             onClick={() => setId(s.id)}
             className={cn(
               "px-3 py-2 text-sm border transition-colors",
-              id === s.id ? "border-gold bg-highlight/20" : "border-wf-border hover:border-gold"
+              id === s.id
+                ? "border-gold bg-highlight/20"
+                : "border-wf-border hover:border-gold"
             )}
           >
             {s.label}
@@ -112,25 +161,35 @@ export function SeasonalGuide({ catalog }: { catalog: CatalogFragrance[] }) {
         ))}
       </div>
       <p className="text-sm text-wf-gray mb-3">{season.blurb}</p>
-      <ul className="text-sm text-mocha mb-6 space-y-1 list-disc pl-5">
+      <ul className="text-sm text-mocha mb-4 space-y-1 list-disc pl-5">
         {season.tips.map((t) => (
           <li key={t}>{t}</li>
         ))}
       </ul>
-      <ResultGrid items={results} />
+      <p className="text-xs uppercase tracking-[0.14em] text-wf-gray mb-6">
+        {results.length} {results.length === 1 ? "fragrance" : "fragrances"} ·
+        prices include store deals
+      </p>
+      <RecommendProductGrid items={results} emptyHint="try another season" />
     </div>
   );
 }
 
-export function GiftFinder({ catalog }: { catalog: CatalogFragrance[] }) {
+export function GiftFinder({
+  catalog,
+}: {
+  catalog: RecommendCatalogFragrance[];
+}) {
   const [id, setId] = useState<string>(GIFT_PERSONAS[0].id);
   const persona = GIFT_PERSONAS.find((p) => p.id === id)!;
   const results = useMemo(() => {
     return [...catalog]
       .map((f) => ({ f, score: scoreForGiftPersona(f, id) }))
       .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
+      .sort(
+        (a, b) =>
+          b.score - a.score || a.f.brand.name.localeCompare(b.f.brand.name)
+      )
       .map((x) => x.f);
   }, [catalog, id]);
 
@@ -144,7 +203,9 @@ export function GiftFinder({ catalog }: { catalog: CatalogFragrance[] }) {
             onClick={() => setId(p.id)}
             className={cn(
               "text-left p-4 border transition-colors",
-              id === p.id ? "border-gold bg-highlight/15" : "border-wf-border hover:border-gold"
+              id === p.id
+                ? "border-gold bg-highlight/15"
+                : "border-wf-border hover:border-gold"
             )}
           >
             <p className="font-playfair text-lg mb-1">{p.label}</p>
@@ -152,10 +213,20 @@ export function GiftFinder({ catalog }: { catalog: CatalogFragrance[] }) {
           </button>
         ))}
       </div>
-      <p className="text-sm text-wf-gray mb-6">
-        Gifts for <span className="text-espresso font-medium">{persona.label}</span>
+      <p className="text-sm text-wf-gray mb-3">
+        Gifts for{" "}
+        <span className="text-espresso font-medium">{persona.label}</span>
+        {" — "}
+        {persona.blurb}
       </p>
-      <ResultGrid items={results} />
+      <p className="text-xs uppercase tracking-[0.14em] text-wf-gray mb-6">
+        {results.length} {results.length === 1 ? "fragrance" : "fragrances"} ·
+        prices include store deals
+      </p>
+      <RecommendProductGrid
+        items={results}
+        emptyHint="try another personality"
+      />
     </div>
   );
 }
