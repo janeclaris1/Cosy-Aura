@@ -1,42 +1,37 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { isMaintenanceBypassPath } from "@/lib/maintenance-paths";
 
 const adminApiHits = new Map<string, number[]>();
-
-let maintenanceCache: { at: number; enabled: boolean } | null = null;
-const MAINTENANCE_CACHE_MS = 8_000;
 
 function isMaintenanceEnvForced() {
   const value = process.env.MAINTENANCE_MODE?.trim().toLowerCase();
   return value === "true" || value === "1" || value === "yes";
 }
 
+/**
+ * Edge-safe check: env force, else a same-origin probe (no long-lived cache).
+ * Page redirects are also enforced in root layout via a fresh DB read.
+ */
 async function isMaintenanceEnabled(req: NextRequest): Promise<boolean> {
   if (isMaintenanceEnvForced()) return true;
 
-  if (
-    maintenanceCache &&
-    Date.now() - maintenanceCache.at < MAINTENANCE_CACHE_MS
-  ) {
-    return maintenanceCache.enabled;
-  }
-
   try {
     const probe = new URL("/api/store/maintenance", req.nextUrl.origin);
+    probe.searchParams.set("_", String(Date.now()));
     const res = await fetch(probe, {
       cache: "no-store",
-      headers: { "x-maintenance-probe": "1" },
+      headers: {
+        "x-maintenance-probe": "1",
+        accept: "application/json",
+      },
+      signal: AbortSignal.timeout(2500),
     });
-    if (!res.ok) {
-      maintenanceCache = { at: Date.now(), enabled: false };
-      return false;
-    }
+    if (!res.ok) return false;
     const data = (await res.json()) as { enabled?: boolean };
-    const enabled = Boolean(data.enabled);
-    maintenanceCache = { at: Date.now(), enabled };
-    return enabled;
+    return Boolean(data.enabled);
   } catch {
-    return maintenanceCache?.enabled ?? false;
+    return false;
   }
 }
 
@@ -61,6 +56,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", pathname);
+
   const maintenanceOn = await isMaintenanceEnabled(req);
 
   // When maintenance is off, don't leave visitors stuck on /maintenance
@@ -70,20 +68,11 @@ export async function middleware(req: NextRequest) {
 
   // Maintenance mode: redirect storefront to /maintenance
   // Keep admin + auth APIs available so you can still manage the site.
-  if (maintenanceOn) {
-    const allowedDuringMaintenance =
-      pathname.startsWith("/maintenance") ||
-      pathname.startsWith("/admin") ||
-      pathname.startsWith("/api/admin") ||
-      pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/api/health");
-
-    if (!allowedDuringMaintenance) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/maintenance";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
+  if (maintenanceOn && !isMaintenanceBypassPath(pathname)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/maintenance";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   // Admin route protection (except login + set-password)
@@ -130,9 +119,6 @@ export async function middleware(req: NextRequest) {
     recent.push(now);
     adminApiHits.set(key, recent);
   }
-
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-pathname", pathname);
 
   return NextResponse.next({
     request: { headers: requestHeaders },

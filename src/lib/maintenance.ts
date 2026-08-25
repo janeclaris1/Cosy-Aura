@@ -1,6 +1,9 @@
 import "server-only";
 
-import { getStoreConfig } from "@/lib/store-config";
+import { prisma } from "@/lib/prisma";
+import { isMaintenanceBypassPath } from "@/lib/maintenance-paths";
+
+export { isMaintenanceBypassPath };
 
 export function isMaintenanceEnvForced(): boolean {
   const value = process.env.MAINTENANCE_MODE?.trim().toLowerCase();
@@ -15,12 +18,19 @@ export type MaintenanceStatus = {
   storeEnabled: boolean;
 };
 
+/**
+ * Always reads the DB flag fresh (no StoreConfig TTL cache) so admin toggles
+ * apply on the next request.
+ */
 export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
   const envForced = isMaintenanceEnvForced();
   let storeEnabled = false;
   try {
-    const config = await getStoreConfig();
-    storeEnabled = Boolean(config.maintenanceMode);
+    const row = await prisma.storeConfig.findUnique({
+      where: { id: "default" },
+      select: { maintenanceMode: true },
+    });
+    storeEnabled = Boolean(row?.maintenanceMode);
   } catch {
     storeEnabled = false;
   }

@@ -6,6 +6,7 @@ import {
   upsertStoreConfig,
   type WhatsAppCheckoutNumbers,
 } from "@/lib/store-config";
+import { revalidatePath } from "next/cache";
 
 export async function GET() {
   const { error } = await requireAdminApi("settings.write");
@@ -70,6 +71,11 @@ export async function PATCH(req: Request) {
       maintenanceMode: config.maintenanceMode,
     },
   });
+
+  if (body.maintenanceMode !== undefined) {
+    revalidatePath("/", "layout");
+    revalidatePath("/maintenance");
+  }
 
   return NextResponse.json(config);
 }

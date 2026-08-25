@@ -6,6 +6,7 @@ import {
   Petit_Formal_Script,
 } from "next/font/google";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -26,6 +27,10 @@ import {
 } from "@/lib/seo";
 import { LOCALE_COOKIE, parseLocaleCookie } from "@/lib/locale-cookie";
 import { applyLocaleCookieToMoney } from "@/lib/money-display";
+import {
+  getMaintenanceStatus,
+  isMaintenanceBypassPath,
+} from "@/lib/maintenance";
 
 /** Display / heading face - Google Fonts Alice */
 const alice = Alice({
@@ -72,7 +77,17 @@ export default async function RootLayout({
   const headerList = await headers();
   const cookieStore = await cookies();
   const pathname = headerList.get("x-pathname") || "";
-  const isMaintenance = pathname.startsWith("/maintenance");
+  const isMaintenancePage = pathname.startsWith("/maintenance");
+
+  // Reliable storefront gate (fresh DB read). Middleware also redirects when its
+  // probe succeeds; this catches cases where the Edge self-fetch fails.
+  if (!isMaintenanceBypassPath(pathname)) {
+    const maintenance = await getMaintenanceStatus();
+    if (maintenance.enabled) {
+      redirect("/maintenance");
+    }
+  }
+
   const loc = parseLocaleCookie(cookieStore.get(LOCALE_COOKIE)?.value);
   applyLocaleCookieToMoney(loc);
   const orgLd = buildOrganizationJsonLd();
@@ -112,7 +127,7 @@ export default async function RootLayout({
         <GoogleAnalytics />
         <MetaPixel />
         <Providers initialLocale={loc}>
-          {isMaintenance ? (
+          {isMaintenancePage ? (
             children
           ) : (
             <>
