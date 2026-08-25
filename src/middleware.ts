@@ -9,32 +9,6 @@ function isMaintenanceEnvForced() {
   return value === "true" || value === "1" || value === "yes";
 }
 
-/**
- * Edge-safe check: env force, else a same-origin probe (no long-lived cache).
- * Page redirects are also enforced in root layout via a fresh DB read.
- */
-async function isMaintenanceEnabled(req: NextRequest): Promise<boolean> {
-  if (isMaintenanceEnvForced()) return true;
-
-  try {
-    const probe = new URL("/api/store/maintenance", req.nextUrl.origin);
-    probe.searchParams.set("_", String(Date.now()));
-    const res = await fetch(probe, {
-      cache: "no-store",
-      headers: {
-        "x-maintenance-probe": "1",
-        accept: "application/json",
-      },
-      signal: AbortSignal.timeout(2500),
-    });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { enabled?: boolean };
-    return Boolean(data.enabled);
-  } catch {
-    return false;
-  }
-}
-
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -51,24 +25,24 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Always allow the maintenance probe so middleware can read StoreConfig.
-  if (pathname === "/api/store/maintenance") {
+  // Probe + health must never enter redirect logic.
+  if (
+    pathname === "/api/store/maintenance" ||
+    pathname.startsWith("/api/health")
+  ) {
     return NextResponse.next();
   }
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", pathname);
 
-  const maintenanceOn = await isMaintenanceEnabled(req);
-
-  // When maintenance is off, don't leave visitors stuck on /maintenance
-  if (!maintenanceOn && pathname.startsWith("/maintenance")) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-
-  // Maintenance mode: redirect storefront to /maintenance
-  // Keep admin + auth APIs available so you can still manage the site.
-  if (maintenanceOn && !isMaintenanceBypassPath(pathname)) {
+  /**
+   * Only env can force maintenance in middleware.
+   * DB-backed admin toggle is enforced in root layout (fresh Prisma read).
+   * Do NOT self-fetch /api/store/maintenance here — on Hostinger that often
+   * fails and used to bounce /maintenance ↔ / forever.
+   */
+  if (isMaintenanceEnvForced() && !isMaintenanceBypassPath(pathname)) {
     const url = req.nextUrl.clone();
     url.pathname = "/maintenance";
     url.search = "";

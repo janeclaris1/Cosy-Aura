@@ -76,12 +76,22 @@ export default async function RootLayout({
 }) {
   const headerList = await headers();
   const cookieStore = await cookies();
-  const pathname = headerList.get("x-pathname") || "";
+  const pathname =
+    headerList.get("x-pathname") ||
+    headerList.get("x-invoke-path") ||
+    "";
   const isMaintenancePage = pathname.startsWith("/maintenance");
 
-  // Reliable storefront gate (fresh DB read). Middleware also redirects when its
-  // probe succeeds; this catches cases where the Edge self-fetch fails.
-  if (!isMaintenanceBypassPath(pathname)) {
+  /**
+   * DB-backed maintenance (admin toggle). Single source of truth here —
+   * middleware must not bounce /maintenance based on a failed Edge probe.
+   */
+  if (isMaintenancePage) {
+    const maintenance = await getMaintenanceStatus();
+    if (!maintenance.enabled) {
+      redirect("/");
+    }
+  } else if (pathname && !isMaintenanceBypassPath(pathname)) {
     const maintenance = await getMaintenanceStatus();
     if (maintenance.enabled) {
       redirect("/maintenance");
