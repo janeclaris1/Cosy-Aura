@@ -1,17 +1,43 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { writeAuditLog } from "./audit";
+
+const oauthProviders: NextAuthOptions["providers"] = [];
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  oauthProviders.push(
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    })
+  );
+}
+
+if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
+  oauthProviders.push(
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    })
+  );
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
   session: { strategy: "jwt" },
   pages: {
     signIn: "/account/login",
+    error: "/account/login",
   },
   providers: [
+    ...oauthProviders,
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -113,20 +139,43 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return;
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { memberDiscount: true },
+        });
+        if (user.email) {
+          await prisma.newsletterSubscriber.upsert({
+            where: { email: user.email.toLowerCase() },
+            update: {},
+            create: { email: user.email.toLowerCase() },
+          });
+        }
+      } catch (error) {
+        console.error("[auth] createUser follow-up failed", error);
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role?: string }).role;
-        token.memberDiscount = Boolean(
-          (user as { memberDiscount?: boolean }).memberDiscount
-        );
-      } else if (token.sub && token.memberDiscount === undefined) {
+      const userId = user?.id || token.sub;
+      if (userId && (user || token.memberDiscount === undefined || !token.role)) {
         const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
+          where: { id: userId },
           select: { memberDiscount: true, role: true },
         });
-        token.memberDiscount = Boolean(dbUser?.memberDiscount);
-        if (dbUser?.role) token.role = dbUser.role;
+        if (dbUser) {
+          token.memberDiscount = Boolean(dbUser.memberDiscount);
+          token.role = dbUser.role;
+        } else if (user) {
+          token.role = (user as { role?: string }).role || "USER";
+          token.memberDiscount = Boolean(
+            (user as { memberDiscount?: boolean }).memberDiscount
+          );
+        }
       }
       return token;
     },

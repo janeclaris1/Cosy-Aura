@@ -5,12 +5,27 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { SocialAuthButtons } from "@/components/account/SocialAuthButtons";
 
-export default function CustomerLoginForm() {
+const OAUTH_ERRORS: Record<string, string> = {
+  OAuthAccountNotLinked:
+    "This email is already registered. Sign in with email and password, or the social account you used first.",
+  OAuthSignin: "Could not start social sign-in. Please try again.",
+  OAuthCallback: "Social sign-in was cancelled or failed. Please try again.",
+  OAuthCreateAccount: "Could not create your account from that social login.",
+  Callback: "Sign-in callback failed. Please try again.",
+  AccessDenied: "Access was denied. Please try another method.",
+};
+
+export default function CustomerLoginForm({
+  oauthError,
+}: {
+  oauthError?: string;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(OAUTH_ERRORS[oauthError || ""] || "");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,6 +59,10 @@ export default function CustomerLoginForm() {
         <p className="text-sm text-wf-gray">
           Access your account, orders, and wishlist.
         </p>
+      </div>
+
+      <div className="mb-6">
+        <SocialAuthButtons />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

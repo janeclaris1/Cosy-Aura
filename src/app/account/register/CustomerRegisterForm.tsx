@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { SocialAuthButtons } from "@/components/account/SocialAuthButtons";
 
 export default function CustomerRegisterForm() {
   const router = useRouter();
@@ -70,6 +71,10 @@ export default function CustomerRegisterForm() {
           Join the Cosy Aura list and unlock a permanent 5% member discount on
           every order when you shop signed in.
         </p>
+      </div>
+
+      <div className="mb-6">
+        <SocialAuthButtons />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

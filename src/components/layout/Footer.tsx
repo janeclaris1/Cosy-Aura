@@ -81,6 +81,7 @@ const COMPANY_LINKS = [
   { key: "footer.careers", href: "/careers" },
   { key: "footer.press", href: "/press" },
   { key: "footer.sustainability", href: "/sustainability" },
+  { key: "footer.csr", href: "/corporate-social-responsibility" },
 ];
 
 function FooterInfoSection({
