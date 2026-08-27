@@ -1,5 +1,7 @@
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { mailchimpConfigured } from "@/lib/mailchimp";
+import { SyncMailchimpButton } from "@/components/admin/SyncMailchimpButton";
 
 export default async function AdminSubscribersPage() {
   await requireAdminPage();
@@ -7,32 +9,37 @@ export default async function AdminSubscribersPage() {
   const subscribers = await prisma.newsletterSubscriber.findMany({
     orderBy: { createdAt: "desc" },
   });
+  const configured = mailchimpConfigured();
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8 gap-4">
+      <div className="flex flex-wrap items-start justify-between mb-8 gap-4">
         <div>
           <h1 className="font-playfair text-3xl">Newsletter</h1>
           <p className="text-sm text-wf-gray mt-1">
             {subscribers.length} subscriber{subscribers.length === 1 ? "" : "s"}
+            {configured ? " · Mailchimp connected" : ""}
           </p>
         </div>
-        <a
-          href={`data:text/csv;charset=utf-8,${encodeURIComponent(
-            ["email,phone,subscribed_at"]
-              .concat(
-                subscribers.map(
-                  (s) =>
-                    `${s.email},${s.phone || ""},${s.createdAt.toISOString()}`
+        <div className="flex flex-wrap items-start gap-3">
+          <a
+            href={`data:text/csv;charset=utf-8,${encodeURIComponent(
+              ["email,phone,subscribed_at"]
+                .concat(
+                  subscribers.map(
+                    (s) =>
+                      `${s.email},${s.phone || ""},${s.createdAt.toISOString()}`
+                  )
                 )
-              )
-              .join("\n")
-          )}`}
-          download="newsletter-subscribers.csv"
-          className="btn-outline text-sm py-2 px-4"
-        >
-          Export CSV
-        </a>
+                .join("\n")
+            )}`}
+            download="newsletter-subscribers.csv"
+            className="btn-outline text-sm py-2 px-4"
+          >
+            Export CSV
+          </a>
+          <SyncMailchimpButton configured={configured} count={subscribers.length} />
+        </div>
       </div>
 
       <div className="border border-wf-border rounded-lg overflow-hidden bg-white">

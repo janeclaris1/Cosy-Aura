@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { upsertMailchimpContact } from "@/lib/mailchimp";
 
 function normalizePhone(raw: string): string {
   return raw.trim().replace(/[\s()-]/g, "");
@@ -86,6 +87,12 @@ export async function POST(req: Request) {
         where: { email },
         update: { phone },
         create: { email, phone },
+      });
+      void upsertMailchimpContact({
+        email,
+        phone,
+        name: name || null,
+        tags: ["newsletter", "account-signup"],
       });
     }
 

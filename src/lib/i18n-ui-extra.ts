@@ -50,6 +50,18 @@ export const EXTRA_EN: Messages = {
     "Got it — thanks{name}! 😊 I’ll use these only to help with your Cosy Aura request.",
   "support.contactRequired":
     "I’d love to help with that — would you mind filling in the short form above first? Your email and WhatsApp let us reach you if we get disconnected, and it only takes a moment 😊",
+  "support.contactDecline":
+    "I understand — we’ll need your email and WhatsApp in the form above to continue this chat. Once you’ve shared them, I’m happy to help right away.",
+  "support.contactPrivacy":
+    "Totally fair — you don’t have to overshare. We only use your email and WhatsApp to continue this chat if it drops, never to spam you. The form above is the quickest way; or email us anytime at support@cosyaura.com / use Contact if you’d rather not chat here.",
+  "support.contactWhy":
+    "Good question — chat can drop on mobile, and those two details let us pick up where we left off on WhatsApp or email. We won’t add you to marketing from this form. Once it’s filled, I can help with scents, delivery, or orders right away.",
+  "support.contactSpam":
+    "You’re right to be careful. We won’t sell your details or blast you with ads from this chat form — it’s only so we can follow up on what you asked. Prefer not to? Email support@cosyaura.com or open Contact and we’ll help there.",
+  "support.contactAlready":
+    "If you’ve already shared them, please pop them into the form above once so I can unlock the chat — then we’re good to go. Having trouble with the form? Email support@cosyaura.com and we’ll help.",
+  "support.contactAlternative":
+    "Happy to meet you there too — WhatsApp and email work great. For this live chat, the short form above unlocks replies so we don’t lose your thread. Or reach us via Contact / support@cosyaura.com anytime.",
   "support.contactInvalid":
     "Please enter a valid email and WhatsApp number (with country code).",
   "support.placeholder": "Ask about fragrances, delivery, or orders…",
@@ -109,6 +121,18 @@ export const EXTRA_FR: Messages = {
     "Parfait — merci{name} ! 😊 Je n’utiliserai ces infos que pour vous aider.",
   "support.contactRequired":
     "Avec plaisir — pourriez-vous d’abord remplir le petit formulaire ci-dessus ? Votre e-mail et WhatsApp nous permettent de vous joindre si la conversation se coupe, et cela ne prend qu’un instant 😊",
+  "support.contactDecline":
+    "Je comprends — nous avons besoin de votre e-mail et WhatsApp dans le formulaire ci-dessus pour continuer ce chat. Une fois renseignés, je pourrai vous aider tout de suite.",
+  "support.contactPrivacy":
+    "C’est tout à fait compréhensible — vous n’avez pas à trop partager. Nous n’utilisons votre e-mail et WhatsApp que pour reprendre le fil si le chat se coupe, jamais pour du spam. Le formulaire ci-dessus est le plus rapide ; sinon écrivez à support@cosyaura.com ou passez par Contact.",
+  "support.contactWhy":
+    "Bonne question — le chat peut se couper sur mobile, et ces deux infos nous permettent de reprendre sur WhatsApp ou par e-mail. Ce formulaire ne vous inscrit pas au marketing. Une fois rempli, je peux vous aider sur les parfums, la livraison ou les commandes.",
+  "support.contactSpam":
+    "Vous avez raison d’être prudent. Nous ne vendons pas vos données et n’envoyons pas de pubs via ce formulaire — c’est uniquement pour suivre votre demande. Vous préférez éviter ? Écrivez à support@cosyaura.com ou ouvrez Contact.",
+  "support.contactAlready":
+    "Si vous les avez déjà partagés, saisissez-les une fois dans le formulaire ci-dessus pour débloquer le chat. Un souci avec le formulaire ? Écrivez à support@cosyaura.com.",
+  "support.contactAlternative":
+    "Avec plaisir aussi par WhatsApp ou e-mail. Pour ce chat en direct, le court formulaire ci-dessus débloque les réponses pour ne pas perdre votre fil. Sinon Contact / support@cosyaura.com à tout moment.",
   "support.contactInvalid":
     "Veuillez indiquer un e-mail et un numéro WhatsApp valides (avec indicatif).",
   "support.placeholder": "Questions sur les parfums, la livraison ou les commandes…",
@@ -168,6 +192,18 @@ export const EXTRA_ES: Messages = {
     "¡Listo — gracias{name}! 😊 Solo usaré estos datos para ayudarte.",
   "support.contactRequired":
     "Encantada de ayudar — ¿podrías completar el breve formulario de arriba primero? Tu correo y WhatsApp nos permiten contactarte si nos desconectamos, y solo toma un momento 😊",
+  "support.contactDecline":
+    "Lo entiendo — necesitamos tu correo y WhatsApp en el formulario de arriba para continuar este chat. Cuando los compartas, te ayudo de inmediato.",
+  "support.contactPrivacy":
+    "Es totalmente válido — no hace falta compartir de más. Solo usamos tu correo y WhatsApp para retomar el chat si se corta, nunca para spam. El formulario de arriba es lo más rápido; o escribe a support@cosyaura.com / Contacto.",
+  "support.contactWhy":
+    "Buena pregunta — el chat puede cortarse en el móvil, y esos datos nos dejan continuar por WhatsApp o correo. Este formulario no te apunta a marketing. Cuando lo completes, te ayudo con fragancias, entrega o pedidos.",
+  "support.contactSpam":
+    "Haces bien en cuidarte. No vendemos tus datos ni te bombardeamos con anuncios desde este formulario — solo para seguir tu consulta. ¿Prefieres no? Escribe a support@cosyaura.com o abre Contacto.",
+  "support.contactAlready":
+    "Si ya los compartiste, introdúcelos una vez en el formulario de arriba para desbloquear el chat. ¿Problemas con el formulario? Escribe a support@cosyaura.com.",
+  "support.contactAlternative":
+    "También por WhatsApp o correo. En este chat en vivo, el breve formulario de arriba desbloquea las respuestas para no perder el hilo. O Contacto / support@cosyaura.com cuando quieras.",
   "support.contactInvalid":
     "Introduce un correo y un WhatsApp válidos (con código de país).",
   "support.placeholder": "Pregunta por fragancias, entrega o pedidos…",
@@ -227,6 +263,18 @@ export const EXTRA_PT: Messages = {
     "Perfeito — obrigado{name}! 😊 Usarei estes dados apenas para o ajudar.",
   "support.contactRequired":
     "Com todo o gosto — pode preencher o pequeno formulário acima primeiro? O e-mail e WhatsApp permitem contactá-lo se a conversa cair, e demora só um momento 😊",
+  "support.contactDecline":
+    "Compreendo — precisamos do seu e-mail e WhatsApp no formulário acima para continuar este chat. Assim que partilhar, ajudo de imediato.",
+  "support.contactPrivacy":
+    "Faz todo o sentido — não precisa de partilhar demais. Só usamos o e-mail e WhatsApp para retomar o chat se cair, nunca para spam. O formulário acima é o mais rápido; ou escreva para support@cosyaura.com / Contacto.",
+  "support.contactWhy":
+    "Boa pergunta — o chat pode cair no telemóvel, e esses dados permitem continuar por WhatsApp ou e-mail. Este formulário não o mete em marketing. Depois de preencher, ajudo com fragrâncias, entrega ou encomendas.",
+  "support.contactSpam":
+    "Tem razão em ter cuidado. Não vendemos os seus dados nem enviamos anúncios a partir deste formulário — só para seguir o seu pedido. Prefere não? Escreva para support@cosyaura.com ou abra Contacto.",
+  "support.contactAlready":
+    "Se já os partilhou, introduza-os uma vez no formulário acima para desbloquear o chat. Problemas com o formulário? Escreva para support@cosyaura.com.",
+  "support.contactAlternative":
+    "Também por WhatsApp ou e-mail. Neste chat ao vivo, o pequeno formulário acima desbloqueia as respostas para não perder o fio. Ou Contacto / support@cosyaura.com quando quiser.",
   "support.contactInvalid":
     "Indique um e-mail e um WhatsApp válidos (com indicativo).",
   "support.placeholder": "Pergunte sobre fragrâncias, entrega ou encomendas…",
@@ -286,6 +334,18 @@ export const EXTRA_DE: Messages = {
     "Super — danke{name}! 😊 Ich nutze diese Angaben nur, um Ihnen zu helfen.",
   "support.contactRequired":
     "Gerne helfe ich Ihnen — würden Sie bitte zuerst das kurze Formular oben ausfüllen? Mit E-Mail und WhatsApp erreichen wir Sie, falls die Verbindung abbricht — es dauert nur einen Moment 😊",
+  "support.contactDecline":
+    "Verstehe — wir brauchen Ihre E-Mail und WhatsApp im Formular oben, um diesen Chat fortzusetzen. Sobald Sie sie geteilt haben, helfe ich Ihnen gerne sofort weiter.",
+  "support.contactPrivacy":
+    "Völlig verständlich — Sie müssen nicht zu viel teilen. Wir nutzen E-Mail und WhatsApp nur, um den Chat fortzusetzen, wenn er abbricht — nie für Spam. Das Formular oben geht am schnellsten; sonst support@cosyaura.com oder Kontakt.",
+  "support.contactWhy":
+    "Gute Frage — der Chat kann auf dem Handy abbrechen, und mit diesen Angaben können wir per WhatsApp oder E-Mail weitermachen. Dieses Formular meldet Sie nicht für Marketing an. Danach helfe ich gerne bei Düften, Lieferung oder Bestellungen.",
+  "support.contactSpam":
+    "Vorsicht ist richtig. Wir verkaufen Ihre Daten nicht und schicken keine Werbung über dieses Formular — nur für Ihre Anfrage. Lieber nicht? Schreiben Sie an support@cosyaura.com oder öffnen Sie Kontakt.",
+  "support.contactAlready":
+    "Wenn Sie sie schon geteilt haben, bitte einmal oben im Formular eintragen, damit der Chat freigeschaltet wird. Probleme mit dem Formular? support@cosyaura.com.",
+  "support.contactAlternative":
+    "Gerne auch per WhatsApp oder E-Mail. In diesem Live-Chat schaltet das kurze Formular oben die Antworten frei, damit wir den Faden nicht verlieren. Oder Kontakt / support@cosyaura.com jederzeit.",
   "support.contactInvalid":
     "Bitte gültige E-Mail und WhatsApp-Nummer (mit Vorwahl) eingeben.",
   "support.placeholder": "Fragen zu Düften, Lieferung oder Bestellungen…",

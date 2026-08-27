@@ -181,12 +181,12 @@ export const useLocaleStore = create<LocaleState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         state.ready = true;
-        setMoneyDisplay({ locale: state.locale, rates: state.rates });
+        // Do not call setMoneyDisplay here — cookie snapshot is locked for
+        // hydration. LocaleProvider releases the lock after mount.
         useCartStore.getState().setCurrency(state.currency);
-        if (typeof document !== "undefined") {
+        if (typeof document !== "undefined" && !window.__CA_LOC?.locale) {
           document.documentElement.lang = state.locale || state.language;
         }
-        persistPrefs(state);
       },
     }
   )

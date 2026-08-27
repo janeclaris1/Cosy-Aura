@@ -11,6 +11,10 @@ import { usePremiumStore } from "@/lib/premium-store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { readConsent } from "@/lib/cookie-consent";
 import type { SupportCartLine, SupportCartRemoval } from "@/lib/support-types";
+import {
+  classifyContactGateIntent,
+  contactGateReplyKey,
+} from "@/lib/support-contact-gate";
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -295,12 +299,14 @@ export function SupportChat() {
       return;
     }
 
-    // Enforce form completion before normal chat continues.
+    // Enforce form completion before normal chat continues —
+    // reply intelligently to privacy / “why” objections instead of one canned line.
     if (!contactCollected) {
+      const replyKey = contactGateReplyKey(classifyContactGateIntent(text));
       const next: Turn[] = [
         ...messages,
         { role: "user", content: text },
-        { role: "assistant", content: t("support.contactRequired") },
+        { role: "assistant", content: t(replyKey) },
       ];
       setMessages(next);
       setInput("");
@@ -504,19 +510,20 @@ export function SupportChat() {
         </div>
       )}
 
-      <div className="flex items-end gap-3">
+      <div className="flex flex-col items-end gap-2.5">
         {!open && (
           <div className="motion-safe:animate-chat-teaser-float motion-reduce:animate-none">
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="relative max-w-[14rem] rounded-2xl rounded-br-sm bg-white border border-wf-border px-4 py-2.5 text-left shadow-lg hover:border-[#03045e]/40 transition-colors animate-chat-teaser-in motion-reduce:animate-none"
+              className="relative rounded-full bg-white px-4 py-2.5 text-left shadow-[0_4px_14px_rgba(3,4,94,0.12)] hover:shadow-[0_6px_18px_rgba(3,4,94,0.16)] transition-shadow animate-chat-teaser-in motion-reduce:animate-none"
             >
-              <span className="block font-inter text-sm font-medium text-[#03045e] leading-snug">
+              <span className="block whitespace-nowrap font-inter text-sm font-medium text-[#03045e] leading-snug">
                 {t("support.teaser")}
               </span>
+              {/* Tail pointing down toward the chat icon */}
               <span
-                className="pointer-events-none absolute top-1/2 -right-1.5 w-3 h-3 -translate-y-1/2 rotate-45 bg-white border-r border-t border-wf-border"
+                className="pointer-events-none absolute right-6 -bottom-1.5 h-3 w-3 rotate-45 bg-white shadow-[2px_2px_4px_rgba(3,4,94,0.06)]"
                 aria-hidden
               />
             </button>

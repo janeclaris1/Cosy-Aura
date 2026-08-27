@@ -11,17 +11,28 @@ let display: MoneyDisplay = {
   rates: { GHS: 1 },
 };
 
+/**
+ * While true, formatPrice reads the cookie snapshot so the first client paint
+ * matches SSR — even if zustand persist rehydrates a different locale.
+ */
+let hydrationLock: MoneyDisplay | null = null;
+
 export function setMoneyDisplay(next: Partial<MoneyDisplay>) {
   if (next.locale) display.locale = next.locale;
   if (next.rates) display.rates = { GHS: 1, ...next.rates };
 }
 
 export function getMoneyDisplay(): MoneyDisplay {
-  return display;
+  return hydrationLock ?? display;
+}
+
+/** Call after LocaleProvider has hydrated so live locale changes apply. */
+export function releaseMoneyHydrationLock() {
+  hydrationLock = null;
 }
 
 export function convertFromGhs(amountGhs: number, currency = "GHS"): number {
-  return Number(amountGhs || 0) * rateFromGhs(display.rates, currency);
+  return Number(amountGhs || 0) * rateFromGhs(getMoneyDisplay().rates, currency);
 }
 
 export function applyLocaleCookieToMoney(cookie: LocaleCookie | null | undefined) {
@@ -38,14 +49,20 @@ export function applyLocaleCookieToMoney(cookie: LocaleCookie | null | undefined
 export function bootstrapClientMoneyDisplay() {
   if (typeof window === "undefined") return;
   const snap = window.__CA_LOC;
-  if (!snap?.currency || !snap.locale) return;
-  applyLocaleCookieToMoney({
-    language: snap.language,
-    currency: snap.currency,
-    locale: snap.locale,
-    country: snap.country,
-    rate: snap.rate,
-  });
+  if (snap?.currency && snap.locale) {
+    applyLocaleCookieToMoney({
+      language: snap.language,
+      currency: snap.currency,
+      locale: snap.locale,
+      country: snap.country,
+      rate: snap.rate,
+    });
+  }
+  // Freeze formatting to this snapshot until React locale hydration finishes.
+  hydrationLock = {
+    locale: display.locale,
+    rates: { ...display.rates },
+  };
 }
 
 if (typeof window !== "undefined") {

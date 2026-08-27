@@ -306,7 +306,7 @@ export function Footer() {
       <div className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} COSY AURA. {t("footer.rights")}
+            &copy; {new Date().getFullYear()} COSY AURA LLC. {t("footer.rights")}
           </p>
           <div className="flex items-center gap-3">
             {["Visa", "Mastercard", "Amex", "PayPal"].map((method) => (

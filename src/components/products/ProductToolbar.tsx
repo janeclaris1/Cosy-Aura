@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, Leaf, X } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import {
   BOTTLE_SIZE_OPTIONS,
   COLLECTION_OPTIONS,
@@ -56,8 +57,11 @@ export function ProductToolbar({
   bottleSizes: _bottleSizes = [],
 }: ProductToolbarProps) {
   const t = useT();
+  const mounted = useIsClientMounted();
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
+  const formatFilterPrice = (amount: number, code?: string) =>
+    mounted ? formatPrice(amount, code) : String(amount);
   const router = useRouter();
   const searchParams = useSearchParams();
   const sort = searchParams.get("sort") || "newest";
@@ -287,7 +291,7 @@ export function ProductToolbar({
               {PRICE_RANGE_OPTIONS.map((preset) => (
                 <DropdownItem
                   key={preset.id}
-                  label={priceRangeLabel(preset, currency, t, formatPrice)}
+                  label={priceRangeLabel(preset, currency, t, formatFilterPrice)}
                   active={
                     (searchParams.get("minPrice") || "") === (preset.min || "") &&
                     (searchParams.get("maxPrice") || "") === (preset.max || "")

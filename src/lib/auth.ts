@@ -6,6 +6,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { writeAuditLog } from "./audit";
+import { upsertMailchimpContact } from "./mailchimp";
 
 const oauthProviders: NextAuthOptions["providers"] = [];
 
@@ -148,10 +149,16 @@ export const authOptions: NextAuthOptions = {
           data: { memberDiscount: true },
         });
         if (user.email) {
+          const email = user.email.toLowerCase();
           await prisma.newsletterSubscriber.upsert({
-            where: { email: user.email.toLowerCase() },
+            where: { email },
             update: {},
-            create: { email: user.email.toLowerCase() },
+            create: { email },
+          });
+          void upsertMailchimpContact({
+            email,
+            name: user.name,
+            tags: ["newsletter", "social-signup"],
           });
         }
       } catch (error) {

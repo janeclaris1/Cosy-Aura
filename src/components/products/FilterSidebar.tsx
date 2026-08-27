@@ -18,6 +18,7 @@ import {
 } from "@/lib/filter-options";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice } from "@/lib/utils";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 
 interface FilterSidebarProps {
   brandSlug?: string;
@@ -40,10 +41,13 @@ function FilterGroup({
 
 export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
   const t = useT();
+  const mounted = useIsClientMounted();
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const formatFilterPrice = (amount: number, code?: string) =>
+    mounted ? formatPrice(amount, code) : String(amount);
 
   const updateFilter = useCallback(
     (key: string, value: string | null) => {
@@ -224,7 +228,7 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
                     : "border-wf-border hover:border-highlight"
                 }`}
               >
-                {priceRangeLabel(preset, currency, t, formatPrice)}
+                {priceRangeLabel(preset, currency, t, formatFilterPrice)}
               </button>
             );
           })}

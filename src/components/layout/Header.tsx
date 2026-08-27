@@ -110,22 +110,27 @@ export function Header() {
   const wishlistCount = mounted ? wishlistItems.length : 0;
   const t = useT();
 
+  // Avoid locale-sensitive currency strings until after mount so SSR HTML
+  // matches the first client paint (Intl can differ en vs fr for GHS).
+  const priceLabel = (amount: number) =>
+    mounted ? formatPrice(amount, currency) : String(amount);
+
   const priceRanges = PRICE_FILTERS.map((range) => {
     if ("max" in range && !("min" in range)) {
       return {
         href: `/fragrances?maxPrice=${range.max}`,
-        label: t("price.under", { price: formatPrice(range.max, currency) }),
+        label: t("price.under", { price: priceLabel(range.max) }),
       };
     }
     if ("min" in range && "max" in range) {
       return {
         href: `/fragrances?minPrice=${range.min}&maxPrice=${range.max}`,
-        label: `${formatPrice(range.min, currency)} - ${formatPrice(range.max, currency)}`,
+        label: `${priceLabel(range.min)} - ${priceLabel(range.max)}`,
       };
     }
     return {
       href: `/fragrances?minPrice=${range.min}`,
-      label: t("price.over", { price: formatPrice(range.min, currency) }),
+      label: t("price.over", { price: priceLabel(range.min) }),
     };
   });
 

@@ -196,47 +196,61 @@ export function PwaProvider() {
 
   if (!show) return null;
 
-  // Sit above support chat; below cookie banner (z-100) so cookies stay usable first
+  const body = iosHint
+    ? iosNeedsSafari
+      ? t("pwa.iosUseSafari")
+      : t("pwa.iosSteps")
+    : t("pwa.installBody");
+
+  // Compact toast above support chat; below cookie banner (z-100)
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-[96] p-3 md:p-4 pointer-events-none pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-0 z-[96] flex justify-center p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pointer-events-none"
       role="dialog"
       aria-label={t("pwa.installTitle")}
     >
-      <div className="pointer-events-auto mx-auto max-w-lg border border-wf-border bg-white shadow-[0_-8px_32px_rgba(0,0,0,0.1)]">
-        <div className="flex items-start gap-3 p-4">
-          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center bg-[#03045e] text-white">
-            {iosHint ? (
-              <Share className="h-5 w-5" aria-hidden />
-            ) : (
-              <Download className="h-5 w-5" aria-hidden />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium text-espresso text-sm">{t("pwa.installTitle")}</p>
-            <p className="mt-1 text-xs text-mocha leading-relaxed">
-              {iosHint
-                ? iosNeedsSafari
-                  ? t("pwa.iosUseSafari")
-                  : t("pwa.iosHint")
-                : t("pwa.installBody")}
-            </p>
-            {iosHint && !iosNeedsSafari ? (
-              <ol className="mt-2 list-decimal pl-4 space-y-1 text-xs text-mocha leading-relaxed">
-                <li>{t("pwa.iosStep1")}</li>
-                <li>{t("pwa.iosStep2")}</li>
-                <li>{t("pwa.iosStep3")}</li>
-              </ol>
-            ) : null}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {iosHint && !iosNeedsSafari && typeof navigator !== "undefined" && typeof navigator.share === "function" ? (
+      <div className="pointer-events-auto w-full max-w-[22rem] rounded-md border border-wf-border/80 bg-white/95 backdrop-blur-sm shadow-lg overflow-hidden">
+        <div className="flex items-stretch">
+          <div className="w-1 shrink-0 bg-[#03045e]" aria-hidden />
+          <div className="flex-1 min-w-0 px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-[#03045e] text-white">
+                {iosHint ? (
+                  <Share className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-espresso text-[13px] leading-tight">
+                  {t("pwa.installTitle")}
+                </p>
+                <p className="mt-0.5 text-[11px] text-mocha leading-snug line-clamp-2">
+                  {body}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismiss}
+                className="shrink-0 -mr-1 -mt-0.5 p-1.5 text-mocha hover:text-espresso"
+                aria-label={t("pwa.dismiss")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="mt-2 flex items-center gap-2 pl-9">
+              {iosHint &&
+              !iosNeedsSafari &&
+              typeof navigator !== "undefined" &&
+              typeof navigator.share === "function" ? (
                 <button
                   type="button"
                   onClick={() => void shareOnIos()}
                   disabled={sharing}
-                  className="btn-primary text-xs px-4 py-2.5 min-h-[44px] inline-flex items-center gap-2 disabled:opacity-60"
+                  className="inline-flex items-center gap-1.5 bg-[#03045e] text-white text-[11px] font-medium px-3 py-1.5 rounded-sm hover:bg-[#03045e]/90 disabled:opacity-60"
                 >
-                  <Share className="h-3.5 w-3.5" aria-hidden />
+                  <Share className="h-3 w-3" aria-hidden />
                   {sharing ? t("pwa.sharing") : t("pwa.shareToInstall")}
                 </button>
               ) : null}
@@ -244,7 +258,7 @@ export function PwaProvider() {
                 <button
                   type="button"
                   onClick={() => void install()}
-                  className="btn-primary text-xs px-4 py-2.5 min-h-[44px]"
+                  className="inline-flex items-center bg-[#03045e] text-white text-[11px] font-medium px-3 py-1.5 rounded-sm hover:bg-[#03045e]/90"
                 >
                   {t("pwa.install")}
                 </button>
@@ -252,20 +266,12 @@ export function PwaProvider() {
               <button
                 type="button"
                 onClick={dismiss}
-                className="text-xs text-mocha underline underline-offset-2 px-2 py-2.5 min-h-[44px]"
+                className="text-[11px] text-mocha hover:text-espresso px-1 py-1.5"
               >
                 {t("pwa.dismiss")}
               </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="shrink-0 p-2 -m-1 text-mocha hover:text-espresso min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label={t("pwa.dismiss")}
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </div>
     </div>

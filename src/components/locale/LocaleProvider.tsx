@@ -7,6 +7,7 @@ import {
   initialLocaleFromCookie,
   useLocaleStore,
 } from "@/lib/locale-store";
+import { releaseMoneyHydrationLock, setMoneyDisplay } from "@/lib/money-display";
 import {
   LocaleHydratedContext,
   LocaleSsrContext,
@@ -51,6 +52,9 @@ export function LocaleProvider({
         useLocaleStore.setState({ ready: true });
       }
     }
+    const live = useLocaleStore.getState();
+    setMoneyDisplay({ locale: live.locale, rates: live.rates });
+    releaseMoneyHydrationLock();
     setHydrated(true);
   }, [initialLocale]);
 
