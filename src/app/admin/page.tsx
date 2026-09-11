@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -28,7 +29,9 @@ const PIPELINE_STATUSES = [
   "DELIVERED",
 ] as const;
 
-const QUICK_LINKS = [
+type QuickLink = { href: string; label: string; primary?: boolean };
+
+const QUICK_LINKS: QuickLink[] = [
   { href: "/admin/fragrances/new", label: "Add fragrance", primary: true },
   { href: "/admin/orders", label: "Orders" },
   { href: "/admin/pos", label: "Point of sale" },
@@ -37,7 +40,7 @@ const QUICK_LINKS = [
   { href: "/admin/reports", label: "Reports" },
   { href: "/admin/transfers", label: "Transfers" },
   { href: "/admin/branches", label: "Branches" },
-] as const;
+];
 
 function statusTone(status: string) {
   switch (status) {
@@ -399,7 +402,7 @@ function MetricTile({
   href,
   accent,
 }: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   label: string;
   value: string;
   hint?: string;
@@ -459,7 +462,7 @@ function AttentionCard({
   urgent,
 }: {
   href: string;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   label: string;
   value: number;
   hint?: string;

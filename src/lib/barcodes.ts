@@ -43,9 +43,9 @@ export function generateDeterministicBarcode(
   const digest = createHash("sha256")
     .update(`${fragranceId}:${bottleSize}:${salt}`)
     .digest();
-  let n = 0n;
-  for (let i = 0; i < 8; i++) n = (n << 8n) | BigInt(digest[i]);
-  const eleven = (n % 10_000_000_000n).toString().padStart(11, "0");
+  let n = BigInt(0);
+  for (let i = 0; i < 8; i++) n = (n << BigInt(8)) | BigInt(digest[i]);
+  const eleven = (n % BigInt(10_000_000_000)).toString().padStart(11, "0");
   const base12 = `${lead}${eleven}`;
   return base12 + ean13CheckDigit(base12);
 }
@@ -132,12 +132,14 @@ export async function syncFragranceBarcodes(
   fragranceId: string,
   barcodes: { bottleSize: number; barcode: string }[]
 ): Promise<void> {
-  const valid = barcodes
-    .map((b) => ({
-      bottleSize: Number(b.bottleSize),
-      barcode: normalizeBarcode(b.barcode),
-    }))
-    .filter((b) => isBottleSize(b.bottleSize) && b.barcode.length >= 4);
+  const valid: { bottleSize: BottleSize; barcode: string }[] = [];
+  for (const b of barcodes) {
+    const bottleSize = Number(b.bottleSize);
+    const barcode = normalizeBarcode(b.barcode);
+    if (isBottleSize(bottleSize) && barcode.length >= 4) {
+      valid.push({ bottleSize, barcode });
+    }
+  }
 
   const seen = new Set<string>();
   for (const row of valid) {

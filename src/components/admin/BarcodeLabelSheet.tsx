@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
   Barcode,
@@ -317,7 +318,7 @@ function StatTile({
   hint,
   compact,
 }: {
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  icon: LucideIcon;
   label: string;
   value: string;
   hint: string;
