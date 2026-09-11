@@ -1,5 +1,6 @@
 import { requireAdminPage } from "@/lib/admin";
 import { BranchReports } from "@/components/admin/BranchReports";
+import { TaxReport } from "@/components/admin/TaxReport";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminReportsPage() {
@@ -9,10 +10,11 @@ export default async function AdminReportsPage() {
     <div className={adminPageWrap}>
       <AdminPageHeader
         eyebrow="Insights"
-        title="Branch reports"
-        description="Paid POS and online transactions, fulfilment queue, and stock by branch."
+        title="Reports"
+        description="Branch performance, tax totals from sales, and CSV exports for your scope."
       />
       <BranchReports />
+      <TaxReport />
     </div>
   );
 }

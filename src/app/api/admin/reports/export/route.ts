@@ -4,6 +4,10 @@ import { fetchMonthlyAbsenceReport } from "@/lib/attendance-absence-report";
 import { fetchAttendanceReport } from "@/lib/attendance-report";
 import { aggregateBranchReportRows } from "@/lib/branch-reports";
 import { prisma } from "@/lib/prisma";
+import {
+  aggregateTaxReport,
+  monthRangeForFilter,
+} from "@/lib/tax-reports";
 
 function csvEscape(value: unknown): string {
   const s = String(value ?? "");
@@ -211,6 +215,133 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
+  }
+
+  if (kind === "taxes") {
+    const now = new Date();
+    const month =
+      searchParams.get("month") ||
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const range = monthRangeForFilter(month);
+    if (!range) {
+      return NextResponse.json({ error: "Invalid month (use YYYY-MM)" }, { status: 400 });
+    }
+
+    const scope = scopedBranchIds(ctx);
+    const branchWhere =
+      scope === "all"
+        ? ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
+          ? { country: ctx.staffCountry }
+          : {}
+        : { id: { in: scope } };
+
+    const branches = await prisma.branch.findMany({
+      where: { ...branchWhere, active: true },
+      orderBy: [{ country: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        country: true,
+        city: true,
+        isDefault: true,
+        createdAt: true,
+      },
+    });
+
+    const orderScope = orderBranchWhere(ctx);
+    const orders = await prisma.order.findMany({
+      where: {
+        ...(orderScope || {}),
+        createdAt: { gte: range.start, lt: range.end },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        status: true,
+        channel: true,
+        total: true,
+        shippingCost: true,
+        posDiscountAmount: true,
+        fulfillmentBranchId: true,
+        shippingCountry: true,
+        items: { select: { price: true, quantity: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const { totals, byBranch, byDay } = aggregateTaxReport(orders, branches);
+
+    const lines = [
+      [
+        "section",
+        "date",
+        "branch",
+        "country",
+        "orders",
+        "gross_sales_ghs",
+        "taxable_ghs",
+        "nhil_ghs",
+        "getfund_ghs",
+        "vat_ghs",
+        "total_tax_ghs",
+      ].join(","),
+      [
+        csvEscape("summary"),
+        csvEscape(month),
+        csvEscape(""),
+        csvEscape(""),
+        csvEscape(totals.orders),
+        csvEscape(totals.grossSales.toFixed(2)),
+        csvEscape(totals.taxable.toFixed(2)),
+        csvEscape(totals.nhil.toFixed(2)),
+        csvEscape(totals.getfund.toFixed(2)),
+        csvEscape(totals.vat.toFixed(2)),
+        csvEscape(totals.total.toFixed(2)),
+      ].join(","),
+    ];
+
+    for (const row of byDay) {
+      lines.push(
+        [
+          csvEscape("daily"),
+          csvEscape(row.date),
+          csvEscape(""),
+          csvEscape(""),
+          csvEscape(row.orders),
+          csvEscape(row.grossSales.toFixed(2)),
+          csvEscape(row.taxable.toFixed(2)),
+          csvEscape(row.nhil.toFixed(2)),
+          csvEscape(row.getfund.toFixed(2)),
+          csvEscape(row.vat.toFixed(2)),
+          csvEscape(row.total.toFixed(2)),
+        ].join(",")
+      );
+    }
+
+    for (const row of byBranch) {
+      lines.push(
+        [
+          csvEscape("branch"),
+          csvEscape(""),
+          csvEscape(row.name),
+          csvEscape(row.country),
+          csvEscape(row.orders),
+          csvEscape(row.grossSales.toFixed(2)),
+          csvEscape(row.taxable.toFixed(2)),
+          csvEscape(row.nhil.toFixed(2)),
+          csvEscape(row.getfund.toFixed(2)),
+          csvEscape(row.vat.toFixed(2)),
+          csvEscape(row.total.toFixed(2)),
+        ].join(",")
+      );
+    }
+
+    return new NextResponse(lines.join("\n"), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="tax-report-${month}.csv"`,
       },
     });
   }

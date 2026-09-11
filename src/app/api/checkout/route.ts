@@ -194,6 +194,7 @@ export async function POST(req: Request) {
       metadata: {
         orderId: order.id,
         deliveryDate: deliveryDate.toISOString().slice(0, 10),
+        usdPerGhs: String(usdPerGhs),
       },
     });
 

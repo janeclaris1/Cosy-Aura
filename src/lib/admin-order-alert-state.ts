@@ -21,7 +21,7 @@ export type OrderAlertNotification = {
   createdAt: string;
 };
 
-/** Returns true when open order count increased since the previous poll. */
+/** Returns true when paid open-order count increased since the previous poll. */
 export function detectOpenOrderCountIncrease(total: number): boolean {
   if (lastOpenOrderCount === null) {
     lastOpenOrderCount = total;

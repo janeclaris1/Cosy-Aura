@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { foreignToGhs, orderItemsSubtotalGhs } from "./order-money";
 import { prisma } from "./prisma";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { parseDeliveryDate } from "./delivery-dates";
@@ -49,7 +50,10 @@ export async function fulfillCheckoutSession(
     return { ok: false, reason: "Missing orderId metadata" };
   }
 
-  const existing = await prisma.order.findUnique({ where: { id: orderId } });
+  const existing = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: { select: { price: true, quantity: true } } },
+  });
   if (!existing) {
     return { ok: false, reason: "Order not found", orderId };
   }
@@ -57,10 +61,24 @@ export async function fulfillCheckoutSession(
   const alreadyPaid = existing.status !== "PENDING";
   const shippingDetails = shippingFromSession(session);
 
-  const shippingAmount =
-    session.shipping_cost?.amount_total != null
-      ? session.shipping_cost.amount_total / 100
-      : existing.shippingCost;
+  const chargeCurrency = (session.currency || "usd").toUpperCase();
+  const chargeAmount =
+    session.amount_total != null ? session.amount_total / 100 : null;
+  const usdPerGhs = Number(session.metadata?.usdPerGhs);
+
+  let shippingCostGhs = existing.shippingCost;
+  if (session.shipping_cost?.amount_total != null) {
+    const shippingCharged = session.shipping_cost.amount_total / 100;
+    shippingCostGhs =
+      chargeCurrency === "USD" && usdPerGhs > 0
+        ? foreignToGhs(shippingCharged, usdPerGhs)
+        : shippingCharged;
+  }
+
+  const totalGhs =
+    Math.round(
+      (orderItemsSubtotalGhs(existing.items) + shippingCostGhs) * 100
+    ) / 100;
 
   const shippingRate = session.shipping_cost?.shipping_rate;
   const shippingMethod =
@@ -76,11 +94,6 @@ export async function fulfillCheckoutSession(
   const deliveryDate =
     parseDeliveryDate(session.metadata?.deliveryDate) || existing.deliveryDate;
 
-  const paidTotal =
-    session.amount_total != null
-      ? session.amount_total / 100
-      : existing.total;
-
   // Always sync Stripe customer/shipping onto the order - including when an
   // admin marked PAID early and left the placeholder checkout email.
   await prisma.order.update({
@@ -88,8 +101,10 @@ export async function fulfillCheckoutSession(
     data: {
       status: alreadyPaid ? existing.status : "PAID",
       ...(email ? { email } : {}),
-      total: paidTotal,
-      shippingCost: shippingAmount,
+      total: totalGhs,
+      chargeAmount,
+      chargeCurrency: chargeAmount != null ? chargeCurrency : null,
+      shippingCost: shippingCostGhs,
       shippingMethod: shippingMethod || existing.shippingMethod || "Stripe shipping",
       stripeSessionId: session.id,
       paymentProvider: "stripe",

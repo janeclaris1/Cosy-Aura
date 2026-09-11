@@ -4,9 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const MIN_INITIAL_MS = 600;
-const MIN_NAV_MS = 450;
 const INITIAL_FAILSAFE_MS = 3200;
-const NAV_FAILSAFE_MS = 20000;
 const EXIT_MS = 280;
 
 function afterPaint(callback: () => void) {
@@ -17,52 +15,6 @@ function afterPaint(callback: () => void) {
 
 function isSkippablePath(path: string | null | undefined) {
   return !!path?.startsWith("/admin") || !!path?.startsWith("/maintenance");
-}
-
-function internalNavHref(event: MouseEvent): string | null {
-  if (event.defaultPrevented || event.button !== 0) return null;
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-    return null;
-  }
-
-  const target = event.target as Element | null;
-  if (
-    target?.closest?.(
-      "button, input, textarea, select, label, [role='button'], [data-no-nav]"
-    )
-  ) {
-    return null;
-  }
-
-  const anchor = target?.closest?.("a");
-  if (!anchor) return null;
-
-  const href = anchor.getAttribute("href");
-  if (
-    !href ||
-    href.startsWith("#") ||
-    href.startsWith("mailto:") ||
-    href.startsWith("tel:")
-  ) {
-    return null;
-  }
-  if (anchor.target === "_blank" || anchor.hasAttribute("download")) return null;
-
-  let url: URL;
-  try {
-    url = new URL(href, window.location.href);
-  } catch {
-    return null;
-  }
-
-  if (url.origin !== window.location.origin) return null;
-  if (isSkippablePath(url.pathname)) return null;
-
-  const next = `${url.pathname}${url.search}`;
-  const current = `${window.location.pathname}${window.location.search}`;
-  if (next === current) return null;
-
-  return next;
 }
 
 function LogoSpinner({ size = 36 }: { size?: number }) {
@@ -112,7 +64,7 @@ export function Preloader() {
     }, wait);
   };
 
-  const show = (duration: number, navigating = false) => {
+  const show = (duration: number) => {
     clearTimers();
     document.documentElement.classList.remove("preload-skip");
     minMs.current = duration;
@@ -120,10 +72,7 @@ export function Preloader() {
     pathAtShow.current = window.location.pathname;
     setLeaving(false);
     setVisible(true);
-    failsafeTimer.current = window.setTimeout(
-      hide,
-      navigating ? NAV_FAILSAFE_MS : INITIAL_FAILSAFE_MS
-    );
+    failsafeTimer.current = window.setTimeout(hide, INITIAL_FAILSAFE_MS);
   };
 
   useEffect(() => {
@@ -143,19 +92,6 @@ export function Preloader() {
       clearTimers();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial mount only
-  }, [skipRoute]);
-
-  useEffect(() => {
-    if (skipRoute) return;
-
-    const onClick = (event: MouseEvent) => {
-      if (!internalNavHref(event)) return;
-      show(MIN_NAV_MS, true);
-    };
-
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skipRoute]);
 
   useEffect(() => {

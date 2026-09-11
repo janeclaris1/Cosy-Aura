@@ -3,6 +3,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import {
+  formatOrderBookTotal,
+  formatOrderPaidAmount,
+} from "@/lib/order-money";
 import { formatPrice } from "@/lib/utils";
 import { resolveShippingMethodLabel } from "@/lib/shipping-methods";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
@@ -209,9 +213,20 @@ export default async function AdminOrderDetailPage({
                 </span>
               </div>
               <div className="flex justify-between pt-2">
-                <span className="font-medium">Total</span>
-                <span className="font-playfair text-xl">
-                  {formatPrice(order.total)}
+                <span className="font-medium">
+                  {order.chargeCurrency &&
+                  order.chargeCurrency.toUpperCase() !== "GHS"
+                    ? "Paid"
+                    : "Total"}
+                </span>
+                <span className="font-playfair text-xl text-right">
+                  {formatOrderPaidAmount(order)}
+                  {order.chargeCurrency &&
+                  order.chargeCurrency.toUpperCase() !== "GHS" ? (
+                    <span className="block text-xs font-roboto text-mocha mt-0.5">
+                      Book value {formatOrderBookTotal(order)}
+                    </span>
+                  ) : null}
                 </span>
               </div>
             </div>

@@ -58,7 +58,7 @@ export function OrderStatusSelect({
   }
 
   return (
-    <div className="inline-flex flex-col gap-1 min-w-[7.5rem]">
+    <div className="inline-flex flex-col gap-1 min-w-0 w-full max-w-[7.5rem]">
       <div className="relative">
         <select
           value={value}

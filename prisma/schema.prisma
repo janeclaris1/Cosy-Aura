@@ -550,7 +550,12 @@ model Order {
   userId                String?
   email                 String
   status                OrderStatus @default(PENDING)
+  /** Order value in GHS for reporting, tax, and inventory (book currency). */
   total                 Float
+  /** Amount actually charged by the payment provider (may differ from total). */
+  chargeAmount          Float?
+  /** ISO 4217 code for chargeAmount (e.g. USD, GHS). */
+  chargeCurrency        String?
   stripeSessionId       String?     @unique
   stripePaymentId       String?
   shippingMethod        String?

@@ -2,8 +2,17 @@ export const REVENUE_STATUSES = ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] a
 
 export type RevenueOrderStatus = (typeof REVENUE_STATUSES)[number];
 
+/** Paid orders still in the fulfilment pipeline (excludes unpaid checkout drafts). */
+export const OPEN_ORDER_STATUSES = ["PAID", "PROCESSING", "SHIPPED"] as const;
+
+export type OpenOrderStatus = (typeof OPEN_ORDER_STATUSES)[number];
+
 export function isRevenueOrder(status: string): boolean {
   return REVENUE_STATUSES.includes(status as RevenueOrderStatus);
+}
+
+export function isOpenOrder(status: string): boolean {
+  return OPEN_ORDER_STATUSES.includes(status as OpenOrderStatus);
 }
 
 export type DashboardDailyPoint = {
@@ -69,23 +78,19 @@ export function buildDashboardChartData(
 
   const channelMap = new Map<string, { orders: number; revenue: number }>();
   for (const order of orders) {
-    if (order.status === "CANCELLED" || order.status === "REFUNDED") continue;
+    if (!isRevenueOrder(order.status)) continue;
 
     const key = dayKey(order.createdAt);
     const bucket = dailyMap.get(key);
     if (bucket) {
       bucket.orders += 1;
-      if (REVENUE_STATUSES.includes(order.status as (typeof REVENUE_STATUSES)[number])) {
-        bucket.revenue += Number(order.total || 0);
-      }
+      bucket.revenue += Number(order.total || 0);
     }
 
     const channelName = order.channel === "POS" ? "In-store (POS)" : "Online";
     const channel = channelMap.get(channelName) || { orders: 0, revenue: 0 };
     channel.orders += 1;
-    if (REVENUE_STATUSES.includes(order.status as (typeof REVENUE_STATUSES)[number])) {
-      channel.revenue += Number(order.total || 0);
-    }
+    channel.revenue += Number(order.total || 0);
     channelMap.set(channelName, channel);
   }
 

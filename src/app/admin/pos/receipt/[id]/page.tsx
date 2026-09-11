@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+import { AdminButton, AdminLink } from "@/components/admin/admin-ui";
 import { PosReceiptPrintButton } from "@/components/admin/PosReceiptPrintButton";
 import { PosReceiptAutoPrint } from "@/components/admin/PosReceiptAutoPrint";
 import { PosReceiptQr } from "@/components/admin/PosReceiptQr";
@@ -74,16 +75,16 @@ export default async function PosReceiptPage({
     <div className="pos-receipt-print-root max-w-sm mx-auto p-4 print:p-0 print:max-w-none">
       {!voided && <PosReceiptAutoPrint />}
       <div className="print:hidden flex flex-wrap items-center justify-between gap-3 mb-4">
-        <Link href="/admin/pos" className="text-sm text-gold hover:underline">
-          ← Back to POS
-        </Link>
+        <AdminButton
+          href="/admin/pos"
+          variant="secondary"
+          className="!rounded-xl !px-3.5 !py-2 text-xs shadow-sm"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
+          Back to POS
+        </AdminButton>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/admin/orders/${order.id}`}
-            className="text-sm text-mocha hover:underline"
-          >
-            Order detail
-          </Link>
+          <AdminLink href={`/admin/orders/${order.id}`}>Order detail</AdminLink>
           <PosReceiptPrintButton />
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   AdminButton,
   AdminCard,
+  AdminSectionTitle,
   AdminTableWrap,
   adminTableClass,
   adminTdClass,
@@ -67,13 +68,13 @@ export function BranchReports() {
 
   return (
     <div className="space-y-4">
+      <AdminSectionTitle
+        title="Branch reports"
+        description="Paid POS and online transactions, fulfilment queue, and stock by branch."
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-mocha max-w-xl">
-          {generatedAt
-            ? `Updated ${new Date(generatedAt).toLocaleString()} · `
-            : ""}
-          Paid POS and online sales per branch. Voided/refunded and unpaid orders are
-          excluded from revenue.
+          {generatedAt ? `Updated ${new Date(generatedAt).toLocaleString()}.` : ""}
         </p>
         <div className="flex flex-wrap gap-2">
           <AdminButton href="/api/admin/reports/export?kind=branches" variant="secondary">

@@ -103,9 +103,9 @@ export function AdminNotificationListener() {
               ...current,
               {
                 id: `order-count-${Date.now()}`,
-                title: "New order received",
-                message: "Open the Orders page to review the latest order.",
-                link: "/admin/orders",
+                title: "New paid order",
+                message: "A checkout completed payment — open Orders to review.",
+                link: "/admin/orders?status=PAID",
               },
             ]);
           }

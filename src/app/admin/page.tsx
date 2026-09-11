@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { AdminDashboardCharts } from "@/components/admin/AdminDashboardCharts";
 import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
-import { buildDashboardChartData } from "@/lib/dashboard-analytics";
+import {
+  buildDashboardChartData,
+  REVENUE_STATUSES,
+} from "@/lib/dashboard-analytics";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -92,7 +95,7 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
     prisma.fragrance.count(),
     prisma.order.count({
-      where: { ...orderWhere, status: { not: "CANCELLED" } },
+      where: { ...orderWhere, status: { in: [...REVENUE_STATUSES] } },
     }),
     prisma.order.aggregate({
       where: {
@@ -102,7 +105,7 @@ export default async function AdminDashboard() {
       _sum: { total: true },
     }),
     prisma.order.findMany({
-      where: orderWhere,
+      where: { ...orderWhere, status: { in: [...REVENUE_STATUSES] } },
       take: 8,
       orderBy: { createdAt: "desc" },
       include: {
@@ -194,7 +197,7 @@ export default async function AdminDashboard() {
           icon={ShoppingCart}
           label="Orders"
           value={String(totalOrders)}
-          hint="Non-cancelled"
+          hint="Paid sales only"
           href="/admin/orders"
         />
         <MetricTile

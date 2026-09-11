@@ -434,13 +434,19 @@ export async function notifyOrderPaid(
   const adminLink = `${SITE_URL}/admin/orders/${order.id}`;
   const adminEmails = getAdminNotificationEmails();
 
-  await createAdminNotification({
-    type: "ORDER_PAID",
-    title: `New paid order #${shortId}`,
-    message: `${order.email} - ${formatPrice(order.total)} · ${order.items.length} item(s)`,
-    link: `/admin/orders/${order.id}`,
-    orderId: order.id,
+  const existingPaidAlert = await prisma.adminNotification.findFirst({
+    where: { orderId: order.id, type: "ORDER_PAID" },
+    select: { id: true },
   });
+  if (!existingPaidAlert) {
+    await createAdminNotification({
+      type: "ORDER_PAID",
+      title: `New paid order #${shortId}`,
+      message: `${order.email} - ${formatPrice(order.total)} · ${order.items.length} item(s)`,
+      link: `/admin/orders/${order.id}`,
+      orderId: order.id,
+    });
+  }
 
   let receiptPdf: Buffer | null = null;
   let publishedReceipt: PublishedReceipt | null = null;

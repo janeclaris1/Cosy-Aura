@@ -402,12 +402,15 @@ export async function getDashboardStats() {
   const [totalFragrances, totalOrders, totalRevenue, recentOrders] =
     await Promise.all([
       prisma.fragrance.count(),
-      prisma.order.count({ where: { status: { not: "CANCELLED" } } }),
+      prisma.order.count({
+        where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
+      }),
       prisma.order.aggregate({
         where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
         _sum: { total: true },
       }),
       prisma.order.findMany({
+        where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
