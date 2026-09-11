@@ -4,7 +4,8 @@ import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
 import { StaffAvatar } from "@/components/admin/StaffAvatar";
 import { AdminEmptyState } from "@/components/admin/admin-ui";
 import { formatOrderTotalWithBookHint } from "@/lib/order-money";
-import type { OrderChannel, OrderStatus } from "@prisma/client";
+import { paymentGatewayLabel } from "@/lib/order-payment";
+import type { OrderChannel, OrderStatus, PosPaymentMethod } from "@prisma/client";
 
 export type OrdersTableRow = {
   id: string;
@@ -15,6 +16,8 @@ export type OrdersTableRow = {
   total: number;
   chargeAmount: number | null;
   chargeCurrency: string | null;
+  paymentProvider: string | null;
+  posPaymentMethod: PosPaymentMethod | null;
   status: OrderStatus;
   createdAt: Date;
   fulfillmentBranch: { name: string; country: string } | null;
@@ -79,14 +82,15 @@ export function OrdersTable({ orders }: { orders: OrdersTableRow[] }) {
     <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/[0.04] shadow-sm">
       <table className="w-full table-fixed text-sm">
         <colgroup>
-          <col className="w-[9%]" />
           <col className="w-[8%]" />
-          <col className="w-[18%]" />
-          <col className="w-[12%]" />
-          <col className="w-[11%]" />
-          <col className="w-[9%]" />
-          <col className="w-[11%]" />
+          <col className="w-[7%]" />
+          <col className="w-[16%]" />
           <col className="w-[10%]" />
+          <col className="w-[10%]" />
+          <col className="w-[9%]" />
+          <col className="w-[9%]" />
+          <col className="w-[10%]" />
+          <col className="w-[9%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-stone-100 bg-[#fafafa]/80">
@@ -97,6 +101,7 @@ export function OrdersTable({ orders }: { orders: OrdersTableRow[] }) {
               "Branch",
               "Items",
               "Total",
+              "Payment",
               "Status",
               "Date",
             ].map((label) => (
@@ -169,6 +174,11 @@ export function OrdersTable({ orders }: { orders: OrdersTableRow[] }) {
                 <td className="px-3 py-3.5 align-top">
                   <span className="font-semibold tabular-nums text-[#03045e] text-xs whitespace-nowrap">
                     {formatOrderTotalWithBookHint(order)}
+                  </span>
+                </td>
+                <td className="px-3 py-3.5 align-top text-[11px] text-espresso">
+                  <span className="line-clamp-2 leading-snug">
+                    {paymentGatewayLabel(order)}
                   </span>
                 </td>
                 <td className="px-3 py-3.5 align-top">
