@@ -12,6 +12,8 @@ import {
   LocaleHydratedContext,
   LocaleSsrContext,
   LocaleSsrCountryContext,
+  LocaleSsrCurrencyContext,
+  LocaleSsrRatesContext,
 } from "@/components/locale/locale-context";
 
 /**
@@ -33,37 +35,63 @@ export function LocaleProvider({
     initialLocale?.country && /^[A-Za-z]{2}$/.test(initialLocale.country)
       ? initialLocale.country.toUpperCase()
       : null;
+  const ssrCurrency = (initialLocale?.currency || "GHS").toUpperCase();
+  const ssrRates: Record<string, number> = {
+    GHS: 1,
+    ...(initialLocale?.currency && initialLocale.rate > 0
+      ? { [ssrCurrency]: initialLocale.rate }
+      : {}),
+  };
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const seeded = initialLocaleFromCookie(initialLocale);
-    if (seeded.language) {
+    const finishHydration = () => {
+      const seeded = initialLocaleFromCookie(initialLocale);
       const state = useLocaleStore.getState();
-      if (!state.userOverrideLang) {
-        useLocaleStore.setState({
-          country: seeded.country ?? state.country,
-          locale: seeded.locale ?? state.locale,
-          language: seeded.language,
-          currency: seeded.currency ?? state.currency,
-          rates: seeded.rates ?? state.rates,
-          ready: true,
-        });
+
+      if (seeded.language) {
+        if (!state.userOverrideLang) {
+          useLocaleStore.setState({
+            country: seeded.country ?? state.country,
+            locale: seeded.locale ?? state.locale,
+            language: seeded.language,
+            currency: state.userOverrideCurrency
+              ? state.currency
+              : (seeded.currency ?? state.currency),
+            rates: seeded.rates ?? state.rates,
+            ready: true,
+          });
+        } else {
+          useLocaleStore.setState({ ready: true });
+        }
       } else {
         useLocaleStore.setState({ ready: true });
       }
+
+      const live = useLocaleStore.getState();
+      setMoneyDisplay({ locale: live.locale, rates: live.rates });
+      releaseMoneyHydrationLock();
+      setHydrated(true);
+    };
+
+    const rehydrate = useLocaleStore.persist.rehydrate();
+    if (rehydrate instanceof Promise) {
+      void rehydrate.then(finishHydration);
+    } else {
+      finishHydration();
     }
-    const live = useLocaleStore.getState();
-    setMoneyDisplay({ locale: live.locale, rates: live.rates });
-    releaseMoneyHydrationLock();
-    setHydrated(true);
   }, [initialLocale]);
 
   return (
     <LocaleSsrContext.Provider value={ssrLanguage}>
       <LocaleSsrCountryContext.Provider value={ssrCountry}>
-        <LocaleHydratedContext.Provider value={hydrated}>
-          {children}
-        </LocaleHydratedContext.Provider>
+        <LocaleSsrCurrencyContext.Provider value={ssrCurrency}>
+          <LocaleSsrRatesContext.Provider value={ssrRates}>
+            <LocaleHydratedContext.Provider value={hydrated}>
+              {children}
+            </LocaleHydratedContext.Provider>
+          </LocaleSsrRatesContext.Provider>
+        </LocaleSsrCurrencyContext.Provider>
       </LocaleSsrCountryContext.Provider>
     </LocaleSsrContext.Provider>
   );

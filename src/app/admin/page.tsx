@@ -1,16 +1,61 @@
 import Link from "next/link";
 import {
+  ArrowRight,
+  ArrowUpRight,
+  Bell,
+  Mail,
   Package,
   ShoppingCart,
-  DollarSign,
-  Bell,
+  Sparkles,
+  Store,
   Truck,
-  Mail,
   Warehouse,
 } from "lucide-react";
+import { AdminDashboardCharts } from "@/components/admin/AdminDashboardCharts";
 import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { buildDashboardChartData } from "@/lib/dashboard-analytics";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+
+const CHART_PERIOD_DAYS = 30;
+
+const PIPELINE_STATUSES = [
+  "PENDING",
+  "PAID",
+  "PROCESSING",
+  "SHIPPED",
+  "DELIVERED",
+] as const;
+
+const QUICK_LINKS = [
+  { href: "/admin/fragrances/new", label: "Add fragrance", primary: true },
+  { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/pos", label: "Point of sale" },
+  { href: "/admin/stock", label: "Branch stock" },
+  { href: "/admin/attendance", label: "Attendance" },
+  { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/transfers", label: "Transfers" },
+  { href: "/admin/branches", label: "Branches" },
+] as const;
+
+function statusTone(status: string) {
+  switch (status) {
+    case "PAID":
+    case "DELIVERED":
+      return "bg-emerald-50 text-emerald-800 ring-emerald-200/80";
+    case "PROCESSING":
+    case "SHIPPED":
+      return "bg-sky-50 text-sky-800 ring-sky-200/80";
+    case "PENDING":
+      return "bg-amber-50 text-amber-900 ring-amber-200/80";
+    case "CANCELLED":
+    case "REFUNDED":
+      return "bg-stone-100 text-stone-600 ring-stone-200/80";
+    default:
+      return "bg-stone-50 text-stone-700 ring-stone-200/60";
+  }
+}
 
 export default async function AdminDashboard() {
   const ctx = await requireAdminPage("dashboard.read");
@@ -26,12 +71,17 @@ export default async function AdminDashboard() {
           ? { branchId: { in: ctx.branchIds } }
           : { branchId: "__none__" };
 
+  const chartSince = new Date();
+  chartSince.setUTCDate(chartSince.getUTCDate() - (CHART_PERIOD_DAYS - 1));
+  chartSince.setUTCHours(0, 0, 0, 0);
+
   const [
     totalFragrances,
     totalOrders,
     revenue,
     recentOrders,
     statusCounts,
+    chartOrders,
     unreadNotifications,
     unreadEnquiries,
     paidAwaitingShip,
@@ -62,6 +112,18 @@ export default async function AdminDashboard() {
       where: orderWhere,
       _count: true,
     }),
+    prisma.order.findMany({
+      where: {
+        ...orderWhere,
+        createdAt: { gte: chartSince },
+      },
+      select: {
+        createdAt: true,
+        total: true,
+        status: true,
+        channel: true,
+      },
+    }),
     prisma.adminNotification.count({ where: { read: false } }),
     prisma.contactEnquiry.count({ where: { read: false } }),
     prisma.order.count({
@@ -79,196 +141,356 @@ export default async function AdminDashboard() {
     statusCounts.map((s) => [s.status, s._count])
   );
 
+  const chartData = buildDashboardChartData(
+    chartOrders,
+    statusCounts.map((s) => ({ status: s.status, count: s._count })),
+    CHART_PERIOD_DAYS
+  );
+
   const scopeLabel = ctx.isSuperAdmin || ctx.isGlobal
     ? "All branches"
     : ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
-      ? `${ctx.staffCountry} country`
+      ? `${ctx.staffCountry} operations`
       : ctx.branchIds.length
         ? "Your branches"
-        : "No branch scope";
+        : "Limited scope";
+
+  const greeting = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   return (
-    <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-playfair text-3xl">Dashboard</h1>
-        <p className="text-sm text-mocha">{scopeLabel}</p>
-      </div>
+    <div className="max-w-6xl space-y-8">
+      {/* Header */}
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-mocha mb-2">
+            Overview
+          </p>
+          <h1 className="font-playfair text-3xl text-[#03045e]">Dashboard</h1>
+          <p className="text-sm text-mocha/90 mt-2">{greeting}</p>
+        </div>
+        <span className="inline-flex self-start items-center gap-2 text-xs uppercase tracking-[0.12em] text-[#03045e] bg-white px-3 py-2 ring-1 ring-black/[0.06] shadow-sm">
+          <Store className="w-3.5 h-3.5" strokeWidth={1.75} />
+          {scopeLabel}
+        </span>
+      </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard icon={Package} label="Total Fragrances" value={String(totalFragrances)} />
-        <StatCard icon={ShoppingCart} label="Orders" value={String(totalOrders)} />
-        <StatCard
-          icon={DollarSign}
+      {/* Primary metrics */}
+      <section className="grid sm:grid-cols-2 xl:grid-cols-4 gap-px bg-stone-200/50 shadow-sm ring-1 ring-black/[0.04] overflow-hidden">
+        <MetricTile
+          icon={Package}
+          label="Catalogue"
+          value={String(totalFragrances)}
+          hint="Active fragrances"
+          href="/admin/fragrances"
+        />
+        <MetricTile
+          icon={ShoppingCart}
+          label="Orders"
+          value={String(totalOrders)}
+          hint="Non-cancelled"
+          href="/admin/orders"
+        />
+        <MetricTile
+          icon={Sparkles}
           label="Revenue"
           value={formatPrice(revenue._sum.total || 0)}
+          hint="Paid & fulfilled"
         />
-        <StatCard
+        <MetricTile
           icon={Truck}
           label="To fulfil"
           value={String(paidAwaitingShip)}
+          hint="Paid or processing"
           href="/admin/orders?status=PAID"
+          accent
         />
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-        <Link
+      <AdminDashboardCharts
+        daily={chartData.daily}
+        channels={chartData.channels}
+        statuses={chartData.statuses}
+        periodDays={chartData.periodDays}
+      />
+
+      {/* Attention */}
+      <section className="grid sm:grid-cols-3 gap-4">
+        <AttentionCard
           href="/admin/notifications"
-          className="border border-wf-border rounded-lg p-4 bg-white hover:border-gold transition-colors flex items-center gap-3"
-        >
-          <Bell className="w-5 h-5 text-gold" />
-          <div>
-            <p className="text-sm text-wf-gray">Unread alerts</p>
-            <p className="font-playfair text-xl">{unreadNotifications}</p>
-          </div>
-        </Link>
-        <Link
+          icon={Bell}
+          label="Unread alerts"
+          value={unreadNotifications}
+          urgent={unreadNotifications > 0}
+        />
+        <AttentionCard
           href="/admin/enquiries"
-          className="border border-wf-border rounded-lg p-4 bg-white hover:border-gold transition-colors flex items-center gap-3"
-        >
-          <Mail className="w-5 h-5 text-gold" />
-          <div>
-            <p className="text-sm text-wf-gray">Unread enquiries</p>
-            <p className="font-playfair text-xl">{unreadEnquiries}</p>
-          </div>
-        </Link>
-        <Link
+          icon={Mail}
+          label="Unread enquiries"
+          value={unreadEnquiries}
+          urgent={unreadEnquiries > 0}
+        />
+        <AttentionCard
           href="/admin/stock"
-          className="border border-wf-border rounded-lg p-4 bg-white hover:border-gold transition-colors flex items-center gap-3"
-        >
-          <Warehouse className="w-5 h-5 text-gold" />
-          <div>
-            <p className="text-sm text-wf-gray">Low stock (≤5)</p>
-            <p className="font-playfair text-xl">{lowStockRows}</p>
-          </div>
-        </Link>
-      </div>
+          icon={Warehouse}
+          label="Low stock lines"
+          value={lowStockRows}
+          hint="≤ 5 units"
+          urgent={lowStockRows > 0}
+        />
+      </section>
 
-      <div className="border border-wf-border rounded-lg p-4 bg-white mb-10">
-        <p className="text-sm text-wf-gray mb-2">Orders by status</p>
-        <div className="flex flex-wrap gap-2">
-          {["PAID", "PROCESSING", "SHIPPED", "PENDING"].map((s) => (
+      {/* Pipeline + quick actions */}
+      <div className="grid lg:grid-cols-5 gap-6">
+        <section className="lg:col-span-3 bg-white shadow-sm ring-1 ring-black/[0.04] px-5 py-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="font-playfair text-lg text-[#03045e]">Order pipeline</h2>
+              <p className="text-xs text-mocha mt-0.5">Tap a stage to filter orders</p>
+            </div>
             <Link
-              key={s}
-              href={`/admin/orders?status=${s}`}
-              className="text-xs px-2 py-1 bg-wf-light rounded hover:bg-gold/10"
+              href="/admin/orders"
+              className="text-xs text-[#03045e] hover:underline inline-flex items-center gap-1"
             >
-              {s}: {byStatus[s] || 0}
+              View all
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-3 mb-10">
-        <Link href="/admin/fragrances/new" className="btn-gold">
-          Add Fragrance
-        </Link>
-        <Link href="/admin/orders" className="btn-outline">
-          All Orders
-        </Link>
-        <Link href="/admin/stock" className="btn-outline">
-          Branch stock
-        </Link>
-        <Link href="/admin/transfers" className="btn-outline">
-          Transfers
-        </Link>
-        <Link href="/admin/reports" className="btn-outline">
-          Reports
-        </Link>
-        <Link href="/admin/branches" className="btn-outline">
-          Branches
-        </Link>
-      </div>
-
-      <h2 className="font-playfair text-xl mb-4">Recent Orders</h2>
-      <div className="border border-wf-border rounded-lg overflow-hidden bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-wf-light">
-            <tr>
-              <th className="text-left p-3 font-medium">Order ID</th>
-              <th className="text-left p-3 font-medium">Email</th>
-              <th className="text-left p-3 font-medium">Branch</th>
-              <th className="text-left p-3 font-medium">Items</th>
-              <th className="text-left p-3 font-medium">Total</th>
-              <th className="text-left p-3 font-medium">Status</th>
-              <th className="text-left p-3 font-medium">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentOrders.map((order) => (
-              <tr key={order.id} className="border-t border-wf-border">
-                <td className="p-3">
-                  <Link
-                    href={`/admin/orders/${order.id}`}
-                    className="text-gold hover:underline font-mono text-xs"
-                  >
-                    {order.id.slice(0, 8).toUpperCase()}
-                  </Link>
-                </td>
-                <td className="p-3">{order.email}</td>
-                <td className="p-3 text-mocha text-xs">
-                  {order.fulfillmentBranch
-                    ? `${order.fulfillmentBranch.name} (${order.fulfillmentBranch.country})`
-                    : "—"}
-                </td>
-                <td className="p-3">{order.items.length}</td>
-                <td className="p-3">{formatPrice(order.total)}</td>
-                <td className="p-3">
-                  <span className="px-2 py-0.5 bg-wf-light rounded text-xs">
-                    {order.status}
-                  </span>
-                </td>
-                <td className="p-3 text-wf-gray">
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </td>
-              </tr>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {PIPELINE_STATUSES.map((status) => (
+              <Link
+                key={status}
+                href={`/admin/orders?status=${status}`}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-2 text-xs font-medium ring-1 transition-colors hover:brightness-[0.98]",
+                  statusTone(status)
+                )}
+              >
+                <span className="uppercase tracking-wide">{status}</span>
+                <span className="tabular-nums font-semibold">{byStatus[status] || 0}</span>
+              </Link>
             ))}
-            {recentOrders.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-wf-gray">
-                  No orders yet
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          </div>
+        </section>
+
+        <section className="lg:col-span-2 bg-white shadow-sm ring-1 ring-black/[0.04] px-5 py-5">
+          <h2 className="font-playfair text-lg text-[#03045e] mb-1">Quick actions</h2>
+          <p className="text-xs text-mocha mb-4">Jump to common tasks</p>
+          <div className="grid grid-cols-2 gap-2">
+            {QUICK_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "text-xs px-3 py-2.5 text-center transition-colors ring-1",
+                  link.primary
+                    ? "bg-[#03045e] text-white ring-[#03045e] hover:bg-[#02033f]"
+                    : "bg-[#fafafa] text-espresso ring-stone-200/80 hover:bg-stone-50"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
+
+      {/* Recent orders */}
+      <section className="bg-white shadow-sm ring-1 ring-black/[0.04] overflow-hidden">
+        <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-playfair text-lg text-[#03045e]">Recent orders</h2>
+            <p className="text-xs text-mocha mt-0.5">Latest activity in your scope</p>
+          </div>
+          <Link
+            href="/admin/orders"
+            className="text-xs text-[#03045e] hover:underline inline-flex items-center gap-1 shrink-0"
+          >
+            All orders
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-mocha bg-[#fafafa]">
+                <th className="px-5 py-3 font-medium">Order</th>
+                <th className="px-5 py-3 font-medium">Customer</th>
+                <th className="px-5 py-3 font-medium hidden md:table-cell">Branch</th>
+                <th className="px-5 py-3 font-medium hidden sm:table-cell">Items</th>
+                <th className="px-5 py-3 font-medium">Total</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 font-medium hidden lg:table-cell">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {recentOrders.map((order) => (
+                <tr
+                  key={order.id}
+                  className="hover:bg-[#fafafa]/80 transition-colors"
+                >
+                  <td className="px-5 py-4">
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-mono text-xs text-[#03045e] hover:underline"
+                    >
+                      {order.receiptNumber ||
+                        order.id.slice(0, 8).toUpperCase()}
+                    </Link>
+                    {order.channel === "POS" && (
+                      <span className="ml-2 text-[10px] uppercase tracking-wider text-mocha">
+                        POS
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4 text-mocha truncate max-w-[12rem]">
+                    {order.email}
+                  </td>
+                  <td className="px-5 py-4 text-mocha text-xs hidden md:table-cell">
+                    {order.fulfillmentBranch
+                      ? `${order.fulfillmentBranch.name}`
+                      : "—"}
+                  </td>
+                  <td className="px-5 py-4 text-mocha tabular-nums hidden sm:table-cell">
+                    {order.items.length}
+                  </td>
+                  <td className="px-5 py-4 font-medium text-espresso tabular-nums">
+                    {formatPrice(order.total)}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={cn(
+                        "inline-flex px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ring-1",
+                        statusTone(order.status)
+                      )}
+                    >
+                      {order.status}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-mocha text-xs hidden lg:table-cell tabular-nums">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-mocha">
+                    No orders yet — they&apos;ll appear here as sales come in.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
 
-function StatCard({
+function MetricTile({
   icon: Icon,
   label,
   value,
+  hint,
   href,
+  accent,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
   value: string;
+  hint?: string;
   href?: string;
+  accent?: boolean;
 }) {
-  const inner = (
-    <>
-      <div className="flex items-center gap-3 mb-2">
-        <Icon className="w-5 h-5 text-gold" />
-        <span className="text-sm text-wf-gray">{label}</span>
+  const content = (
+    <div className="bg-white px-5 py-5 h-full flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-mocha">{label}</p>
+          <p
+            className={cn(
+              "font-playfair text-3xl leading-none mt-2",
+              accent ? "text-[#c8102e]" : "text-[#03045e]"
+            )}
+          >
+            {value}
+          </p>
+          {hint && <p className="text-xs text-mocha mt-2">{hint}</p>}
+        </div>
+        <div
+          className={cn(
+            "rounded-full p-2.5 shrink-0",
+            accent ? "bg-[#c8102e]/8 text-[#c8102e]" : "bg-[#03045e]/5 text-[#03045e]"
+          )}
+        >
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
+        </div>
       </div>
-      <p className="font-playfair text-2xl">{value}</p>
-    </>
+      {href && (
+        <span className="mt-auto pt-4 text-[11px] text-[#03045e]/70 inline-flex items-center gap-1 group-hover:text-[#03045e]">
+          Open
+          <ArrowUpRight className="w-3 h-3" />
+        </span>
+      )}
+    </div>
   );
 
   if (href) {
     return (
-      <Link
-        href={href}
-        className="border border-wf-border rounded-lg p-6 bg-white hover:border-gold transition-colors block"
-      >
-        {inner}
+      <Link href={href} className="group block h-full hover:bg-stone-50/50 transition-colors">
+        {content}
       </Link>
     );
   }
 
+  return content;
+}
+
+function AttentionCard({
+  href,
+  icon: Icon,
+  label,
+  value,
+  hint,
+  urgent,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  value: number;
+  hint?: string;
+  urgent?: boolean;
+}) {
   return (
-    <div className="border border-wf-border rounded-lg p-6 bg-white">{inner}</div>
+    <Link
+      href={href}
+      className={cn(
+        "group bg-white shadow-sm ring-1 ring-black/[0.04] px-5 py-4 flex items-center gap-4 transition-all hover:ring-[#03045e]/10 hover:shadow-md",
+        urgent && "ring-amber-200/60"
+      )}
+    >
+      <div
+        className={cn(
+          "rounded-full p-3 shrink-0 transition-colors",
+          urgent
+            ? "bg-amber-50 text-amber-800 group-hover:bg-amber-100"
+            : "bg-stone-50 text-stone-500 group-hover:bg-[#03045e]/5 group-hover:text-[#03045e]"
+        )}
+      >
+        <Icon className="w-5 h-5" strokeWidth={1.75} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-mocha">{label}</p>
+        <p className="font-playfair text-2xl text-[#03045e] leading-none mt-1 tabular-nums">
+          {value}
+        </p>
+        {hint && <p className="text-xs text-mocha mt-1">{hint}</p>}
+      </div>
+      <ArrowUpRight className="w-4 h-4 text-mocha/40 group-hover:text-[#03045e] shrink-0" />
+    </Link>
   );
 }

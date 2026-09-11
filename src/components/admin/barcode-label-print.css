@@ -1,0 +1,51 @@
+@media print {
+  @page {
+    margin: 8mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  /* Hide admin chrome — label grid sits outside print:hidden UI shell */
+  aside,
+  .admin-shell-chrome {
+    display: none !important;
+  }
+
+  .admin-print-area {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  body.print-barcode-only .label-sheet-meta {
+    display: none !important;
+  }
+
+  body.print-barcode-only .label-sheet-size {
+    display: block !important;
+    font-size: 11pt;
+    font-weight: 700;
+    margin-bottom: 1mm;
+  }
+
+  body.print-barcode-only .label-sheet-cell {
+    border: none !important;
+    box-shadow: none !important;
+    min-height: 0 !important;
+    padding: 2mm !important;
+  }
+
+  body.print-barcode-only .label-sheet-grid {
+    gap: 3mm !important;
+  }
+
+  .label-sheet-cell {
+    box-shadow: none !important;
+    border: 1px solid #e7e5e4 !important;
+  }
+
+  .label-sheet-barcode {
+    border-top: none !important;
+  }
+}

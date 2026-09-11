@@ -14,6 +14,23 @@ export const DEFAULT_STANDARD_SHIPPING = {
   enabled: true,
 } as const;
 
+export const DEFAULT_PICKUP_SHIPPING = {
+  name: "Shop pickup",
+  slug: "pickup",
+  description: "Collect from our Accra shop · 15 Odaw Street, Kokomlemle",
+  price: 0,
+  eta: "Walk in",
+  deliveryDaysMin: 0,
+  deliveryDaysMax: 0,
+  sortOrder: -1,
+  enabled: true,
+} as const;
+
+const DEFAULT_SHIPPING_METHODS = [
+  DEFAULT_PICKUP_SHIPPING,
+  DEFAULT_STANDARD_SHIPPING,
+] as const;
+
 export type CheckoutShippingMethod = Pick<
   ShippingMethod,
   | "id"
@@ -30,34 +47,42 @@ export function shippingDisplayName(method: Pick<CheckoutShippingMethod, "name" 
   return `${method.name} · ${method.eta}`;
 }
 
+export async function ensureDefaultShippingMethods(): Promise<void> {
+  for (const method of DEFAULT_SHIPPING_METHODS) {
+    await prisma.shippingMethod.upsert({
+      where: { slug: method.slug },
+      update: {
+        name: method.name,
+        description: method.description,
+        price: method.price,
+        eta: method.eta,
+        deliveryDaysMin: method.deliveryDaysMin,
+        deliveryDaysMax: method.deliveryDaysMax,
+        sortOrder: method.sortOrder,
+        enabled: method.enabled,
+      },
+      create: {
+        name: method.name,
+        slug: method.slug,
+        description: method.description,
+        price: method.price,
+        eta: method.eta,
+        deliveryDaysMin: method.deliveryDaysMin,
+        deliveryDaysMax: method.deliveryDaysMax,
+        sortOrder: method.sortOrder,
+        enabled: method.enabled,
+      },
+    });
+  }
+}
+
 export async function seedDefaultShippingMethods(): Promise<void> {
-  await prisma.shippingMethod.upsert({
-    where: { slug: DEFAULT_STANDARD_SHIPPING.slug },
-    update: {
-      name: DEFAULT_STANDARD_SHIPPING.name,
-      description: DEFAULT_STANDARD_SHIPPING.description,
-      price: DEFAULT_STANDARD_SHIPPING.price,
-      eta: DEFAULT_STANDARD_SHIPPING.eta,
-      deliveryDaysMin: DEFAULT_STANDARD_SHIPPING.deliveryDaysMin,
-      deliveryDaysMax: DEFAULT_STANDARD_SHIPPING.deliveryDaysMax,
-      sortOrder: DEFAULT_STANDARD_SHIPPING.sortOrder,
-      enabled: DEFAULT_STANDARD_SHIPPING.enabled,
-    },
-    create: {
-      name: DEFAULT_STANDARD_SHIPPING.name,
-      slug: DEFAULT_STANDARD_SHIPPING.slug,
-      description: DEFAULT_STANDARD_SHIPPING.description,
-      price: DEFAULT_STANDARD_SHIPPING.price,
-      eta: DEFAULT_STANDARD_SHIPPING.eta,
-      deliveryDaysMin: DEFAULT_STANDARD_SHIPPING.deliveryDaysMin,
-      deliveryDaysMax: DEFAULT_STANDARD_SHIPPING.deliveryDaysMax,
-      sortOrder: DEFAULT_STANDARD_SHIPPING.sortOrder,
-      enabled: DEFAULT_STANDARD_SHIPPING.enabled,
-    },
-  });
+  await ensureDefaultShippingMethods();
 }
 
 export async function getActiveShippingMethods(): Promise<CheckoutShippingMethod[]> {
+  await ensureDefaultShippingMethods();
+
   let methods = await prisma.shippingMethod.findMany({
     where: { enabled: true },
     orderBy: [{ sortOrder: "asc" }, { price: "asc" }],
@@ -157,8 +182,8 @@ export function parseShippingMethodInput(body: Record<string, unknown>) {
   if (!Number.isFinite(price) || price < 0) {
     return { error: "Price must be zero or greater" as const };
   }
-  if (!Number.isFinite(deliveryDaysMin) || deliveryDaysMin < 1) {
-    return { error: "Minimum delivery days must be at least 1" as const };
+  if (!Number.isFinite(deliveryDaysMin) || deliveryDaysMin < 0) {
+    return { error: "Minimum delivery days cannot be negative" as const };
   }
   if (!Number.isFinite(deliveryDaysMax) || deliveryDaysMax < deliveryDaysMin) {
     return { error: "Maximum delivery days must be at least the minimum" as const };

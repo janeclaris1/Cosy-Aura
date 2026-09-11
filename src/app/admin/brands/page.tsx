@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { BrandManager } from "@/components/admin/BrandManager";
+import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminBrandsPage() {
   await requireAdminPage();
@@ -11,11 +12,12 @@ export default async function AdminBrandsPage() {
   });
 
   return (
-    <div>
-      <h1 className="font-playfair text-3xl mb-2">Brands</h1>
-      <p className="text-sm text-wf-gray mb-8">
-        Manage brand catalogue used across the storefront and imports.
-      </p>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Catalogue"
+        title="Brands"
+        description="Manage the brand catalogue used across the storefront and product imports."
+      />
       <BrandManager initialBrands={brands} />
     </div>
   );

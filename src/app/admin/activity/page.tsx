@@ -1,15 +1,17 @@
 import { requireAdminPage } from "@/lib/admin";
 import { AuditLogViewer } from "@/components/admin/AuditLogViewer";
+import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminActivityPage() {
   await requireAdminPage("audit.read");
 
   return (
-    <div>
-      <h1 className="font-playfair text-3xl mb-2">Activity</h1>
-      <p className="text-sm text-mocha mb-8 max-w-2xl">
-        Audit trail for stock edits, transfers, and order status changes.
-      </p>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Insights"
+        title="Activity log"
+        description="Audit trail for stock edits, transfers, POS sales, and order status changes."
+      />
       <AuditLogViewer />
     </div>
   );

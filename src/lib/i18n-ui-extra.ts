@@ -5,6 +5,8 @@ type Messages = Record<string, string>;
 /** Incremental UI strings (checkout, product CTAs, support, PLP). Merged into UI_BY_LANG. */
 export const EXTRA_EN: Messages = {
   "checkout.delivery": "Delivery",
+  "checkout.pickup": "Shop pickup",
+  "checkout.pickupFree": "Free",
   "checkout.payment": "Payment",
   "checkout.payOrderNow": "Pay Order Now",
   "checkout.cashOnDelivery": "Cash on delivery",
@@ -79,6 +81,8 @@ export const EXTRA_EN: Messages = {
 
 export const EXTRA_FR: Messages = {
   "checkout.delivery": "Livraison",
+  "checkout.pickup": "Retrait en boutique",
+  "checkout.pickupFree": "Gratuit",
   "checkout.payment": "Paiement",
   "checkout.payOrderNow": "Payer la commande maintenant",
   "checkout.cashOnDelivery": "Paiement à la livraison",
@@ -150,6 +154,8 @@ export const EXTRA_FR: Messages = {
 
 export const EXTRA_ES: Messages = {
   "checkout.delivery": "Entrega",
+  "checkout.pickup": "Recogida en tienda",
+  "checkout.pickupFree": "Gratis",
   "checkout.payment": "Pago",
   "checkout.payOrderNow": "Pagar pedido ahora",
   "checkout.cashOnDelivery": "Pago contra entrega",
@@ -221,6 +227,8 @@ export const EXTRA_ES: Messages = {
 
 export const EXTRA_PT: Messages = {
   "checkout.delivery": "Entrega",
+  "checkout.pickup": "Levantamento na loja",
+  "checkout.pickupFree": "Grátis",
   "checkout.payment": "Pagamento",
   "checkout.payOrderNow": "Pagar pedido agora",
   "checkout.cashOnDelivery": "Pagamento na entrega",
@@ -292,6 +300,8 @@ export const EXTRA_PT: Messages = {
 
 export const EXTRA_DE: Messages = {
   "checkout.delivery": "Lieferung",
+  "checkout.pickup": "Abholung im Shop",
+  "checkout.pickupFree": "Kostenlos",
   "checkout.payment": "Zahlung",
   "checkout.payOrderNow": "Bestellung jetzt bezahlen",
   "checkout.cashOnDelivery": "Nachnahme",

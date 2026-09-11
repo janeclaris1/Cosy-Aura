@@ -46,6 +46,12 @@ export default async function ShippingPage() {
             methods.map((method) => (
               <li key={method.id}>
                 <strong>{method.name}</strong>
+                {method.description ? (
+                  <span className="text-wf-gray">: {method.description}</span>
+                ) : null}
+                {method.price === 0 ? (
+                  <span className="text-wf-gray"> (free)</span>
+                ) : null}
               </li>
             ))
           ) : (
@@ -65,9 +71,9 @@ export default async function ShippingPage() {
       <ContentSection title="Ghana and Cameroon">
         <p>
           We fulfil from Ghana and Cameroon, with shop locations in Accra,
-          Yaoundé, and Mamfe. Local and regional delivery options — including
-          partners where available — are offered at checkout based on your
-          address.
+          Yaoundé, and Mamfe.           Local and regional delivery options — including shop pickup in Accra,
+          Yaoundé, and Mamfe, plus courier partners where available — are offered
+          at checkout based on your address.
         </p>
       </ContentSection>
 

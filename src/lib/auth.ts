@@ -172,11 +172,13 @@ export const authOptions: NextAuthOptions = {
       if (userId && (user || token.memberDiscount === undefined || !token.role)) {
         const dbUser = await prisma.user.findUnique({
           where: { id: userId },
-          select: { memberDiscount: true, role: true },
+          select: { memberDiscount: true, role: true, image: true, name: true },
         });
         if (dbUser) {
           token.memberDiscount = Boolean(dbUser.memberDiscount);
           token.role = dbUser.role;
+          token.picture = dbUser.image || undefined;
+          token.name = dbUser.name || token.name;
         } else if (user) {
           token.role = (user as { role?: string }).role || "USER";
           token.memberDiscount = Boolean(
@@ -191,6 +193,7 @@ export const authOptions: NextAuthOptions = {
         (session.user as { role?: string }).role = token.role as string;
         session.user.id = token.sub!;
         session.user.memberDiscount = Boolean(token.memberDiscount);
+        session.user.image = (token.picture as string | undefined) || null;
       }
       return session;
     },

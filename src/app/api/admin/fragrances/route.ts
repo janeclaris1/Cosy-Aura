@@ -8,6 +8,7 @@ import {
   syncFragranceCountryStocks,
 } from "@/lib/sync-country-stock";
 import { initialEngagementCounts } from "@/lib/product-engagement";
+import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
 
 export async function POST(req: Request) {
   const { ctx, error } = await requireAdminApi("catalog.write", { req });
@@ -73,6 +74,17 @@ export async function POST(req: Request) {
       ? body.countryStocks
       : defaultCountryStocksFromGlobal(stock)
   );
+
+  if (Array.isArray(body.barcodes)) {
+    try {
+      await syncFragranceBarcodes(fragrance.id, body.barcodes);
+    } catch (err) {
+      await prisma.fragrance.delete({ where: { id: fragrance.id } });
+      const message = err instanceof Error ? err.message : "Invalid barcodes";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+  }
+  await ensureFragranceBarcodes(fragrance.id);
 
   await writeAuditLog({
     actorId: ctx.userId,

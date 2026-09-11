@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdminPage } from "@/lib/admin";
 import { getBlogPostById } from "@/lib/blog";
 import { PostForm } from "@/components/admin/PostForm";
+import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 interface PageProps {
   params: { id: string };
@@ -13,8 +14,12 @@ export default async function EditPostPage({ params }: PageProps) {
   if (!post) notFound();
 
   return (
-    <div>
-      <h1 className="font-playfair text-3xl mb-8">Edit post</h1>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Content"
+        title="Edit post"
+        description={post.title}
+      />
       <PostForm post={post} />
     </div>
   );

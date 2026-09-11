@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
 import { syncFragranceCountryStocks } from "@/lib/sync-country-stock";
+import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
 
 export async function PUT(
   req: Request,
@@ -55,6 +56,16 @@ export async function PUT(
   if (body.countryStocks) {
     await syncFragranceCountryStocks(params.id, body.countryStocks);
   }
+
+  if (Array.isArray(body.barcodes)) {
+    try {
+      await syncFragranceBarcodes(params.id, body.barcodes);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid barcodes";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+  }
+  await ensureFragranceBarcodes(params.id);
 
   if (body.imageUrl) {
     await prisma.fragranceImage.deleteMany({ where: { fragranceId: params.id } });

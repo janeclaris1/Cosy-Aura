@@ -228,7 +228,9 @@ export function RegionalCheckoutForm({
       ? "Dawurobo"
       : activeCourier === "shaqexpress"
         ? "ShaQ Express"
-        : undefined
+        : activeCourier === "pickup"
+          ? t("checkout.pickup")
+          : undefined
     : shipping?.name;
   const paymentMethodLabel = ghanaSplitPayment
     ? deliveryPayer === "recipient"
@@ -280,7 +282,9 @@ export function RegionalCheckoutForm({
         if (cancelled) return;
         const list = (data.methods || []) as Method[];
         setMethods(list);
-        if (list[0]) setShippingId(list[0].id);
+        const defaultMethod =
+          list.find((m) => !/pickup/i.test(m.name)) || list[0];
+        if (defaultMethod) setShippingId(defaultMethod.id);
       } catch {
         if (!cancelled) setError("Could not load shipping options");
       }
@@ -609,10 +613,20 @@ export function RegionalCheckoutForm({
       </label>
       <label className="block text-sm">
         {t("form.address")}
+        {useGhanaCourier && activeCourier === "pickup" ? (
+          <span className="block text-xs text-wf-gray font-normal mt-0.5">
+            Optional for shop pickup — we will confirm collection details by WhatsApp.
+          </span>
+        ) : null}
         <input
-          required
+          required={!(useGhanaCourier && activeCourier === "pickup")}
           value={form.address}
           onChange={(e) => setForm({ ...form, address: e.target.value })}
+          placeholder={
+            useGhanaCourier && activeCourier === "pickup"
+              ? pickupInfo?.address || "15 Odaw Street, Kokomlemle, Accra"
+              : undefined
+          }
           className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
         />
       </label>
@@ -707,7 +721,7 @@ export function RegionalCheckoutForm({
                 className="mt-1"
               />
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">Pickup at shop</span>
+                <span className="block font-medium">{t("checkout.pickup")}</span>
                 <span className="mt-1 block text-[12px] leading-snug text-mocha">
                   {[
                     pickupInfo?.branchName,
@@ -716,10 +730,10 @@ export function RegionalCheckoutForm({
                     pickupInfo?.openingHours,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "Collect from our shop — free"}
+                    .join(" · ") || "15 Odaw Street, Kokomlemle, Accra"}
                 </span>
               </span>
-              <span className="shrink-0 font-medium mt-0.5">Free</span>
+              <span className="shrink-0 font-medium mt-0.5">{t("checkout.pickupFree")}</span>
             </label>
           ) : null}
           {!dawuroboOk && !shaqOk && !pickupOk ? (

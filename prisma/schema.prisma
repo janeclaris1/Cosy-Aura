@@ -82,6 +82,34 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum OrderChannel {
+  WEB
+  POS
+}
+
+enum PosPaymentMethod {
+  CASH
+  MOMO
+  CARD
+  OTHER
+}
+
+enum PosDiscountType {
+  PERCENT
+  FIXED
+}
+
+enum AttendancePunchType {
+  CLOCK_IN
+  CLOCK_OUT
+}
+
+enum AttendanceSource {
+  BIOMETRIC
+  MANUAL
+  WEBHOOK
+}
+
 enum StockTransferStatus {
   PENDING
   COMPLETED
@@ -118,6 +146,10 @@ model User {
   stockTransfers   StockTransfer[]       @relation("TransferCreatedBy")
   transfersApproved StockTransfer[]      @relation("TransferApprovedBy")
   passwordTokens   AdminPasswordToken[]
+  posOrders              Order[]                 @relation("PosOrders")
+  attendancePunches      AttendancePunch[]
+  attendanceEnrollments  AttendanceEnrollment[]
+  manualAttendancePunches AttendancePunch[]      @relation("ManualAttendance")
 
   @@index([email])
   @@index([phone])
@@ -243,6 +275,7 @@ model Fragrance {
   orderItems    OrderItem[]
   wishlistItems WishlistItem[]
   reviews       FragranceReview[]
+  barcodes      FragranceBarcode[]
 
   @@index([brandId])
   @@index([seriesId])
@@ -273,6 +306,22 @@ model FragranceCountryStock {
   @@index([fragranceId])
 }
 
+/** Scannable barcode per fragrance × bottle size (30 | 50 | 100 ml). */
+model FragranceBarcode {
+  id          String   @id @default(cuid())
+  fragranceId String
+  bottleSize  Int
+  barcode     String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fragrance Fragrance @relation(fields: [fragranceId], references: [id], onDelete: Cascade)
+
+  @@unique([fragranceId, bottleSize])
+  @@index([fragranceId])
+  @@index([barcode])
+}
+
 /** Physical shop / fulfilment site within a country. */
 model Branch {
   id        String   @id @default(cuid())
@@ -290,7 +339,7 @@ model Branch {
   /** Allow cash-on-delivery for orders fulfilled by this country's default branch. */
   codEnabled    Boolean @default(true)
   /** Offer in-store / branch pickup instead of courier. */
-  pickupEnabled Boolean @default(false)
+  pickupEnabled Boolean @default(true)
   /** Ghana: offer Dawurobo when credentials exist (default branch drives country checkout). */
   dawuroboEnabled    Boolean @default(true)
   /** Ghana: offer ShaQ Express flat fee. */
@@ -305,8 +354,10 @@ model Branch {
   stocks           BranchStock[]
   staffAssignments StaffAssignment[]
   orders           Order[]
-  transfersFrom    StockTransfer[] @relation("TransferFrom")
-  transfersTo      StockTransfer[] @relation("TransferTo")
+  transfersFrom      StockTransfer[]    @relation("TransferFrom")
+  transfersTo        StockTransfer[]    @relation("TransferTo")
+  attendanceDevices  AttendanceDevice[]
+  attendancePunches  AttendancePunch[]
 
   @@index([country])
   @@index([active])
@@ -414,6 +465,72 @@ model StaffAssignment {
   @@index([branchId])
 }
 
+/** Biometric terminal registered at a branch (ZKTeco, Hikvision, etc.). */
+model AttendanceDevice {
+  id                String   @id @default(cuid())
+  branchId          String
+  name              String
+  vendor            String?
+  serialNumber      String?  @unique
+  webhookSecretHash String
+  active            Boolean  @default(true)
+  lastSyncAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  branch       Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  enrollments  AttendanceEnrollment[]
+  punches      AttendancePunch[]
+
+  @@index([branchId])
+  @@index([active])
+}
+
+/** Maps a staff account to the user ID stored on the biometric device. */
+model AttendanceEnrollment {
+  id           String   @id @default(cuid())
+  userId       String
+  deviceId     String
+  deviceUserId String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device AttendanceDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, deviceUserId])
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([deviceId])
+}
+
+/** Clock-in / clock-out event from a device or manual admin entry. */
+model AttendancePunch {
+  id          String              @id @default(cuid())
+  userId      String
+  branchId    String
+  deviceId    String?
+  punchType   AttendancePunchType
+  source      AttendanceSource    @default(BIOMETRIC)
+  punchedAt   DateTime
+  externalId  String?
+  note        String?
+  createdById String?
+  createdAt   DateTime            @default(now())
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch    Branch            @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  device    AttendanceDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  createdBy User?             @relation("ManualAttendance", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([deviceId, externalId])
+  @@index([userId, punchedAt])
+  @@index([branchId, punchedAt])
+  @@index([punchedAt])
+  @@index([deviceId])
+}
+
 model FragranceImage {
   id          String   @id @default(cuid())
   fragranceId String
@@ -464,10 +581,25 @@ model Order {
   fulfillmentBranchId   String?
   /** Set when branch stock was deducted for this order. */
   inventoryCommittedAt  DateTime?
+  channel               OrderChannel       @default(WEB)
+  /** Staff member who completed a POS sale. */
+  posUserId             String?
+  posPaymentMethod      PosPaymentMethod?
+  /** MoMo / card transaction reference for POS sales. */
+  posPaymentReference   String?
+  /** Human-readable receipt number for walk-in sales. */
+  receiptNumber         String?            @unique
+  posDiscountType       PosDiscountType?
+  /** Percent (0–100) or fixed GHS amount, depending on posDiscountType. */
+  posDiscountValue      Float?
+  /** Computed discount in GHS applied to this POS sale. */
+  posDiscountAmount     Float?
+  posNotes              String?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
   user              User?       @relation(fields: [userId], references: [id])
+  posUser           User?       @relation("PosOrders", fields: [posUserId], references: [id], onDelete: SetNull)
   fulfillmentBranch Branch?     @relation(fields: [fulfillmentBranchId], references: [id], onDelete: SetNull)
   items             OrderItem[]
   reviews           FragranceReview[]
@@ -482,6 +614,9 @@ model Order {
   @@index([deliveryProvider])
   @@index([shippingRegion])
   @@index([fulfillmentBranchId])
+  @@index([channel])
+  @@index([posUserId])
+  @@index([receiptNumber])
 }
 
 model OrderItem {

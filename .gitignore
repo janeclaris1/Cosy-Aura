@@ -52,3 +52,6 @@ scripts/__pycache__/
 
 # Legacy watch assets (not used by Cosy Aura)
 public/images/watches/
+
+# Locally stored admin profile uploads (production uses Cloudinary)
+public/uploads/avatars/

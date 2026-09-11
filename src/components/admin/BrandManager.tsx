@@ -2,6 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminTableWrap,
+  adminInputClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+} from "@/components/admin/admin-ui";
 
 type BrandRow = {
   id: string;
@@ -52,42 +63,44 @@ export function BrandManager({ initialBrands }: { initialBrands: BrandRow[] }) {
 
   return (
     <div className="space-y-8">
-      <form
-        onSubmit={createBrand}
-        className="bg-white border border-wf-border rounded-lg p-5 flex flex-col sm:flex-row gap-3"
-      >
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New brand name"
-          className="flex-1 px-4 py-2.5 border border-wf-border rounded text-sm focus:outline-none focus:border-gold"
-          required
-        />
-        <button type="submit" disabled={loading} className="btn-gold disabled:opacity-50">
-          {loading ? "Adding..." : "Add Brand"}
-        </button>
-      </form>
+      <AdminCard>
+        <form
+          onSubmit={createBrand}
+          className="flex flex-col sm:flex-row gap-3"
+        >
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New brand name"
+            className={`${adminInputClass} flex-1`}
+            required
+          />
+          <AdminButton type="submit" disabled={loading}>
+            {loading ? "Adding..." : "Add Brand"}
+          </AdminButton>
+        </form>
+      </AdminCard>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <div className="border border-wf-border rounded-lg overflow-hidden bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-wf-light">
+      <AdminTableWrap>
+        <table className={adminTableClass}>
+          <thead className={adminTheadClass}>
             <tr>
-              <th className="text-left p-3 font-medium">Name</th>
-              <th className="text-left p-3 font-medium">Slug</th>
-              <th className="text-left p-3 font-medium">Fragrances</th>
-              <th className="text-left p-3 font-medium">Series</th>
-              <th className="text-left p-3 font-medium">Actions</th>
+              <th className={adminThClass}>Name</th>
+              <th className={adminThClass}>Slug</th>
+              <th className={adminThClass}>Fragrances</th>
+              <th className={adminThClass}>Series</th>
+              <th className={adminThClass}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {initialBrands.map((brand) => (
-              <tr key={brand.id} className="border-t border-wf-border">
-                <td className="p-3 font-medium">{brand.name}</td>
-                <td className="p-3 text-wf-gray">{brand.slug}</td>
-                <td className="p-3">{brand._count.fragrances}</td>
-                <td className="p-3">{brand._count.series}</td>
-                <td className="p-3">
+              <tr key={brand.id} className={adminTrClass}>
+                <td className={`${adminTdClass} font-medium`}>{brand.name}</td>
+                <td className={`${adminTdClass} text-mocha`}>{brand.slug}</td>
+                <td className={adminTdClass}>{brand._count.fragrances}</td>
+                <td className={adminTdClass}>{brand._count.series}</td>
+                <td className={adminTdClass}>
                   <button
                     type="button"
                     onClick={() => deleteBrand(brand.id, brand.name)}
@@ -101,7 +114,7 @@ export function BrandManager({ initialBrands }: { initialBrands: BrandRow[] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </AdminTableWrap>
     </div>
   );
 }

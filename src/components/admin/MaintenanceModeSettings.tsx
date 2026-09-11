@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AdminCard, AdminSectionTitle } from "@/components/admin/admin-ui";
 import type { StoreConfigPayload } from "@/lib/store-config";
 
 export function MaintenanceModeSettings({
@@ -45,14 +46,13 @@ export function MaintenanceModeSettings({
   const active = envForced || enabled;
 
   return (
-    <section className="border border-wf-border bg-white p-6 max-w-2xl">
+    <AdminCard padding="lg" className="max-w-2xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-playfair text-xl mb-2">Maintenance mode</h2>
-          <p className="text-sm text-wf-gray leading-relaxed">
-            When enabled, visitors are redirected to the maintenance page. Admin,
-            login, and health checks stay available so you can manage the shop.
-          </p>
+          <AdminSectionTitle
+            title="Maintenance mode"
+            description="When enabled, visitors are redirected to the maintenance page. Admin, login, and health checks stay available so you can manage the shop."
+          />
         </div>
         <button
           type="button"
@@ -61,7 +61,7 @@ export function MaintenanceModeSettings({
           disabled={saving || envForced}
           onClick={() => void toggle()}
           className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-            active ? "bg-espresso" : "bg-wf-border"
+            active ? "bg-[#03045e]" : "bg-stone-200/90"
           } ${envForced ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           <span
@@ -74,7 +74,7 @@ export function MaintenanceModeSettings({
 
       <p className="mt-4 text-sm">
         Status:{" "}
-        <span className={active ? "text-amber-700 font-medium" : "text-wf-gray"}>
+        <span className={active ? "text-amber-700 font-medium" : "text-mocha"}>
           {active ? "Storefront offline" : "Storefront live"}
         </span>
       </p>
@@ -88,6 +88,6 @@ export function MaintenanceModeSettings({
 
       {message && <p className="mt-3 text-sm text-green-700">{message}</p>}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-    </section>
+    </AdminCard>
   );
 }

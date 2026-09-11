@@ -332,6 +332,18 @@ export async function POST(req: Request) {
       : `${shipping!.name} · ${shipping!.eta}`;
 
     const fulfillmentBranchId = await resolveFulfillmentBranchId(dest);
+    const pickupCommerce =
+      deliveryProvider === "pickup" ? await getCountryCommerceConfig(dest) : null;
+    const resolvedShippingAddress =
+      deliveryProvider === "pickup"
+        ? String(address || "").trim() ||
+          pickupCommerce?.address ||
+          "15 Odaw Street, Kokomlemle, Accra"
+        : String(address).trim();
+    const resolvedShippingCity =
+      deliveryProvider === "pickup"
+        ? String(city || "").trim() || pickupCommerce?.city || "Accra"
+        : String(city).trim();
 
     const order = await prisma.order.create({
       data: {
@@ -342,8 +354,8 @@ export async function POST(req: Request) {
         shippingCost: shippingGhs,
         shippingName: String(name).trim(),
         shippingPhone: String(phone || "").trim() || null,
-        shippingAddress: String(address).trim(),
-        shippingCity: String(city).trim(),
+        shippingAddress: resolvedShippingAddress,
+        shippingCity: resolvedShippingCity,
         shippingPostcode: String(postcode || "").trim() || null,
         shippingCountry: dest,
         shippingRegion,

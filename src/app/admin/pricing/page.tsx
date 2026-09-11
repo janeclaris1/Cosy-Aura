@@ -4,6 +4,11 @@ import { WhatsAppCheckoutSettings } from "@/components/admin/WhatsAppCheckoutSet
 import { MaintenanceModeSettings } from "@/components/admin/MaintenanceModeSettings";
 import { ensureDefaultStoreConfig, getStoreConfig } from "@/lib/store-config";
 import { isMaintenanceEnvForced } from "@/lib/maintenance";
+import {
+  AdminPageHeader,
+  AdminSectionTitle,
+  adminPageWrap,
+} from "@/components/admin/admin-ui";
 
 export default async function AdminPricingPage() {
   await requireAdminPage();
@@ -12,26 +17,44 @@ export default async function AdminPricingPage() {
   const envForced = isMaintenanceEnvForced();
 
   return (
-    <div className="space-y-12">
-      <div>
-        <h1 className="font-playfair text-3xl mb-2">Store settings</h1>
-        <p className="text-sm text-wf-gray mb-8">
-          Regional pricing, WhatsApp checkout, and storefront maintenance.
-        </p>
-        <div className="mb-10">
-          <MaintenanceModeSettings
-            initialEnabled={config.maintenanceMode}
-            envForced={envForced}
-          />
-        </div>
+    <div className={`${adminPageWrap} space-y-10`}>
+      <AdminPageHeader
+        eyebrow="Store"
+        title="Store settings"
+        description="Regional pricing, WhatsApp checkout, and storefront maintenance."
+      />
+
+      <section>
+        <AdminSectionTitle
+          title="Maintenance mode"
+          description="Temporarily hide the storefront from customers."
+        />
+        <MaintenanceModeSettings
+          initialEnabled={config.maintenanceMode}
+          envForced={envForced}
+        />
+      </section>
+
+      <section>
+        <AdminSectionTitle
+          title="Regional pricing"
+          description="Markup rules for customers outside Africa."
+        />
         <PricingSettings
           initialConfig={{
             nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
             nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
           }}
         />
-      </div>
-      <WhatsAppCheckoutSettings initialConfig={config} />
+      </section>
+
+      <section>
+        <AdminSectionTitle
+          title="WhatsApp checkout"
+          description="Numbers and messaging for manual order placement."
+        />
+        <WhatsAppCheckoutSettings initialConfig={config} />
+      </section>
     </div>
   );
 }

@@ -5,11 +5,13 @@ import {
   readAdminBranchCookie,
   writeAdminBranchCookie,
 } from "@/lib/admin-context";
-
-type Branch = { id: string; name: string; country: string; isDefault: boolean };
+import {
+  AdminBranchSelect,
+  type AdminBranchOption,
+} from "@/components/admin/AdminBranchSelect";
 
 export function AdminBranchSwitcher() {
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branches, setBranches] = useState<AdminBranchOption[]>([]);
   const [branchId, setBranchId] = useState("");
 
   useEffect(() => {
@@ -17,7 +19,7 @@ export function AdminBranchSwitcher() {
       const res = await fetch("/api/admin/context");
       if (!res.ok) return;
       const data = await res.json();
-      const list = (data.branches || []) as Branch[];
+      const list = (data.branches || []) as AdminBranchOption[];
       setBranches(list);
       const cookie = readAdminBranchCookie();
       const initial =
@@ -30,29 +32,20 @@ export function AdminBranchSwitcher() {
     })();
   }, []);
 
-  if (branches.length < 2) return null;
-
   return (
-    <label className="flex flex-col gap-1.5 text-xs text-white/80 px-1">
-      <span className="whitespace-nowrap">Act as</span>
-      <select
-        value={branchId}
-        onChange={(e) => {
-          const next = e.target.value;
-          setBranchId(next);
-          writeAdminBranchCookie(next || null);
-          window.dispatchEvent(
-            new CustomEvent("ca-admin-branch", { detail: { branchId: next } })
-          );
-        }}
-        className="w-full bg-white/10 border border-white/20 text-white text-xs px-2 py-1.5 rounded-md"
-      >
-        {branches.map((b) => (
-          <option key={b.id} value={b.id} className="text-espresso">
-            {b.name} ({b.country})
-          </option>
-        ))}
-      </select>
-    </label>
+    <AdminBranchSelect
+      branches={branches}
+      value={branchId}
+      onChange={(next) => {
+        setBranchId(next);
+        writeAdminBranchCookie(next || null);
+        window.dispatchEvent(
+          new CustomEvent("ca-admin-branch", { detail: { branchId: next } })
+        );
+      }}
+      label="Active branch"
+      variant="sidebar"
+      hideWhenSingle
+    />
   );
 }

@@ -4,34 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Bell, Menu, X } from "lucide-react";
+import { ExternalLink, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ADMIN_NAV_GROUPS } from "@/lib/admin-nav";
 import { AdminNotificationListener } from "@/components/admin/AdminNotificationListener";
 import { AdminBranchSwitcher } from "@/components/admin/AdminBranchSwitcher";
+import { StaffAvatar } from "@/components/admin/StaffAvatar";
 
-const NAV = [
-  { href: "/admin", label: "Dashboard", exact: true },
-  { href: "/admin/fragrances", label: "Fragrances" },
-  { href: "/admin/orders", label: "Orders" },
-  { href: "/admin/branches", label: "Branches" },
-  { href: "/admin/stock", label: "Stock" },
-  { href: "/admin/transfers", label: "Transfers" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/activity", label: "Activity" },
-  { href: "/admin/staff", label: "Staff" },
-  { href: "/admin/shipping", label: "Shipping" },
-  { href: "/admin/pricing", label: "Settings" },
-  { href: "/admin/brands", label: "Brands" },
-  { href: "/admin/posts", label: "Journal" },
-  { href: "/admin/customers", label: "Customers" },
-  { href: "/admin/subscribers", label: "Subscribers" },
-  { href: "/admin/enquiries", label: "Enquiries" },
-  { href: "/admin/notifications", label: "Alerts" },
-];
+type AdminProfileSummary = {
+  name: string | null;
+  email: string;
+  image: string | null;
+};
+
+function isActive(pathname: string, href: string, exact?: boolean) {
+  if (exact) return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
+  const [orderCount, setOrderCount] = useState<number | null>(null);
+  const [profile, setProfile] = useState<AdminProfileSummary | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -40,7 +35,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function loadNotifications() {
       try {
         const res = await fetch("/api/admin/notifications");
         if (!res.ok) return;
@@ -50,114 +45,219 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         /* ignore */
       }
     }
-    load();
-    const id = setInterval(load, 30000);
+    loadNotifications();
+    const id = setInterval(loadNotifications, 30000);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
   }, [pathname]);
 
-  const nav = (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-      {NAV.map((item) => {
-        const active = item.exact
-          ? pathname === item.href
-          : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "block rounded-md px-3 py-2 text-sm transition-colors",
-              active
-                ? "bg-white/10 text-[#FFD200] font-medium"
-                : "text-white/85 hover:bg-white/5 hover:text-white"
-            )}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
+  useEffect(() => {
+    let cancelled = false;
+    async function loadOrderCount() {
+      try {
+        const res = await fetch("/api/admin/orders/count", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && typeof data.total === "number") {
+          setOrderCount(data.total);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadOrderCount();
+    const id = setInterval(loadOrderCount, 30000);
+    const onOrdersChanged = () => {
+      void loadOrderCount();
+    };
+    window.addEventListener("admin:orders-changed", onOrdersChanged);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener("admin:orders-changed", onOrdersChanged);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/admin/profile", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.profile) {
+          setProfile({
+            name: data.profile.name,
+            email: data.profile.email,
+            image: data.profile.image,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadProfile();
+    const onProfileChanged = () => {
+      void loadProfile();
+    };
+    window.addEventListener("admin:profile-changed", onProfileChanged);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("admin:profile-changed", onProfileChanged);
+    };
+  }, [pathname]);
+
+  const navPillBorder =
+    "rounded-2xl bg-white border border-[#03045e]/15";
+
+  const navLinkClass = (active: boolean) =>
+    cn(
+      "group flex items-center gap-3 px-3.5 py-2.5 text-[13px] text-[#03045e] transition-all duration-200",
+      navPillBorder,
+      active
+        ? "font-semibold border-[#03045e]/35"
+        : "font-medium hover:border-[#03045e]/25"
+    );
+
+  const navIconClass = () =>
+    cn("w-[18px] h-[18px] shrink-0 text-[#03045e]");
+
+  const navContent = (
+    <nav className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
+      {ADMIN_NAV_GROUPS.map((group) => (
+        <div key={group.label} className="mb-1">
+          <p className="px-3.5 pt-4 pb-2 font-playfair text-[11px] uppercase tracking-[0.14em] text-white/45">
+            {group.label}
+          </p>
+          <ul className="space-y-1">
+            {group.items.map((item) => {
+              const active = isActive(pathname, item.href, item.exact);
+              const Icon = item.icon;
+              const showAlertBadge = item.badge === "alerts" && unread > 0;
+              const showOrderBadge =
+                item.badge === "orders" && orderCount !== null && orderCount > 0;
+              const orderBadgeLabel =
+                orderCount !== null && orderCount > 9999
+                  ? "9999+"
+                  : orderCount !== null && orderCount > 999
+                    ? `${Math.floor(orderCount / 1000)}k+`
+                    : String(orderCount ?? "");
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={navLinkClass(active)}
+                  >
+                    <Icon className={navIconClass()} strokeWidth={1.75} />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {showAlertBadge && (
+                      <span className="text-[10px] font-semibold tabular-nums min-w-[1.25rem] h-[1.25rem] px-1 rounded-full flex items-center justify-center bg-[#03045e] text-white">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                    {showOrderBadge && (
+                      <span className="text-[10px] font-semibold tabular-nums min-w-[1.25rem] h-[1.25rem] px-1.5 rounded-full flex items-center justify-center bg-[#03045e] text-white">
+                        {orderBadgeLabel}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 
-  const sidebarFooter = (
-    <div className="border-t border-white/10 p-3 space-y-3 shrink-0">
-      <AdminBranchSwitcher />
-      <div className="flex items-center gap-3 px-1">
+  const sidebarHeader = (
+    <div className="shrink-0 border-b border-white/[0.08] px-4 py-4">
+      <div className="flex flex-col items-center gap-2 text-center">
+        {profile ? (
+          <Link
+            href="/admin/profile"
+            aria-label="My profile"
+            className={cn(
+              "shrink-0 transition-opacity hover:opacity-90",
+              isActive(pathname, "/admin/profile") && "opacity-100"
+            )}
+          >
+            <StaffAvatar
+              name={profile.name}
+              email={profile.email}
+              image={profile.image}
+              size="lg"
+              className="ring-2 ring-white/25"
+            />
+          </Link>
+        ) : null}
         <Link
-          href="/admin/notifications"
-          className="relative inline-flex items-center justify-center text-white/85 hover:text-[#FFD200] transition-colors"
-          aria-label="Notifications"
+          href="/admin"
+          className="font-playfair text-lg text-white leading-none hover:text-white/90 transition-colors"
         >
-          <Bell className="w-5 h-5" />
-          {unread > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-              {unread > 9 ? "9+" : unread}
-            </span>
-          )}
-        </Link>
-        <Link
-          href="/"
-          className="text-sm text-white/85 hover:text-[#FFD200] transition-colors"
-        >
-          View Site
+          Admin
         </Link>
       </div>
-      <button
-        type="button"
-        onClick={() => signOut({ callbackUrl: "/admin/login" })}
-        className="w-full text-left rounded-md px-3 py-2 text-sm text-white/85 hover:bg-white/5 hover:text-[#FFD200] transition-colors"
-      >
-        Sign out
-      </button>
+    </div>
+  );
+
+  const sidebarFooter = (
+    <div className="border-t border-white/[0.08] p-3 space-y-2 shrink-0">
+      <AdminBranchSwitcher />
+      <div className="flex items-center gap-1.5 px-0.5">
+        <Link
+          href="/"
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-[#03045e] hover:border-[#03045e]/25 transition-colors",
+            navPillBorder
+          )}
+        >
+          <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.75} />
+          View site
+        </Link>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/admin/login" })}
+          className={cn(
+            "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-[#03045e] hover:border-[#03045e]/25 transition-colors",
+            navPillBorder
+          )}
+        >
+          <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
+          Sign out
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-wf-light lg:flex">
+    <div className="admin-app min-h-screen bg-[#f7f6f3] lg:flex">
       <AdminNotificationListener />
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-60 lg:shrink-0 lg:sticky lg:top-0 lg:h-screen bg-[#03045e] text-white">
-        <div className="px-4 py-5 border-b border-white/10 shrink-0">
-          <Link href="/admin" className="font-playfair text-lg tracking-wider">
-            COSY AURA Admin
-          </Link>
-        </div>
-        {nav}
+      <aside className="admin-shell-chrome hidden lg:flex lg:flex-col lg:w-[15.5rem] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen bg-[#03045e] text-white border-r border-[#020338] print:hidden">
+        {sidebarHeader}
+        {navContent}
         {sidebarFooter}
       </aside>
 
+      <div className="flex-1 min-w-0 flex flex-col">
       {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-40 bg-[#03045e] text-white">
+      <div className="admin-shell-chrome lg:hidden sticky top-0 z-40 bg-[#03045e] text-white border-b border-white/[0.08] print:hidden shrink-0">
         <div className="flex items-center justify-between gap-3 px-4 h-14">
-          <Link href="/admin" className="font-playfair text-base tracking-wider">
-            COSY AURA Admin
+          <Link href="/admin" className="font-playfair text-base text-white">
+            Admin
           </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/notifications"
-              className="relative hover:text-[#FFD200]"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {unread > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#FFD200] text-[#03045e] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="inline-flex items-center justify-center min-h-10 min-w-10"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="inline-flex items-center justify-center min-h-10 min-w-10 rounded-lg hover:bg-white/[0.07]"
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" strokeWidth={1.75} />
+          </button>
         </div>
       </div>
 
@@ -166,32 +266,53 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <button
             type="button"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-[#03045e]/60 backdrop-blur-sm"
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative z-10 flex flex-col w-[min(100%,18rem)] h-full bg-[#03045e] text-white shadow-xl">
-            <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-              <Link href="/admin" className="font-playfair text-lg tracking-wider">
-                COSY AURA Admin
-              </Link>
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="inline-flex items-center justify-center min-h-10 min-w-10"
-                aria-label="Close menu"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          <aside className="relative z-10 flex flex-col w-[min(100%,17.5rem)] h-full bg-[#03045e] text-white shadow-2xl">
+            <div className="shrink-0 border-b border-white/[0.08] px-4 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col items-center gap-2 min-w-0">
+                  {profile ? (
+                    <Link href="/admin/profile" aria-label="My profile" className="shrink-0">
+                      <StaffAvatar
+                        name={profile.name}
+                        email={profile.email}
+                        image={profile.image}
+                        size="md"
+                        className="ring-2 ring-white/25"
+                      />
+                    </Link>
+                  ) : null}
+                  <Link
+                    href="/admin"
+                    className="font-playfair text-lg text-white leading-none"
+                  >
+                    Admin
+                  </Link>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex items-center justify-center min-h-10 min-w-10 rounded-lg hover:bg-white/[0.07]"
+                    aria-label="Close menu"
+                  >
+                    <X className="w-5 h-5" strokeWidth={1.75} />
+                  </button>
+                </div>
+              </div>
             </div>
-            {nav}
+            {navContent}
             {sidebarFooter}
           </aside>
         </div>
       )}
 
-      <div className="flex-1 min-w-0">
-        <div className="max-w-7xl mx-auto px-4 py-8">{children}</div>
+        <div className="admin-print-area flow-root flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pb-8 pt-6 max-lg:pt-8 lg:py-10 print:p-0 print:max-w-none">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi, scopedBranchIds } from "@/lib/admin";
+import { aggregateBranchReportRows } from "@/lib/branch-reports";
 
 export async function GET() {
   const { ctx, error } = await requireAdminApi("reports.read");
@@ -18,21 +19,34 @@ export async function GET() {
   const branches = await prisma.branch.findMany({
     where: { ...branchWhere, active: true },
     orderBy: [{ country: "asc" }, { name: "asc" }],
-    select: { id: true, name: true, country: true, city: true },
+    select: {
+      id: true,
+      name: true,
+      country: true,
+      city: true,
+      isDefault: true,
+      createdAt: true,
+    },
   });
 
   const branchIds = branches.map((b) => b.id);
 
-  const [orderGroups, stockAggs, transferOut, transferIn] = await Promise.all([
+  const [orders, stockAggs, transferOut, transferIn] = await Promise.all([
     branchIds.length
-      ? prisma.order.groupBy({
-          by: ["fulfillmentBranchId", "status"],
+      ? prisma.order.findMany({
           where: {
-            fulfillmentBranchId: { in: branchIds },
-            status: { not: "CANCELLED" },
+            OR: [
+              { fulfillmentBranchId: { in: branchIds } },
+              { fulfillmentBranchId: null, shippingCountry: { not: null } },
+            ],
           },
-          _count: true,
-          _sum: { total: true },
+          select: {
+            fulfillmentBranchId: true,
+            shippingCountry: true,
+            status: true,
+            total: true,
+            channel: true,
+          },
         })
       : Promise.resolve([]),
     branchIds.length
@@ -76,40 +90,17 @@ export async function GET() {
     ])
   );
 
-  const rows = branches.map((branch) => {
-    const related = orderGroups.filter((g) => g.fulfillmentBranchId === branch.id);
-    const orders = related.reduce((n, g) => n + g._count, 0);
-    const revenue = related.reduce((n, g) => n + Number(g._sum.total || 0), 0);
-    const toFulfil = related
-      .filter((g) => g.status === "PAID" || g.status === "PROCESSING")
-      .reduce((n, g) => n + g._count, 0);
-    const delivered = related
-      .filter((g) => g.status === "DELIVERED")
-      .reduce((n, g) => n + g._count, 0);
-
-    return {
-      branchId: branch.id,
-      name: branch.name,
-      country: branch.country,
-      city: branch.city,
-      orders,
-      revenue,
-      toFulfil,
-      delivered,
-      stockUnits: stockByBranch.get(branch.id) || 0,
-      transfersOut: outByBranch.get(branch.id) || { count: 0, qty: 0 },
-      transfersIn: inByBranch.get(branch.id) || { count: 0, qty: 0 },
-    };
-  });
+  const { rows, totals } = aggregateBranchReportRows(
+    branches,
+    orders,
+    stockByBranch,
+    outByBranch,
+    inByBranch
+  );
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     rows,
-    totals: {
-      orders: rows.reduce((n, r) => n + r.orders, 0),
-      revenue: rows.reduce((n, r) => n + r.revenue, 0),
-      stockUnits: rows.reduce((n, r) => n + r.stockUnits, 0),
-      toFulfil: rows.reduce((n, r) => n + r.toFulfil, 0),
-    },
+    totals,
   });
 }

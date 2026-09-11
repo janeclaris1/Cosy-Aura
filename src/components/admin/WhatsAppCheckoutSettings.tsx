@@ -1,6 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminSectionTitle,
+  adminInputClass,
+  adminLabelClass,
+} from "@/components/admin/admin-ui";
 import type { StoreConfigPayload, WhatsAppCheckoutNumbers } from "@/lib/store-config";
 
 const SUGGESTED = [
@@ -111,15 +118,13 @@ export function WhatsAppCheckoutSettings({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <section className="border border-wf-border bg-white p-6">
+      <AdminCard padding="lg">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-playfair text-xl mb-2">WhatsApp checkout</h2>
-            <p className="text-sm text-wf-gray leading-relaxed">
-              When enabled, shoppers in configured countries see an &quot;Order on
-              WhatsApp&quot; button on product pages and at checkout. The number is
-              chosen from their detected (or selected) country.
-            </p>
+            <AdminSectionTitle
+              title="WhatsApp checkout"
+              description='When enabled, shoppers in configured countries see an "Order on WhatsApp" button on product pages and at checkout. The number is chosen from their detected (or selected) country.'
+            />
           </div>
           <button
             type="button"
@@ -128,7 +133,7 @@ export function WhatsAppCheckoutSettings({
             disabled={saving}
             onClick={() => void toggleEnabled()}
             className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-              enabled ? "bg-espresso" : "bg-wf-border"
+              enabled ? "bg-[#03045e]" : "bg-stone-200/90"
             }`}
           >
             <span
@@ -140,26 +145,23 @@ export function WhatsAppCheckoutSettings({
         </div>
         <p className="mt-4 text-sm">
           Status:{" "}
-          <span className={enabled ? "text-green-700" : "text-wf-gray"}>
+          <span className={enabled ? "text-green-700" : "text-mocha"}>
             {enabled ? "Enabled" : "Disabled"}
           </span>
         </p>
-      </section>
+      </AdminCard>
 
-      <section className="border border-wf-border bg-white p-6 space-y-4">
-        <div>
-          <h2 className="font-playfair text-xl mb-2">Country numbers</h2>
-          <p className="text-sm text-wf-gray">
-            Use international format without + (Ghana example:{" "}
-            <span className="font-mono text-espresso">233500741699</span>).
-          </p>
-        </div>
+      <AdminCard padding="lg" className="space-y-4">
+        <AdminSectionTitle
+          title="Country numbers"
+          description="Use international format without + (Ghana example: 233500741699)."
+        />
 
         <div className="space-y-3">
           {rows.map((row, index) => (
             <div key={`${row.code}-${index}`} className="flex flex-wrap items-end gap-2">
               <label className="block">
-                <span className="text-xs uppercase tracking-wider text-wf-gray">Country</span>
+                <span className={adminLabelClass}>Country</span>
                 <input
                   value={row.code}
                   onChange={(e) =>
@@ -167,64 +169,60 @@ export function WhatsAppCheckoutSettings({
                   }
                   placeholder="GH"
                   maxLength={2}
-                  className="mt-1 w-16 border border-wf-border px-2 py-2 text-sm uppercase"
+                  className={`${adminInputClass} w-16 uppercase`}
                 />
               </label>
               <label className="block flex-1 min-w-[12rem]">
-                <span className="text-xs uppercase tracking-wider text-wf-gray">
-                  WhatsApp number
-                </span>
+                <span className={adminLabelClass}>WhatsApp number</span>
                 <input
                   value={row.phone}
                   onChange={(e) => updateRow(index, { phone: e.target.value })}
                   placeholder="233500741699"
-                  className="mt-1 w-full border border-wf-border px-3 py-2 text-sm font-mono"
+                  className={`${adminInputClass} font-mono`}
                 />
               </label>
-              <button
+              <AdminButton
                 type="button"
+                variant="secondary"
                 onClick={() => removeRow(index)}
-                className="btn-outline !py-2 !px-3 text-xs"
+                className="!py-2 !px-3 text-xs"
                 disabled={rows.length <= 1}
               >
                 Remove
-              </button>
+              </AdminButton>
             </div>
           ))}
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
           {SUGGESTED.filter((s) => !usedCodes.has(s.code)).slice(0, 4).map((s) => (
-            <button
+            <AdminButton
               key={s.code}
               type="button"
+              variant="secondary"
               onClick={() => addRow(s.code)}
-              className="text-xs border border-wf-border px-2 py-1 hover:border-espresso"
+              className="!py-1 !px-2 text-xs"
             >
               + {s.label}
-            </button>
+            </AdminButton>
           ))}
-          <button
+          <AdminButton
             type="button"
+            variant="secondary"
             onClick={() => addRow("")}
-            className="text-xs border border-wf-border px-2 py-1 hover:border-espresso"
+            className="!py-1 !px-2 text-xs"
           >
             + Custom country
-          </button>
+          </AdminButton>
         </div>
 
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void saveNumbers()}
-          className="btn-primary !py-2.5 !px-5 text-sm"
-        >
+        <AdminButton type="button" disabled={saving} onClick={() => void saveNumbers()}>
           {saving ? "Saving…" : "Save numbers"}
-        </button>
+        </AdminButton>
 
         {message ? <p className="text-sm text-green-700">{message}</p> : null}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      </section>
+      </AdminCard>
     </div>
   );
 }

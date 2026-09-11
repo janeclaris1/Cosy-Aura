@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AdminButton,
+  AdminCard,
+  adminInputClass,
+  adminLabelClass,
+  adminSelectClass,
+} from "@/components/admin/admin-ui";
 import { MANAGED_STOCK_COUNTRIES } from "@/lib/country-stock";
 
 interface Brand {
@@ -49,6 +56,7 @@ interface FragranceFormProps {
     explainerVideoUrl?: string | null;
     images: { url: string }[];
     countryStocks?: { country: string; inStock: boolean }[];
+    barcodes?: { bottleSize: number; barcode: string }[];
   };
 }
 
@@ -70,6 +78,13 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const initialGlobalInStock = (fragrance?.stock ?? 0) > 0;
+  const [barcodes, setBarcodes] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = { "30": "", "50": "", "100": "" };
+    for (const row of fragrance?.barcodes || []) {
+      map[String(row.bottleSize)] = row.barcode;
+    }
+    return map;
+  });
   const [countryStock, setCountryStock] = useState<Record<string, boolean>>(() => {
     const map: Record<string, boolean> = {};
     for (const c of MANAGED_STOCK_COUNTRIES) {
@@ -142,6 +157,10 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
         country: c.code,
         inStock: Boolean(countryStock[c.code]),
       })),
+      barcodes: [30, 50, 100].map((size) => ({
+        bottleSize: size,
+        barcode: barcodes[String(size)] || "",
+      })),
     };
 
     const res = await fetch(url, {
@@ -154,7 +173,8 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       router.push("/admin/fragrances");
       router.refresh();
     } else {
-      alert("Failed to save fragrance");
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Failed to save fragrance");
       setLoading(false);
     }
   }
@@ -176,22 +196,19 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     }
   }
 
-  const inputClass =
-    "w-full px-4 py-2.5 border border-wf-border rounded text-sm focus:outline-none focus:border-gold bg-white";
-  const labelClass = "block text-sm font-medium mb-1.5";
-
   return (
+    <AdminCard className="max-w-2xl">
     <form
       onSubmit={handleSubmit}
-      className="bg-white border border-wf-border rounded-lg p-6 max-w-2xl space-y-5"
+      className="space-y-5"
     >
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Brand</label>
+          <label className={adminLabelClass}>Brand</label>
           <select
             value={form.brandId}
             onChange={(e) => setForm({ ...form, brandId: e.target.value })}
-            className={inputClass}
+            className={adminSelectClass}
             required
           >
             {brands.map((b) => (
@@ -202,11 +219,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Name</label>
+          <label className={adminLabelClass}>Name</label>
           <input
             value={form.model}
             onChange={(e) => setForm({ ...form, model: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             required
           />
         </div>
@@ -214,22 +231,22 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Reference</label>
+          <label className={adminLabelClass}>Reference</label>
           <input
             value={form.reference}
             onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             required
           />
         </div>
         <div>
-          <label className={labelClass}>Price ($)</label>
+          <label className={adminLabelClass}>Price ($)</label>
           <input
             type="number"
             step="0.01"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-            className={inputClass}
+            className={adminInputClass}
             required
           />
         </div>
@@ -237,11 +254,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Category</label>
+          <label className={adminLabelClass}>Category</label>
           <select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -251,11 +268,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Gender</label>
+          <label className={adminLabelClass}>Gender</label>
           <select
             value={form.gender}
             onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="MENS">Men&apos;s</option>
             <option value="WOMENS">Women&apos;s</option>
@@ -265,43 +282,43 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       </div>
 
       <div>
-        <label className={labelClass}>Description</label>
+        <label className={adminLabelClass}>Description</label>
         <textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           rows={4}
           required
         />
       </div>
 
       <div>
-        <label className={labelClass}>Condition Report</label>
+        <label className={adminLabelClass}>Condition Report</label>
         <textarea
           value={form.conditionReport}
           onChange={(e) => setForm({ ...form, conditionReport: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           rows={3}
         />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Condition</label>
+          <label className={adminLabelClass}>Condition</label>
           <select
             value={form.condition}
             onChange={(e) => setForm({ ...form, condition: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="UNWORN">New</option>
           </select>
         </div>
         <div>
-          <label className={labelClass}>Family</label>
+          <label className={adminLabelClass}>Family</label>
           <select
             value={form.fragranceFamily}
             onChange={(e) => setForm({ ...form, fragranceFamily: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="FLORAL">Floral</option>
             <option value="ORIENTAL">Oriental</option>
@@ -312,23 +329,23 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Year</label>
+          <label className={adminLabelClass}>Year</label>
           <input
             type="number"
             value={form.year}
             onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
-            className={inputClass}
+            className={adminInputClass}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Bottle Material</label>
+          <label className={adminLabelClass}>Bottle Material</label>
           <select
             value={form.bottleMaterial}
             onChange={(e) => setForm({ ...form, bottleMaterial: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="GLASS">Glass</option>
             <option value="CRYSTAL">Crystal</option>
@@ -338,11 +355,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Size (ml)</label>
+          <label className={adminLabelClass}>Size (ml)</label>
           <select
             value={form.bottleSize}
             onChange={(e) => setForm({ ...form, bottleSize: Number(e.target.value) })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value={30}>30</option>
             <option value={50}>50</option>
@@ -350,11 +367,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Cap</label>
+          <label className={adminLabelClass}>Cap</label>
           <select
             value={form.capType}
             onChange={(e) => setForm({ ...form, capType: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="MAGNETIC">Magnetic</option>
             <option value="SPRAY">Spray</option>
@@ -365,39 +382,39 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       </div>
 
       <div>
-        <label className={labelClass}>Bottle detail (display)</label>
+        <label className={adminLabelClass}>Bottle detail (display)</label>
         <input
           value={form.bottleDetail}
           onChange={(e) => setForm({ ...form, bottleDetail: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           placeholder="Handcrafted German Glass"
         />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Collection</label>
+          <label className={adminLabelClass}>Collection</label>
           <input
             value={form.collection}
             onChange={(e) => setForm({ ...form, collection: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             placeholder="Signature Collection"
           />
         </div>
         <div>
-          <label className={labelClass}>Stock (global fallback)</label>
+          <label className={adminLabelClass}>Stock (global fallback)</label>
           <input
             type="number"
             value={form.stock}
             onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })}
-            className={inputClass}
+            className={adminInputClass}
           />
-          <p className="mt-1 text-xs text-wf-gray">
+          <p className="mt-1 text-xs text-mocha">
             Used for countries without a specific shop toggle below.
           </p>
         </div>
         <div>
-          <label className={labelClass}>Rating (0-5)</label>
+          <label className={adminLabelClass}>Rating (0-5)</label>
           <input
             type="number"
             step="0.1"
@@ -405,16 +422,16 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             max={5}
             value={form.rating}
             onChange={(e) => setForm({ ...form, rating: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             placeholder="4.8"
           />
         </div>
       </div>
 
-      <div className="border border-wf-border p-4 space-y-3">
+      <div className="ring-1 ring-black/[0.04] bg-[#fafafa] p-4 space-y-3">
         <div>
           <p className="text-sm font-medium text-espresso">Stock by shop / country</p>
-          <p className="text-xs text-wf-gray mt-0.5">
+          <p className="text-xs text-mocha mt-0.5">
             Shoppers in Ghana or Cameroon see availability for their location.
           </p>
         </div>
@@ -439,11 +456,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Concentration</label>
+          <label className={adminLabelClass}>Concentration</label>
           <select
             value={form.concentration}
             onChange={(e) => setForm({ ...form, concentration: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="EDT">Light Perfume Oil</option>
             <option value="EDP">EDP</option>
@@ -452,11 +469,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Sillage</label>
+          <label className={adminLabelClass}>Sillage</label>
           <select
             value={form.sillage}
             onChange={(e) => setForm({ ...form, sillage: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           >
             <option value="SUBTLE">Subtle</option>
             <option value="MODERATE">Moderate</option>
@@ -465,11 +482,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Longevity</label>
+          <label className={adminLabelClass}>Longevity</label>
           <input
             value={form.longevity}
             onChange={(e) => setForm({ ...form, longevity: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             placeholder="8-10 hours"
           />
         </div>
@@ -477,69 +494,107 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelClass}>Liquid Color</label>
+          <label className={adminLabelClass}>Liquid Color</label>
           <input
             value={form.liquidColor}
             onChange={(e) => setForm({ ...form, liquidColor: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           />
         </div>
         <div>
-          <label className={labelClass}>Bottle Shape</label>
+          <label className={adminLabelClass}>Bottle Shape</label>
           <input
             value={form.bottleShape}
             onChange={(e) => setForm({ ...form, bottleShape: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           />
         </div>
       </div>
 
       <div>
-        <label className={labelClass}>Top Notes (comma-separated)</label>
+        <label className={adminLabelClass}>Top Notes (comma-separated)</label>
         <input
           value={form.topNotes}
           onChange={(e) => setForm({ ...form, topNotes: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
         />
       </div>
       <div>
-        <label className={labelClass}>Heart Notes (comma-separated)</label>
+        <label className={adminLabelClass}>Heart Notes (comma-separated)</label>
         <input
           value={form.heartNotes}
           onChange={(e) => setForm({ ...form, heartNotes: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
         />
       </div>
       <div>
-        <label className={labelClass}>Base Notes (comma-separated)</label>
+        <label className={adminLabelClass}>Base Notes (comma-separated)</label>
         <input
           value={form.baseNotes}
           onChange={(e) => setForm({ ...form, baseNotes: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
         />
       </div>
 
       <div>
-        <label className={labelClass}>Image URL</label>
+        <label className={adminLabelClass}>Image URL</label>
         <input
           value={form.imageUrl}
           onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           placeholder="/images/fragrances/..."
         />
       </div>
 
       <div>
-        <label className={labelClass}>Explainer video URL (optional)</label>
+        <label className={adminLabelClass}>Explainer video URL (optional)</label>
         <input
           value={form.explainerVideoUrl}
           onChange={(e) => setForm({ ...form, explainerVideoUrl: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           placeholder="YouTube link or /videos/product-explainer.mp4"
         />
         <p className="mt-1 text-xs text-mocha">
           Shows as a play-button thumbnail in the product gallery. Supports YouTube and direct MP4/WebM URLs.
         </p>
+      </div>
+
+      <div className="ring-1 ring-black/[0.04] p-4 space-y-3 bg-[#fafafa]">
+        <div>
+          <p className="text-sm font-medium">POS barcodes</p>
+          <p className="text-xs text-mocha mt-0.5">
+            Auto-generated on save: 30 ml → starts with 3, 50 ml → 5, 100 ml → 1.
+            Custom codes must follow the same first digit for that size.
+          </p>
+        </div>
+        {fragrance && (
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`/admin/fragrances/${fragrance.id}/labels`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-[#03045e] hover:underline font-medium"
+            >
+              Print barcode labels →
+            </a>
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[30, 50, 100].map((size) => (
+            <div key={size}>
+              <label className={adminLabelClass}>{size} ml barcode</label>
+              <input
+                value={barcodes[String(size)]}
+                onChange={(e) =>
+                  setBarcodes((prev) => ({ ...prev, [String(size)]: e.target.value }))
+                }
+                className={`${adminInputClass} font-mono`}
+                placeholder={size === 30 ? "3…" : size === 50 ? "5…" : "1…"}
+                inputMode="numeric"
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-6">
@@ -548,7 +603,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             type="checkbox"
             checked={form.sampleAvailable}
             onChange={(e) => setForm({ ...form, sampleAvailable: e.target.checked })}
-            className="rounded text-gold"
+            className="rounded text-[#03045e]"
           />
           Sample available
         </label>
@@ -557,7 +612,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             type="checkbox"
             checked={form.isVegan}
             onChange={(e) => setForm({ ...form, isVegan: e.target.checked })}
-            className="rounded text-gold"
+            className="rounded text-[#03045e]"
           />
           Vegan
         </label>
@@ -566,7 +621,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             type="checkbox"
             checked={form.isCrueltyFree}
             onChange={(e) => setForm({ ...form, isCrueltyFree: e.target.checked })}
-            className="rounded text-gold"
+            className="rounded text-[#03045e]"
           />
           Cruelty-free
         </label>
@@ -575,27 +630,29 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             type="checkbox"
             checked={form.featured}
             onChange={(e) => setForm({ ...form, featured: e.target.checked })}
-            className="rounded text-gold"
+            className="rounded text-[#03045e]"
           />
           Featured
         </label>
       </div>
 
       <div className="flex flex-wrap gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn-gold disabled:opacity-50">
+        <AdminButton type="submit" disabled={loading}>
           {loading ? "Saving..." : fragrance ? "Update Fragrance" : "Create Fragrance"}
-        </button>
+        </AdminButton>
         {fragrance && (
-          <button
+          <AdminButton
             type="button"
+            variant="secondary"
             onClick={handleDelete}
             disabled={deleting}
-            className="btn-outline text-red-600 border-red-200 hover:border-red-500 hover:text-red-700 disabled:opacity-50"
+            className="text-red-600 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
           >
             {deleting ? "Deleting..." : "Delete Fragrance"}
-          </button>
+          </AdminButton>
         )}
       </div>
     </form>
+    </AdminCard>
   );
 }

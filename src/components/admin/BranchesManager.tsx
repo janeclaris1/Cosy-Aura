@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminSectionTitle,
+  adminInputClass,
+  adminLabelClass,
+  adminSelectClass,
+} from "@/components/admin/admin-ui";
 
 type Branch = {
   id: string;
@@ -120,85 +128,87 @@ export function BranchesManager() {
 
   return (
     <div className="grid lg:grid-cols-2 gap-8">
-      <form onSubmit={save} className="space-y-3 bg-white border border-wf-border p-4">
-        <h2 className="font-medium text-sm">
-          {editingId ? "Edit branch" : "Add branch"}
-        </h2>
+      <AdminCard>
+        <form onSubmit={save} className="space-y-3">
+        <AdminSectionTitle
+          title={editingId ? "Edit branch" : "Add branch"}
+          className="!mb-3"
+        />
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <label className="block text-sm">
-          Name
+        <label className="block">
+          <span className={adminLabelClass}>Name</span>
           <input
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
-        <label className="block text-sm">
-          Country
+        <label className="block">
+          <span className={adminLabelClass}>Country</span>
           <select
             value={form.country}
             onChange={(e) => setForm({ ...form, country: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminSelectClass}
           >
             <option value="GH">Ghana (GH)</option>
             <option value="CM">Cameroon (CM)</option>
           </select>
         </label>
-        <label className="block text-sm">
-          City
+        <label className="block">
+          <span className={adminLabelClass}>City</span>
           <input
             value={form.city}
             onChange={(e) => setForm({ ...form, city: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
-        <label className="block text-sm">
-          Address
+        <label className="block">
+          <span className={adminLabelClass}>Address</span>
           <input
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
-        <label className="block text-sm">
-          Phone
+        <label className="block">
+          <span className={adminLabelClass}>Phone</span>
           <input
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
 
-        <div className="border-t border-wf-border pt-3 space-y-3">
+        <div className="border-t border-stone-100 pt-3 space-y-3">
           <p className="text-xs text-mocha">
             Commerce (default branch for a country drives checkout WhatsApp, COD & couriers)
           </p>
-          <label className="block text-sm">
-            WhatsApp override
+          <label className="block">
+            <span className={adminLabelClass}>WhatsApp override</span>
             <input
               value={form.whatsappPhone}
               onChange={(e) => setForm({ ...form, whatsappPhone: e.target.value })}
               placeholder="e.g. 23324… (blank = store settings)"
-              className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+              className={adminInputClass}
             />
           </label>
-          <label className="block text-sm">
-            Opening hours
+          <label className="block">
+            <span className={adminLabelClass}>Opening hours</span>
             <input
               value={form.openingHours}
               onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
               placeholder="Mon–Sat 9:00–18:00"
-              className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+              className={adminInputClass}
             />
           </label>
-          <label className="block text-sm">
-            Delivery / pickup notes
+          <label className="block">
+            <span className={adminLabelClass}>Delivery / pickup notes</span>
             <textarea
               value={form.deliveryNotes}
               onChange={(e) => setForm({ ...form, deliveryNotes: e.target.value })}
               rows={2}
-              className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+              className={adminInputClass}
             />
           </label>
           <label className="flex items-center gap-2 text-sm">
@@ -258,22 +268,23 @@ export function BranchesManager() {
           Active
         </label>
         <div className="flex gap-2">
-          <button type="submit" disabled={saving} className="btn-gold disabled:opacity-50">
+          <AdminButton type="submit" disabled={saving}>
             {saving ? "Saving…" : editingId ? "Update" : "Create"}
-          </button>
+          </AdminButton>
           {editingId ? (
-            <button type="button" onClick={reset} className="text-sm text-mocha">
+            <AdminButton type="button" variant="ghost" onClick={reset}>
               Cancel
-            </button>
+            </AdminButton>
           ) : null}
         </div>
-      </form>
+        </form>
+      </AdminCard>
 
       <div className="space-y-3">
         {branches.map((branch) => (
-          <div
+          <AdminCard
             key={branch.id}
-            className="bg-white border border-wf-border p-4 flex justify-between gap-4"
+            className="flex justify-between gap-4"
           >
             <div>
               <p className="font-medium text-sm">
@@ -294,7 +305,11 @@ export function BranchesManager() {
               </p>
             </div>
             <div className="flex flex-col gap-2 text-xs shrink-0">
-              <button type="button" onClick={() => startEdit(branch)} className="underline">
+              <button
+                type="button"
+                onClick={() => startEdit(branch)}
+                className="text-[#03045e] hover:underline font-medium"
+              >
                 Edit
               </button>
               <button
@@ -305,7 +320,7 @@ export function BranchesManager() {
                 Delete
               </button>
             </div>
-          </div>
+          </AdminCard>
         ))}
         {!branches.length ? (
           <p className="text-sm text-mocha">No branches yet.</p>

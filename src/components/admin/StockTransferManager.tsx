@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AdminBranchSelect } from "@/components/admin/AdminBranchSelect";
+import {
+  AdminButton,
+  AdminCard,
+  AdminSectionTitle,
+  AdminTableWrap,
+  adminInputClass,
+  adminLabelClass,
+  adminSelectClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+} from "@/components/admin/admin-ui";
 import { BOTTLE_SIZES, type BottleSize } from "@/lib/bottle-sizes";
 import { readAdminBranchCookie } from "@/lib/admin-context";
 
@@ -167,60 +182,45 @@ export function StockTransferManager() {
 
   return (
     <div className="space-y-8">
-      <form
-        onSubmit={submit}
-        className="grid md:grid-cols-2 gap-4 border border-wf-border bg-white p-4"
-      >
+      <AdminCard>
+        <form
+          onSubmit={submit}
+          className="grid md:grid-cols-2 gap-4"
+        >
         <p className="md:col-span-2 text-xs text-mocha m-0">
           Transfers of {threshold}+ units (or fulfilment staff) require manager
           approval before stock moves.
         </p>
-        <label className="text-sm">
-          From branch
-          <select
-            required
-            value={fromBranchId}
-            onChange={(e) => setFromBranchId(e.target.value)}
-            className="mt-1 block w-full border border-wf-border px-3 py-2 text-sm"
-          >
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} ({b.country})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          To branch
-          <select
-            required
-            value={toBranchId}
-            onChange={(e) => setToBranchId(e.target.value)}
-            className="mt-1 block w-full border border-wf-border px-3 py-2 text-sm"
-          >
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} ({b.country})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm md:col-span-2">
-          Search product
+        <AdminBranchSelect
+          branches={branches}
+          value={fromBranchId}
+          onChange={setFromBranchId}
+          label="From branch"
+          className="min-w-0 w-full"
+        />
+        <AdminBranchSelect
+          branches={branches}
+          value={toBranchId}
+          onChange={setToBranchId}
+          label="To branch"
+          className="min-w-0 w-full"
+        />
+        <label className="block md:col-span-2">
+          <span className={adminLabelClass}>Search product</span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Brand, model, reference…"
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
-        <label className="text-sm md:col-span-2">
-          Product
+        <label className="block md:col-span-2">
+          <span className={adminLabelClass}>Product</span>
           <select
             required
             value={fragranceId}
             onChange={(e) => setFragranceId(e.target.value)}
-            className="mt-1 block w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminSelectClass}
           >
             <option value="">Select…</option>
             {filteredProducts.map((p) => (
@@ -230,12 +230,12 @@ export function StockTransferManager() {
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          Size
+        <label className="block">
+          <span className={adminLabelClass}>Size</span>
           <select
             value={bottleSize}
             onChange={(e) => setBottleSize(Number(e.target.value) as BottleSize)}
-            className="mt-1 block w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminSelectClass}
           >
             {BOTTLE_SIZES.map((s) => (
               <option key={s} value={s}>
@@ -244,8 +244,8 @@ export function StockTransferManager() {
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          Quantity
+        <label className="block">
+          <span className={adminLabelClass}>Quantity</span>
           <input
             required
             type="number"
@@ -253,18 +253,20 @@ export function StockTransferManager() {
             max={available || undefined}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="mt-1 block w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
           <span className="text-xs text-mocha">Available at source: {available}</span>
         </label>
-        <label className="text-sm md:col-span-2">
-          Reason {willNeedApproval ? "(required)" : "(optional)"}
+        <label className="block md:col-span-2">
+          <span className={adminLabelClass}>
+            Reason {willNeedApproval ? "(required)" : "(optional)"}
+          </span>
           <input
             required={willNeedApproval}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Rebalance, shortage, etc."
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
         <label className="flex items-center gap-2 text-sm md:col-span-2">
@@ -278,28 +280,29 @@ export function StockTransferManager() {
         {error && <p className="text-sm text-red-600 md:col-span-2">{error}</p>}
         {message && <p className="text-sm text-green-700 md:col-span-2">{message}</p>}
         <div className="md:col-span-2">
-          <button type="submit" disabled={saving || !fragranceId} className="btn-gold disabled:opacity-50">
+          <AdminButton type="submit" disabled={saving || !fragranceId}>
             {saving
               ? "Submitting…"
               : willNeedApproval
                 ? "Request transfer"
                 : "Transfer stock"}
-          </button>
+          </AdminButton>
         </div>
-      </form>
+        </form>
+      </AdminCard>
 
       <div>
         <div className="flex flex-wrap items-end justify-between gap-3 mb-3">
-          <h2 className="font-playfair text-xl m-0">Transfers</h2>
-          <label className="text-sm">
-            Status
+          <AdminSectionTitle title="Transfers" className="!mb-0" />
+          <label className="block">
+            <span className={adminLabelClass}>Status</span>
             <select
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
                 void loadHistory(e.target.value);
               }}
-              className="ml-2 border border-wf-border px-2 py-1.5 text-sm"
+              className={adminSelectClass}
             >
               <option value="">All</option>
               <option value="PENDING">Pending</option>
@@ -308,40 +311,40 @@ export function StockTransferManager() {
             </select>
           </label>
         </div>
-        <div className="border border-wf-border bg-white overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead className="bg-wf-light">
+        <AdminTableWrap>
+          <table className={`${adminTableClass} min-w-[800px]`}>
+            <thead className={adminTheadClass}>
               <tr>
-                <th className="text-left p-3 font-medium">When</th>
-                <th className="text-left p-3 font-medium">Product</th>
-                <th className="text-left p-3 font-medium">Move</th>
-                <th className="text-left p-3 font-medium">Qty</th>
-                <th className="text-left p-3 font-medium">Status</th>
-                <th className="text-left p-3 font-medium">Actions</th>
+                <th className={adminThClass}>When</th>
+                <th className={adminThClass}>Product</th>
+                <th className={adminThClass}>Move</th>
+                <th className={adminThClass}>Qty</th>
+                <th className={adminThClass}>Status</th>
+                <th className={adminThClass}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {history.map((row) => (
-                <tr key={row.id} className="border-t border-wf-border">
-                  <td className="p-3 text-mocha whitespace-nowrap">
+                <tr key={row.id} className={adminTrClass}>
+                  <td className={`${adminTdClass} text-mocha whitespace-nowrap`}>
                     {new Date(row.createdAt).toLocaleString()}
                   </td>
-                  <td className="p-3">
+                  <td className={adminTdClass}>
                     {row.fragrance.brand.name} {row.fragrance.model}
                     <span className="block text-xs text-mocha">
                       {row.bottleSize}ml · {row.fragrance.reference}
                     </span>
                   </td>
-                  <td className="p-3">
+                  <td className={adminTdClass}>
                     {row.fromBranch.name} → {row.toBranch.name}
                   </td>
-                  <td className="p-3">{row.quantity}</td>
-                  <td className="p-3">
-                    <span className="text-xs px-2 py-0.5 bg-wf-light rounded">
+                  <td className={adminTdClass}>{row.quantity}</td>
+                  <td className={adminTdClass}>
+                    <span className="text-xs px-2 py-0.5 bg-[#fafafa] rounded">
                       {row.status}
                     </span>
                   </td>
-                  <td className="p-3">
+                  <td className={adminTdClass}>
                     {row.status === "PENDING" ? (
                       <div className="flex gap-2 text-xs">
                         <button
@@ -369,14 +372,14 @@ export function StockTransferManager() {
               ))}
               {!history.length ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-mocha">
+                  <td colSpan={6} className={`${adminTdClass} text-center text-mocha`}>
                     No transfers yet.
                   </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
-        </div>
+        </AdminTableWrap>
       </div>
     </div>
   );

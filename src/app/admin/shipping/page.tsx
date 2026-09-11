@@ -1,26 +1,25 @@
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
-import { seedDefaultShippingMethods } from "@/lib/shipping-methods";
+import { ensureDefaultShippingMethods } from "@/lib/shipping-methods";
 import { ShippingManager } from "@/components/admin/ShippingManager";
+import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminShippingPage() {
   await requireAdminPage();
 
-  const count = await prisma.shippingMethod.count();
-  if (count === 0) {
-    await seedDefaultShippingMethods();
-  }
+  await ensureDefaultShippingMethods();
 
   const methods = await prisma.shippingMethod.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
   });
 
   return (
-    <div>
-      <h1 className="font-playfair text-3xl mb-2">Shipping</h1>
-      <p className="text-sm text-wf-gray mb-8">
-        Manage delivery options and prices shown at Stripe checkout.
-      </p>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Store"
+        title="Shipping"
+        description="Manage delivery options and prices shown at checkout."
+      />
       <ShippingManager initialMethods={methods} />
     </div>
   );

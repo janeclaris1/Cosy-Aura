@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  AdminButton,
+  AdminTableWrap,
+  adminLabelClass,
+  adminSelectClass,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+} from "@/components/admin/admin-ui";
 
 type Log = {
   id: string;
@@ -38,15 +49,15 @@ export function AuditLogViewer() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-end">
-        <label className="text-sm">
-          Action
+        <label className="block">
+          <span className={adminLabelClass}>Action</span>
           <select
             value={action}
             onChange={(e) => {
               setAction(e.target.value);
               void load(e.target.value);
             }}
-            className="mt-1 block border border-wf-border px-3 py-2 text-sm min-w-[12rem]"
+            className={`${adminSelectClass} min-w-[12rem]`}
           >
             <option value="">All</option>
             <option value="auth.login">Admin logins</option>
@@ -75,52 +86,48 @@ export function AuditLogViewer() {
             <option value="order.reassign">Order reassign</option>
           </select>
         </label>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="border border-wf-border bg-white px-3 py-2 text-sm hover:bg-wf-light"
-        >
+        <AdminButton type="button" variant="secondary" onClick={() => void load()}>
           Refresh
-        </button>
+        </AdminButton>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="border border-wf-border bg-white overflow-x-auto">
-        <table className="w-full text-sm min-w-[820px]">
-          <thead className="bg-wf-light">
+      <AdminTableWrap>
+        <table className={`${adminTableClass} min-w-[820px]`}>
+          <thead className={adminTheadClass}>
             <tr>
-              <th className="text-left p-3 font-medium">When</th>
-              <th className="text-left p-3 font-medium">Action</th>
-              <th className="text-left p-3 font-medium">Summary</th>
-              <th className="text-left p-3 font-medium">Actor</th>
-              <th className="text-left p-3 font-medium">IP</th>
+              <th className={adminThClass}>When</th>
+              <th className={adminThClass}>Action</th>
+              <th className={adminThClass}>Summary</th>
+              <th className={adminThClass}>Actor</th>
+              <th className={adminThClass}>IP</th>
             </tr>
           </thead>
           <tbody>
             {logs.map((log) => (
-              <tr key={log.id} className="border-t border-wf-border">
-                <td className="p-3 text-mocha whitespace-nowrap">
+              <tr key={log.id} className={adminTrClass}>
+                <td className={`${adminTdClass} text-mocha whitespace-nowrap`}>
                   {new Date(log.createdAt).toLocaleString()}
                 </td>
-                <td className="p-3 font-mono text-xs">{log.action}</td>
-                <td className="p-3">{log.summary}</td>
-                <td className="p-3 text-mocha text-xs">
+                <td className={`${adminTdClass} font-mono text-xs`}>{log.action}</td>
+                <td className={adminTdClass}>{log.summary}</td>
+                <td className={`${adminTdClass} text-mocha text-xs`}>
                   {log.actor?.name || log.actor?.email || "—"}
                 </td>
-                <td className="p-3 text-mocha text-xs font-mono">
+                <td className={`${adminTdClass} text-mocha text-xs font-mono`}>
                   {log.ipAddress || "—"}
                 </td>
               </tr>
             ))}
             {!logs.length ? (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-mocha">
+                <td colSpan={5} className={`${adminTdClass} text-center text-mocha`}>
                   No activity yet.
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </AdminTableWrap>
     </div>
   );
 }

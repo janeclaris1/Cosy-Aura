@@ -7,7 +7,7 @@ import { Flower2, Search } from "lucide-react";
 import { cn, formatPrice, inspiredByBrandLine } from "@/lib/utils";
 import { useRegionalPrice } from "@/lib/use-regional-price";
 import { salePriceForSize } from "@/lib/pricing";
-import { useLocaleStore, useT } from "@/lib/locale-store";
+import { useShopperCurrency, useShopperRates, useT } from "@/lib/locale-store";
 
 interface SearchResult {
   slug: string;
@@ -19,13 +19,13 @@ interface SearchResult {
 }
 
 function SearchResultPrice({ slug, currency }: { slug: string; currency: string }) {
+  const rates = useShopperRates();
   const regionalPrice = useRegionalPrice(salePriceForSize(30, slug));
-  return <>{formatPrice(regionalPrice, currency)}</>;
+  return <>{formatPrice(regionalPrice, currency, rates)}</>;
 }
 
 export function SearchBar({ onDark = false }: { onDark?: boolean }) {
-  const currency = useLocaleStore((s) => s.currency);
-  useLocaleStore((s) => s.rates);
+  const currency = useShopperCurrency();
   const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);

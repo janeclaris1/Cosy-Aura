@@ -6,7 +6,12 @@ import {
   POPULAR_CURRENCIES,
   UI_LANGUAGES,
 } from "@/lib/geo-locale";
-import { useLocaleStore, useT, useUiLanguage } from "@/lib/locale-store";
+import {
+  useLocaleStore,
+  useShopperCurrency,
+  useT,
+  useUiLanguage,
+} from "@/lib/locale-store";
 import { cn } from "@/lib/utils";
 
 export function LocaleSwitcher({
@@ -18,7 +23,7 @@ export function LocaleSwitcher({
 }) {
   const t = useT();
   const language = useUiLanguage();
-  const currency = useLocaleStore((s) => s.currency);
+  const currency = useShopperCurrency();
   const setLanguage = useLocaleStore((s) => s.setLanguage);
   const setCurrency = useLocaleStore((s) => s.setCurrency);
   const [open, setOpen] = useState<"lang" | "cur" | null>(null);

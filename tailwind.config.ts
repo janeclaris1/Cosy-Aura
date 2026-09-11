@@ -56,10 +56,11 @@ const config: Config = {
         playfair: ["var(--font-playfair)", "Georgia", "serif"],
         alice: ["var(--font-playfair)", "Georgia", "serif"],
         cormorant: ["var(--font-cormorant)", "Georgia", "serif"],
-        inter: ["var(--font-inter)", "system-ui", "sans-serif"],
+        roboto: ["var(--font-roboto)", "system-ui", "sans-serif"],
+        inter: ["var(--font-roboto)", "system-ui", "sans-serif"],
         accent: ["var(--font-accent)", "cursive"],
-        // Body default (was Cantora)
-        cantora: ["var(--font-inter)", "system-ui", "sans-serif"],
+        // Body default
+        cantora: ["var(--font-roboto)", "system-ui", "sans-serif"],
       },
       transitionTimingFunction: {
         organic: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",

@@ -1,7 +1,19 @@
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
-import Link from "next/link";
+import {
+  AdminEmptyState,
+  AdminLink,
+  AdminPageHeader,
+  AdminSectionTitle,
+  AdminTableWrap,
+  adminPageWrap,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+  adminTableClass,
+} from "@/components/admin/admin-ui";
 
 export default async function AdminCustomersPage() {
   await requireAdminPage();
@@ -31,90 +43,92 @@ export default async function AdminCustomersPage() {
   ]);
 
   return (
-    <div>
-      <h1 className="font-playfair text-3xl mb-2">Customers</h1>
-      <p className="text-sm text-wf-gray mb-8">
-        Registered accounts and recent guest checkout emails.
-      </p>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Sales"
+        title="Customers"
+        description="Registered accounts and recent guest checkout emails."
+      />
 
-      <h2 className="font-playfair text-xl mb-4">Accounts</h2>
-      <div className="border border-wf-border rounded-lg overflow-hidden bg-white mb-10">
-        <table className="w-full text-sm">
-          <thead className="bg-wf-light">
-            <tr>
-              <th className="text-left p-3 font-medium">Email</th>
-              <th className="text-left p-3 font-medium">Name</th>
-              <th className="text-left p-3 font-medium">Phone</th>
-              <th className="text-left p-3 font-medium">Orders</th>
-              <th className="text-left p-3 font-medium">Wishlist</th>
-              <th className="text-left p-3 font-medium">Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id} className="border-t border-wf-border">
-                <td className="p-3">{user.email}</td>
-                <td className="p-3">{user.name || "-"}</td>
-                <td className="p-3">{user.phone || "-"}</td>
-                <td className="p-3">{user._count.orders}</td>
-                <td className="p-3">{user._count.wishlist}</td>
-                <td className="p-3 text-wf-gray">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
+      <section>
+        <AdminSectionTitle title="Accounts" />
+        <AdminTableWrap>
+          <table className={adminTableClass}>
+            <thead className={adminTheadClass}>
               <tr>
-                <td colSpan={6} className="p-6 text-center text-wf-gray">
-                  No customer accounts yet
-                </td>
+                <th className={adminThClass}>Email</th>
+                <th className={adminThClass}>Name</th>
+                <th className={adminThClass}>Phone</th>
+                <th className={adminThClass}>Orders</th>
+                <th className={adminThClass}>Wishlist</th>
+                <th className={adminThClass}>Joined</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id} className={adminTrClass}>
+                  <td className={adminTdClass}>{user.email}</td>
+                  <td className={adminTdClass}>{user.name || "—"}</td>
+                  <td className={adminTdClass}>{user.phone || "—"}</td>
+                  <td className={adminTdClass}>{user._count.orders}</td>
+                  <td className={adminTdClass}>{user._count.wishlist}</td>
+                  <td className={`${adminTdClass} text-mocha`}>
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={6}>
+                    <AdminEmptyState message="No customer accounts yet" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </AdminTableWrap>
+      </section>
 
-      <h2 className="font-playfair text-xl mb-4">Guest checkouts</h2>
-      <div className="border border-wf-border rounded-lg overflow-hidden bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-wf-light">
-            <tr>
-              <th className="text-left p-3 font-medium">Email</th>
-              <th className="text-left p-3 font-medium">Orders</th>
-              <th className="text-left p-3 font-medium">Total spent</th>
-              <th className="text-left p-3 font-medium">Last order</th>
-            </tr>
-          </thead>
-          <tbody>
-            {guestOrders.map((row) => (
-              <tr key={row.email} className="border-t border-wf-border">
-                <td className="p-3">
-                  <Link
-                    href={`/admin/orders?q=${encodeURIComponent(row.email)}`}
-                    className="text-gold hover:underline"
-                  >
-                    {row.email}
-                  </Link>
-                </td>
-                <td className="p-3">{row._count}</td>
-                <td className="p-3">{formatPrice(row._sum.total || 0)}</td>
-                <td className="p-3 text-wf-gray">
-                  {row._max.createdAt
-                    ? new Date(row._max.createdAt).toLocaleDateString()
-                    : "-"}
-                </td>
-              </tr>
-            ))}
-            {guestOrders.length === 0 && (
+      <section>
+        <AdminSectionTitle title="Guest checkouts" />
+        <AdminTableWrap>
+          <table className={adminTableClass}>
+            <thead className={adminTheadClass}>
               <tr>
-                <td colSpan={4} className="p-6 text-center text-wf-gray">
-                  No guest orders yet
-                </td>
+                <th className={adminThClass}>Email</th>
+                <th className={adminThClass}>Orders</th>
+                <th className={adminThClass}>Total spent</th>
+                <th className={adminThClass}>Last order</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {guestOrders.map((row) => (
+                <tr key={row.email} className={adminTrClass}>
+                  <td className={adminTdClass}>
+                    <AdminLink href={`/admin/orders?q=${encodeURIComponent(row.email)}`}>
+                      {row.email}
+                    </AdminLink>
+                  </td>
+                  <td className={adminTdClass}>{row._count}</td>
+                  <td className={adminTdClass}>{formatPrice(row._sum.total || 0)}</td>
+                  <td className={`${adminTdClass} text-mocha`}>
+                    {row._max.createdAt
+                      ? new Date(row._max.createdAt).toLocaleDateString()
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+              {guestOrders.length === 0 && (
+                <tr>
+                  <td colSpan={4}>
+                    <AdminEmptyState message="No guest orders yet" />
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </AdminTableWrap>
+      </section>
     </div>
   );
 }

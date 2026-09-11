@@ -2,23 +2,15 @@ import type { Metadata, Viewport } from "next";
 import {
   Alice,
   Cormorant_Garamond,
-  Inter,
   Petit_Formal_Script,
+  Roboto,
 } from "next/font/google";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { CookieConsent } from "@/components/layout/CookieConsent";
-import { SupportChat } from "@/components/support/SupportChat";
-import { Preloader } from "@/components/layout/Preloader";
-import { CartDrawer } from "@/components/cart/CartDrawer";
-import { NewsletterPopup } from "@/components/home/NewsletterPopup";
+import { StorefrontShell } from "@/components/layout/StorefrontShell";
 import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { MetaPixel } from "@/components/analytics/MetaPixel";
-import { CompareTray } from "@/components/perfume/CompareTray";
-import { PwaProvider } from "@/components/pwa/PwaProvider";
 import { Providers } from "@/components/Providers";
 import { buildRootMetadata } from "@/lib/seo-metadata";
 import {
@@ -47,9 +39,11 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
-const inter = Inter({
+const roboto = Roboto({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["100", "300", "400", "500", "700", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -106,7 +100,7 @@ export default async function RootLayout({
   return (
     <html
       lang={loc?.locale || "en"}
-      className={`${alice.variable} ${cormorant.variable} ${inter.variable} ${accent.variable}`}
+      className={`${alice.variable} ${cormorant.variable} ${roboto.variable} ${accent.variable}`}
     >
       <head>
         <script
@@ -137,22 +131,7 @@ export default async function RootLayout({
         <GoogleAnalytics />
         <MetaPixel />
         <Providers initialLocale={loc}>
-          {isMaintenancePage ? (
-            children
-          ) : (
-            <>
-              <Preloader />
-              <Header />
-              <main className="min-h-screen">{children}</main>
-              <Footer />
-              <CartDrawer />
-              <CompareTray />
-              <NewsletterPopup />
-              <CookieConsent />
-              <PwaProvider />
-              <SupportChat />
-            </>
-          )}
+          <StorefrontShell>{children}</StorefrontShell>
         </Providers>
       </body>
     </html>

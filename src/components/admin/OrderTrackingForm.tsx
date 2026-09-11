@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { AdminButton, adminInputClass, adminLabelClass } from "@/components/admin/admin-ui";
 
 export function OrderTrackingForm({
   orderId,
@@ -58,38 +59,34 @@ export function OrderTrackingForm({
   return (
     <form onSubmit={save} className="space-y-3">
       <div>
-        <label className="block text-xs text-wf-gray mb-1">Carrier</label>
+        <label className={adminLabelClass}>Carrier</label>
         <input
           value={carrierName}
           onChange={(e) => setCarrierName(e.target.value)}
           placeholder="DHL, FedEx, UPS…"
-          className="w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold"
+          className={adminInputClass}
         />
       </div>
       <div>
-        <label className="block text-xs text-wf-gray mb-1">
-          Tracking number
-        </label>
+        <label className={adminLabelClass}>Tracking number</label>
         <input
           value={number}
           onChange={(e) => setNumber(e.target.value)}
           placeholder="Tracking / AWB number"
-          className="w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold"
+          className={adminInputClass}
         />
       </div>
       <div>
-        <label className="block text-xs text-wf-gray mb-1">
-          Tracking URL (optional)
-        </label>
+        <label className={adminLabelClass}>Tracking URL (optional)</label>
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://…"
-          className="w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold"
+          className={adminInputClass}
         />
       </div>
       {status !== "SHIPPED" && status !== "DELIVERED" && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-sm font-roboto text-espresso">
           <input
             type="checkbox"
             checked={markShipped}
@@ -100,13 +97,9 @@ export function OrderTrackingForm({
       )}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="btn-gold text-sm disabled:opacity-50"
-      >
+      <AdminButton type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save tracking"}
-      </button>
+      </AdminButton>
     </form>
   );
 }

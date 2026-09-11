@@ -2,6 +2,17 @@ import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { mailchimpConfigured } from "@/lib/mailchimp";
 import { SyncMailchimpButton } from "@/components/admin/SyncMailchimpButton";
+import {
+  AdminEmptyState,
+  AdminPageHeader,
+  AdminTableWrap,
+  adminPageWrap,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+  adminTableClass,
+} from "@/components/admin/admin-ui";
 
 export default async function AdminSubscribersPage() {
   await requireAdminPage();
@@ -12,65 +23,63 @@ export default async function AdminSubscribersPage() {
   const configured = mailchimpConfigured();
 
   return (
-    <div>
-      <div className="flex flex-wrap items-start justify-between mb-8 gap-4">
-        <div>
-          <h1 className="font-playfair text-3xl">Newsletter</h1>
-          <p className="text-sm text-wf-gray mt-1">
-            {subscribers.length} subscriber{subscribers.length === 1 ? "" : "s"}
-            {configured ? " · Mailchimp connected" : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-3">
-          <a
-            href={`data:text/csv;charset=utf-8,${encodeURIComponent(
-              ["email,phone,subscribed_at"]
-                .concat(
-                  subscribers.map(
-                    (s) =>
-                      `${s.email},${s.phone || ""},${s.createdAt.toISOString()}`
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Marketing"
+        title="Newsletter"
+        description={`${subscribers.length} subscriber${subscribers.length === 1 ? "" : "s"}${configured ? " · Mailchimp connected" : ""}`}
+        actions={
+          <>
+            <a
+              href={`data:text/csv;charset=utf-8,${encodeURIComponent(
+                ["email,phone,subscribed_at"]
+                  .concat(
+                    subscribers.map(
+                      (s) =>
+                        `${s.email},${s.phone || ""},${s.createdAt.toISOString()}`
+                    )
                   )
-                )
-                .join("\n")
-            )}`}
-            download="newsletter-subscribers.csv"
-            className="btn-outline text-sm py-2 px-4"
-          >
-            Export CSV
-          </a>
-          <SyncMailchimpButton configured={configured} count={subscribers.length} />
-        </div>
-      </div>
+                  .join("\n")
+              )}`}
+              download="newsletter-subscribers.csv"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium border border-stone-200/90 text-[#03045e] hover:bg-[#fafafa] transition-colors"
+            >
+              Export CSV
+            </a>
+            <SyncMailchimpButton configured={configured} count={subscribers.length} />
+          </>
+        }
+      />
 
-      <div className="border border-wf-border rounded-lg overflow-hidden bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-wf-light">
+      <AdminTableWrap>
+        <table className={adminTableClass}>
+          <thead className={adminTheadClass}>
             <tr>
-              <th className="text-left p-3 font-medium">Email</th>
-              <th className="text-left p-3 font-medium">Phone / WhatsApp</th>
-              <th className="text-left p-3 font-medium">Subscribed</th>
+              <th className={adminThClass}>Email</th>
+              <th className={adminThClass}>Phone / WhatsApp</th>
+              <th className={adminThClass}>Subscribed</th>
             </tr>
           </thead>
           <tbody>
             {subscribers.map((s) => (
-              <tr key={s.id} className="border-t border-wf-border">
-                <td className="p-3">{s.email}</td>
-                <td className="p-3">{s.phone || "—"}</td>
-                <td className="p-3 text-wf-gray">
+              <tr key={s.id} className={adminTrClass}>
+                <td className={adminTdClass}>{s.email}</td>
+                <td className={adminTdClass}>{s.phone || "—"}</td>
+                <td className={`${adminTdClass} text-mocha`}>
                   {new Date(s.createdAt).toLocaleString()}
                 </td>
               </tr>
             ))}
             {subscribers.length === 0 && (
               <tr>
-                <td colSpan={3} className="p-6 text-center text-wf-gray">
-                  No subscribers yet
+                <td colSpan={3}>
+                  <AdminEmptyState message="No subscribers yet" />
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </AdminTableWrap>
     </div>
   );
 }

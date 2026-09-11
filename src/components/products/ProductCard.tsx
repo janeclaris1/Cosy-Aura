@@ -5,10 +5,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
-import { useLocaleStore, useT } from "@/lib/locale-store";
+import {
+  useShopperCountry,
+  useShopperCurrency,
+  useShopperRates,
+  useT,
+} from "@/lib/locale-store";
 import { formatPrice, cn } from "@/lib/utils";
 import { useRegionalPrice } from "@/lib/use-regional-price";
 import { useMemberDiscount } from "@/lib/use-member-discount";
+import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import { STORE_DISCOUNT_PERCENT, listPriceForSize, salePriceForSize } from "@/lib/pricing";
 import {
   cardConcentrationLabel,
@@ -52,10 +58,11 @@ export function ProductCard({
   animate = true,
 }: ProductCardProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const storeCurrency = useLocaleStore((s) => s.currency);
-  const country = useLocaleStore((s) => s.country);
-  useLocaleStore((s) => s.rates);
-  const currency = currencyProp || storeCurrency;
+  const mounted = useIsClientMounted();
+  const shopperCurrency = useShopperCurrency();
+  const country = useShopperCountry();
+  const rates = useShopperRates();
+  const currency = currencyProp || shopperCurrency;
   const t = useT();
   const { toggleItem, hasItem } = useWishlistStore();
   const addItem = useCartStore((s) => s.addItem);
@@ -68,7 +75,9 @@ export function ProductCard({
   const discount = STORE_DISCOUNT_PERCENT;
   const member = useMemberDiscount();
   const baseSalePrice = salePriceForSize(30, fragrance.slug);
-  const salePrice = member.apply(useRegionalPrice(baseSalePrice));
+  const regionalSalePrice = useRegionalPrice(baseSalePrice);
+  const salePrice =
+    mounted && member.active ? member.apply(regionalSalePrice) : regionalSalePrice;
   const originalPrice = useRegionalPrice(listPriceForSize(30, fragrance.slug));
   const inStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
@@ -174,10 +183,10 @@ export function ProductCard({
 
           <div className="w-8 h-px bg-black mx-auto my-1.5" />
           <p className="font-playfair text-xl leading-none text-[#c8102e]">
-            {t("product.from", { price: formatPrice(salePrice, currency) })}
+            {t("product.from", { price: formatPrice(salePrice, currency, rates) })}
           </p>
           <p className="text-xs text-mocha line-through">
-            {formatPrice(originalPrice, currency)}
+            {formatPrice(originalPrice, currency, rates)}
           </p>
         </div>
       </Link>

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import { Instagram, Facebook, Twitter, Youtube } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { SocialLinks } from "@/components/layout/SocialLinks";
 import { FooterRegions } from "@/components/layout/FooterRegions";
 import { InstallAppLink } from "@/components/pwa/InstallAppLink";
 import { useT } from "@/lib/locale-store";
@@ -44,35 +45,6 @@ const SUPPORT_LINKS = [
   { key: "footer.contact", href: "/contact" },
 ];
 
-const SOCIAL_LINKS = [
-  {
-    label: "Instagram",
-    href:
-      process.env.NEXT_PUBLIC_INSTAGRAM_URL ||
-      "https://www.instagram.com/cosyaura",
-    Icon: Instagram,
-  },
-  {
-    label: "Facebook",
-    href:
-      process.env.NEXT_PUBLIC_FACEBOOK_URL ||
-      "https://www.facebook.com/cosyaura",
-    Icon: Facebook,
-  },
-  {
-    label: "X",
-    href: process.env.NEXT_PUBLIC_TWITTER_URL || "https://x.com/cosyaura",
-    Icon: Twitter,
-  },
-  {
-    label: "YouTube",
-    href:
-      process.env.NEXT_PUBLIC_YOUTUBE_URL ||
-      "https://www.youtube.com/@cosyaura",
-    Icon: Youtube,
-  },
-] as const;
-
 const COMPANY_LINKS = [
   { key: "footer.about", href: "/about" },
   { key: "footer.journal", href: "/blog" },
@@ -110,11 +82,11 @@ export function Footer() {
       id: "accra",
       label: t("footer.storeAccraLabel"),
       address: t("footer.storeAccraAddress"),
-      // Kokomlemle / Olympic Street area, Accra
+      // Kokomlemle / Odaw Street area, Accra
       lat: 5.5794,
       lng: -0.2081,
       directionsUrl:
-        "https://www.google.com/maps/search/?api=1&query=56+Olympic+Street+Kokomlemle+Accra+Ghana",
+        "https://www.google.com/maps/search/?api=1&query=15+Odaw+Street+Kokomlemle+Accra+Ghana",
       directionsLabel: t("footer.getDirections"),
     },
     {
@@ -160,9 +132,7 @@ export function Footer() {
               <span className="block">
                 <span className="text-white/90">{t("footer.storeAccraLabel")}</span>
                 <br />
-                No 56 Olympic Street
-                <br />
-                Kokomlemle, Accra
+                {t("footer.storeAccraAddress")}
               </span>
               <span className="block">
                 <span className="text-white/90">{t("footer.storeYaoundeLabel")}</span>
@@ -177,19 +147,11 @@ export function Footer() {
                 Mamfe, Cameroon
               </span>
             </address>
-            <div className="flex gap-4">
-              {SOCIAL_LINKS.map(({ label, href, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={label}
-                  className="text-gold hover:text-gold-light transition-colors"
-                >
-                  <Icon className="w-5 h-5" />
-                </a>
-              ))}
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-white/70 mb-3">
+                {t("footer.followUs")}
+              </p>
+              <SocialLinks variant="footer" />
             </div>
           </div>
 
@@ -207,12 +169,17 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li className="pt-1">
+              <li className="pt-3">
                 <Link
                   href="/brands"
-                  className="inline-flex items-center text-sm text-white hover:text-gold transition-colors tracking-wide"
+                  className="group inline-flex items-center gap-2 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.14em] text-[#FFD200] ring-1 ring-[#FFD200]/40 hover:bg-[#FFD200] hover:text-[#03045e] transition-colors"
                 >
                   {t("footer.viewMore")}
+                  <ArrowRight
+                    className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
                 </Link>
               </li>
             </ul>

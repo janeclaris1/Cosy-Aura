@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { adminInputClass } from "@/components/admin/admin-ui";
 
 function SetPasswordForm() {
   const router = useRouter();
@@ -72,7 +73,7 @@ function SetPasswordForm() {
         minLength={8}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-4 py-3 border border-wf-border rounded text-sm focus:outline-none focus:border-gold"
+        className={adminInputClass}
         autoComplete="new-password"
       />
       <input
@@ -82,7 +83,7 @@ function SetPasswordForm() {
         minLength={8}
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
-        className="w-full px-4 py-3 border border-wf-border rounded text-sm focus:outline-none focus:border-gold"
+        className={adminInputClass}
         autoComplete="new-password"
       />
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -95,10 +96,10 @@ function SetPasswordForm() {
 
 export default function AdminSetPasswordPage() {
   return (
-    <div className="min-h-screen bg-wf-light flex items-center justify-center px-4">
-      <div className="bg-white border border-wf-border rounded-lg p-8 w-full max-w-md">
-        <h1 className="font-playfair text-2xl text-center mb-2">Set admin password</h1>
-        <p className="text-sm text-wf-gray text-center mb-8">
+    <div className="admin-app min-h-screen bg-[#f7f6f3] flex items-center justify-center px-4">
+      <div className="bg-white shadow-sm ring-1 ring-black/[0.04] rounded-2xl p-8 w-full max-w-md">
+        <h1 className="font-playfair text-2xl text-[#03045e] text-center mb-2">Set admin password</h1>
+        <p className="text-sm text-mocha text-center mb-8">
           Choose a password for your Cosy Aura admin account
         </p>
         <Suspense fallback={<p className="text-sm text-center text-mocha">Loading…</p>}>

@@ -12,14 +12,14 @@ import {
   type CatalogFragrance,
 } from "@/lib/scent-intelligence";
 import { formatPrice, cn } from "@/lib/utils";
-import { useLocaleStore } from "@/lib/locale-store";
+import { useShopperCurrency, useShopperRates } from "@/lib/locale-store";
 import { ProductCard } from "@/components/products/ProductCard";
 import Image from "next/image";
 
 /** Minimal card used by occasion / gift finders. */
 function ResultGrid({ items }: { items: CatalogFragrance[] }) {
-  const currency = useLocaleStore((s) => s.currency);
-  useLocaleStore((s) => s.rates);
+  const currency = useShopperCurrency();
+  const rates = useShopperRates();
   if (!items.length) {
     return (
       <p className="text-sm text-wf-gray py-8">
@@ -42,7 +42,7 @@ function ResultGrid({ items }: { items: CatalogFragrance[] }) {
           </div>
           <p className="text-xs text-wf-gray">{f.brand.name}</p>
           <p className="text-sm font-semibold">{f.model}</p>
-          <p className="text-sm text-gold">{formatPrice(f.price, currency)}</p>
+          <p className="text-sm text-gold">{formatPrice(f.price, currency, rates)}</p>
         </Link>
       ))}
     </div>

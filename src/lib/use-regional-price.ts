@@ -2,14 +2,18 @@
 
 import { useMemo } from "react";
 import { applyRegionalMarkup, isAfricanCountry } from "@/lib/regional-pricing";
-import { useLocaleStore } from "@/lib/locale-store";
+import {
+  useShopperCountry,
+  useShopperRates,
+  useShopperStorePricing,
+} from "@/lib/locale-store";
 
 /** Applies regional markup to a GHS base price for the current shopper. */
 export function useRegionalPrice(baseGhs: number): number {
-  const country = useLocaleStore((s) => s.country);
-  const rates = useLocaleStore((s) => s.rates);
-  const enabled = useLocaleStore((s) => s.nonAfricaMarkupEnabled);
-  const markupUsd = useLocaleStore((s) => s.nonAfricaMarkupUsd);
+  const country = useShopperCountry();
+  const rates = useShopperRates();
+  const { nonAfricaMarkupEnabled: enabled, nonAfricaMarkupUsd: markupUsd } =
+    useShopperStorePricing();
 
   return useMemo(
     () =>
@@ -24,7 +28,7 @@ export function useRegionalPrice(baseGhs: number): number {
 }
 
 export function useInternationalPricingActive(): boolean {
-  const country = useLocaleStore((s) => s.country);
-  const enabled = useLocaleStore((s) => s.nonAfricaMarkupEnabled);
+  const country = useShopperCountry();
+  const { nonAfricaMarkupEnabled: enabled } = useShopperStorePricing();
   return enabled && country !== null && !isAfricanCountry(country);
 }

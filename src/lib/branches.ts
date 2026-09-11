@@ -107,13 +107,18 @@ export async function getCountryCommerceConfig(
     branchId: branch?.id || null,
     branchName: branch?.name || null,
     city: branch?.city || null,
-    address: branch?.address || null,
+    address:
+      branch?.address ||
+      (bucket === "GH" ? "15 Odaw Street, Kokomlemle, Accra" : null),
     phone: branch?.phone || null,
     whatsappPhone: phone,
     whatsappEnabled,
     waMeUrl: whatsappEnabled && phone ? `https://wa.me/${phone}` : null,
     codEnabled: branch?.codEnabled ?? true,
-    pickupEnabled: branch?.pickupEnabled ?? false,
+    pickupEnabled: Boolean(
+      branch &&
+        (branch.pickupEnabled || bucket === "GH" || bucket === "CM")
+    ),
     dawuroboEnabled: branch?.dawuroboEnabled ?? true,
     shaqexpressEnabled: branch?.shaqexpressEnabled ?? true,
     openingHours: branch?.openingHours || null,

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminSectionTitle,
+  adminInputClass,
+  adminLabelClass,
+  adminSelectClass,
+} from "@/components/admin/admin-ui";
 import { STAFF_ROLES, staffRoleLabel } from "@/lib/rbac";
+import { StaffAvatar } from "@/components/admin/StaffAvatar";
 
 type Branch = { id: string; name: string; country: string };
 type StaffRow = {
@@ -9,6 +18,7 @@ type StaffRow = {
   email: string;
   name: string | null;
   phone: string | null;
+  image: string | null;
   staffRole: string | null;
   staffCountry: string | null;
   activeStaff: boolean;
@@ -169,40 +179,42 @@ export function StaffManager() {
 
   return (
     <div className="grid lg:grid-cols-2 gap-8">
-      <form onSubmit={save} className="space-y-3 bg-white border border-wf-border p-4">
-        <h2 className="font-medium text-sm">
-          {editing ? "Edit staff" : "Invite / update staff"}
-        </h2>
+      <AdminCard>
+        <form onSubmit={save} className="space-y-3">
+        <AdminSectionTitle
+          title={editing ? "Edit staff" : "Invite / update staff"}
+          className="!mb-3"
+        />
         <p className="text-xs text-mocha">
           Super Admin is only you (via SUPER_ADMIN_EMAILS). Other roles are assigned here.
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {message && <p className="text-sm text-green-700">{message}</p>}
-        <label className="block text-sm">
-          Email
+        <label className="block">
+          <span className={adminLabelClass}>Email</span>
           <input
             required
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
             disabled={editing}
           />
         </label>
-        <label className="block text-sm">
-          Name
+        <label className="block">
+          <span className={adminLabelClass}>Name</span>
           <input
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
-        <label className="block text-sm">
-          Phone
+        <label className="block">
+          <span className={adminLabelClass}>Phone</span>
           <input
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminInputClass}
           />
         </label>
         {!editing ? (
@@ -211,12 +223,12 @@ export function StaffManager() {
             Passwords are never sent in plain text.
           </p>
         ) : null}
-        <label className="block text-sm">
-          Role
+        <label className="block">
+          <span className={adminLabelClass}>Role</span>
           <select
             value={form.staffRole}
             onChange={(e) => setForm({ ...form, staffRole: e.target.value })}
-            className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+            className={adminSelectClass}
           >
             {STAFF_ROLES.map((role) => (
               <option key={role} value={role}>
@@ -226,12 +238,12 @@ export function StaffManager() {
           </select>
         </label>
         {needsCountry ? (
-          <label className="block text-sm">
-            Country scope
+          <label className="block">
+            <span className={adminLabelClass}>Country scope</span>
             <select
               value={form.staffCountry}
               onChange={(e) => setForm({ ...form, staffCountry: e.target.value })}
-              className="mt-1 w-full border border-wf-border px-3 py-2 text-sm"
+              className={adminSelectClass}
             >
               <option value="GH">Ghana</option>
               <option value="CM">Cameroon</option>
@@ -262,28 +274,37 @@ export function StaffManager() {
           Active
         </label>
         <div className="flex gap-2">
-          <button type="submit" disabled={saving} className="btn-gold disabled:opacity-50">
+          <AdminButton type="submit" disabled={saving}>
             {saving ? "Saving…" : editing ? "Update staff" : "Save staff"}
-          </button>
+          </AdminButton>
           {editing ? (
-            <button type="button" onClick={resetForm} className="text-sm text-mocha">
+            <AdminButton type="button" variant="ghost" onClick={resetForm}>
               Cancel
-            </button>
+            </AdminButton>
           ) : null}
         </div>
-      </form>
+        </form>
+      </AdminCard>
 
       <div className="space-y-3">
         {staff.map((row) => (
-          <div
+          <AdminCard
             key={row.id}
-            className="bg-white border border-wf-border p-4 flex justify-between gap-4"
+            className="flex justify-between gap-4"
           >
-            <div>
+            <div className="flex gap-3 min-w-0">
+              <StaffAvatar
+                name={row.name}
+                email={row.email}
+                image={row.image}
+                size="md"
+                className="mt-0.5"
+              />
+              <div className="min-w-0">
               <p className="font-medium text-sm">
                 {row.name || row.email}
                 {row.isSuperAdmin ? (
-                  <span className="ml-2 text-xs text-gold">Super Admin</span>
+                  <span className="ml-2 text-xs text-[#03045e] font-medium">Super Admin</span>
                 ) : null}
               </p>
               <p className="text-xs text-mocha mt-0.5">{row.email}</p>
@@ -301,15 +322,20 @@ export function StaffManager() {
                   {row.staffAssignments.map((a) => a.branch.name).join(", ")}
                 </p>
               ) : null}
+              </div>
             </div>
             {!row.isSuperAdmin ? (
               <div className="flex flex-col gap-2 text-xs shrink-0">
-                <button type="button" className="underline" onClick={() => startEdit(row)}>
+                <button
+                  type="button"
+                  className="text-[#03045e] hover:underline font-medium"
+                  onClick={() => startEdit(row)}
+                >
                   Edit
                 </button>
                 <button
                   type="button"
-                  className="underline"
+                  className="text-[#03045e] hover:underline font-medium"
                   onClick={() => void resetPassword(row)}
                 >
                   Send reset link
@@ -325,7 +351,7 @@ export function StaffManager() {
                 ) : null}
               </div>
             ) : null}
-          </div>
+          </AdminCard>
         ))}
         {!staff.length ? <p className="text-sm text-mocha">No admin staff yet.</p> : null}
       </div>

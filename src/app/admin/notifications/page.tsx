@@ -2,6 +2,12 @@ import Link from "next/link";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { MarkNotificationsRead } from "@/components/admin/MarkNotificationsRead";
+import {
+  AdminCard,
+  AdminEmptyState,
+  AdminPageHeader,
+  adminPageWrap,
+} from "@/components/admin/admin-ui";
 
 export default async function AdminNotificationsPage() {
   await requireAdminPage();
@@ -14,42 +20,39 @@ export default async function AdminNotificationsPage() {
   const unread = notifications.filter((n) => !n.read).length;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="font-playfair text-3xl">Notifications</h1>
-          <p className="text-sm text-wf-gray mt-1">
-            {unread} unread · order alerts and contact enquiries
-          </p>
-        </div>
-        {unread > 0 && <MarkNotificationsRead />}
-      </div>
+    <div className={adminPageWrap}>
+      <AdminPageHeader
+        eyebrow="Inbox"
+        title="Notifications"
+        description={`${unread} unread · order alerts and contact enquiries`}
+        actions={unread > 0 ? <MarkNotificationsRead /> : undefined}
+      />
 
-      <div className="bg-white border border-wf-border rounded-lg divide-y divide-wf-border">
+      <AdminCard padding="none" className="divide-y divide-stone-100">
         {notifications.map((n) => (
           <div
             key={n.id}
-            className={`p-4 flex gap-4 ${!n.read ? "bg-gold/5" : ""}`}
+            className={`p-4 sm:p-5 flex gap-4 ${!n.read ? "bg-[#FFD200]/5" : ""}`}
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] uppercase tracking-wider text-gold">
+                <span className="text-[10px] uppercase tracking-[0.14em] text-[#03045e] font-medium">
                   {n.type.replace(/_/g, " ")}
                 </span>
                 {!n.read && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-gold" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FFD200]" />
                 )}
               </div>
-              <p className="font-medium text-wf-black">{n.title}</p>
-              <p className="text-sm text-wf-gray mt-0.5">{n.message}</p>
-              <p className="text-xs text-wf-gray mt-2">
+              <p className="font-medium text-espresso">{n.title}</p>
+              <p className="text-sm text-mocha mt-0.5">{n.message}</p>
+              <p className="text-xs text-mocha/80 mt-2">
                 {new Date(n.createdAt).toLocaleString()}
               </p>
             </div>
             {n.link && (
               <Link
                 href={n.link}
-                className="text-sm text-gold hover:underline shrink-0 self-center"
+                className="text-sm text-[#03045e] hover:underline shrink-0 self-center font-medium"
               >
                 Open
               </Link>
@@ -57,9 +60,9 @@ export default async function AdminNotificationsPage() {
           </div>
         ))}
         {notifications.length === 0 && (
-          <p className="p-8 text-center text-wf-gray">No notifications yet</p>
+          <AdminEmptyState message="No notifications yet" />
         )}
-      </div>
+      </AdminCard>
     </div>
   );
 }

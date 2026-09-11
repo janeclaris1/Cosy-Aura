@@ -614,16 +614,28 @@ export function ProductInfo({
     country,
     currency
   );
-  const selectedSizeInStock =
-    !sizeStockLoaded || sizeStock[selectedSize] > 0;
+  const hasBranchSizeInventory =
+    sizeStockLoaded && BOTTLE_SIZES.some((s) => sizeStock[s] > 0);
+  const isSizeAvailable = (size: BottleSize) => {
+    if (!sizeStockLoaded) return true;
+    if (hasBranchSizeInventory) return sizeStock[size] > 0;
+    return countryInStock;
+  };
+  const selectedSizeInStock = isSizeAvailable(selectedSize);
   const inStock = countryInStock && selectedSizeInStock;
 
   useEffect(() => {
-    if (!sizeStockLoaded) return;
+    if (!sizeStockLoaded || !hasBranchSizeInventory) return;
     if (sizeStock[selectedSize] > 0) return;
     const firstAvailable = BOTTLE_SIZES.find((s) => sizeStock[s] > 0);
     if (firstAvailable) setSelectedSize(firstAvailable);
-  }, [sizeStockLoaded, sizeStock, selectedSize, setSelectedSize]);
+  }, [
+    sizeStockLoaded,
+    hasBranchSizeInventory,
+    sizeStock,
+    selectedSize,
+    setSelectedSize,
+  ]);
 
   function handleAddToCart() {
     if (!inStock) return;
@@ -744,7 +756,7 @@ export function ProductInfo({
         </p>
         <div className="flex flex-wrap gap-2">
           {BOTTLE_SIZES.map((size) => {
-            const sizeAvailable = !sizeStockLoaded || sizeStock[size] > 0;
+            const sizeAvailable = isSizeAvailable(size);
             return (
             <button
               key={size}

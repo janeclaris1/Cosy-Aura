@@ -17,6 +17,8 @@ import {
   LocaleHydratedContext,
   LocaleSsrContext,
   LocaleSsrCountryContext,
+  LocaleSsrCurrencyContext,
+  LocaleSsrRatesContext,
 } from "@/components/locale/locale-context";
 
 type LocaleState = {
@@ -167,6 +169,7 @@ export const useLocaleStore = create<LocaleState>()(
     {
       name: "cosyaura-locale",
       version: 1,
+      skipHydration: true,
       partialize: (state) => ({
         country: state.country,
         locale: state.locale,
@@ -206,6 +209,38 @@ export function useShopperCountry(): string | null {
   const storeCountry = useLocaleStore((s) => s.country);
   if (!hydrated) return ssrCountry;
   return storeCountry || ssrCountry;
+}
+
+/** Shopper currency, SSR-safe via cookie until hydrate. */
+export function useShopperCurrency(): string {
+  const ssrCurrency = useContext(LocaleSsrCurrencyContext);
+  const hydrated = useContext(LocaleHydratedContext);
+  const storeCurrency = useLocaleStore((s) => s.currency);
+  if (!hydrated) return ssrCurrency;
+  return storeCurrency;
+}
+
+/** FX rates, SSR-safe via cookie until hydrate. */
+export function useShopperRates(): Record<string, number> {
+  const ssrRates = useContext(LocaleSsrRatesContext);
+  const hydrated = useContext(LocaleHydratedContext);
+  const storeRates = useLocaleStore((s) => s.rates);
+  if (!hydrated) return ssrRates;
+  return storeRates;
+}
+
+/** Store pricing flags — frozen to SSR defaults until hydrate. */
+export function useShopperStorePricing(): {
+  nonAfricaMarkupEnabled: boolean;
+  nonAfricaMarkupUsd: number;
+} {
+  const hydrated = useContext(LocaleHydratedContext);
+  const enabled = useLocaleStore((s) => s.nonAfricaMarkupEnabled);
+  const markupUsd = useLocaleStore((s) => s.nonAfricaMarkupUsd);
+  if (!hydrated) {
+    return { nonAfricaMarkupEnabled: false, nonAfricaMarkupUsd: 10 };
+  }
+  return { nonAfricaMarkupEnabled: enabled, nonAfricaMarkupUsd: markupUsd };
 }
 
 export function useT() {

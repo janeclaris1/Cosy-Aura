@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AdminButton,
+  adminInputClass,
+  adminLabelClass,
+} from "@/components/admin/admin-ui";
 
 interface PostFormProps {
   post?: {
@@ -56,9 +61,6 @@ export function PostForm({ post }: PostFormProps) {
     router.refresh();
   }
 
-  const inputClass =
-    "w-full px-3 py-2 border border-wf-border rounded text-sm focus:outline-none focus:border-gold bg-white";
-
   return (
     <form onSubmit={handleSubmit} className="space-y-5 max-w-3xl">
       {error && (
@@ -68,71 +70,75 @@ export function PostForm({ post }: PostFormProps) {
       )}
 
       <div>
-        <label className="block text-sm font-medium mb-1.5">Title</label>
+        <label className={adminLabelClass}>Title</label>
         <input
           required
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5">
+        <label className={adminLabelClass}>
           Slug{" "}
-          <span className="text-wf-gray font-normal">(optional, auto from title)</span>
+          <span className="normal-case tracking-normal text-mocha font-normal">
+            (optional, auto from title)
+          </span>
         </label>
         <input
           value={form.slug}
           onChange={(e) => setForm({ ...form, slug: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           placeholder="how-to-choose-a-first-luxury-fragrance"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5">Excerpt</label>
+        <label className={adminLabelClass}>Excerpt</label>
         <textarea
           required
           rows={3}
           value={form.excerpt}
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-          className={inputClass}
+          className={adminInputClass}
           placeholder="Short summary shown on the journal index and SEO description."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1.5">
+        <label className={adminLabelClass}>
           Content{" "}
-          <span className="text-wf-gray font-normal">(Markdown supported)</span>
+          <span className="normal-case tracking-normal text-mocha font-normal">
+            (Markdown supported)
+          </span>
         </label>
         <textarea
           required
           rows={18}
           value={form.content}
           onChange={(e) => setForm({ ...form, content: e.target.value })}
-          className={`${inputClass} font-mono text-[13px] leading-relaxed`}
+          className={`${adminInputClass} font-mono text-[13px] leading-relaxed`}
           placeholder={"## Heading\n\nWrite your story here..."}
         />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Cover image URL</label>
+          <label className={adminLabelClass}>Cover image URL</label>
           <input
             value={form.coverImage}
             onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
             placeholder="/images/fragrances/..."
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Author</label>
+          <label className={adminLabelClass}>Author</label>
           <input
             value={form.authorName}
             onChange={(e) => setForm({ ...form, authorName: e.target.value })}
-            className={inputClass}
+            className={adminInputClass}
           />
         </div>
       </div>
@@ -147,16 +153,16 @@ export function PostForm({ post }: PostFormProps) {
       </label>
 
       <div className="flex gap-3 pt-2">
-        <button type="submit" disabled={loading} className="btn-gold disabled:opacity-50">
+        <AdminButton type="submit" disabled={loading}>
           {loading ? "Saving..." : post ? "Update post" : "Create post"}
-        </button>
-        <button
+        </AdminButton>
+        <AdminButton
           type="button"
-          className="btn-outline"
+          variant="secondary"
           onClick={() => router.push("/admin/posts")}
         >
           Cancel
-        </button>
+        </AdminButton>
       </div>
     </form>
   );

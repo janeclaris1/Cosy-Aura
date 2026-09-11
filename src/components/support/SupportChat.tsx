@@ -518,7 +518,7 @@ export function SupportChat() {
               onClick={() => setOpen(true)}
               className="relative rounded-full bg-white px-4 py-2.5 text-left shadow-[0_4px_14px_rgba(3,4,94,0.12)] hover:shadow-[0_6px_18px_rgba(3,4,94,0.16)] transition-shadow animate-chat-teaser-in motion-reduce:animate-none"
             >
-              <span className="block whitespace-nowrap font-inter text-sm font-medium text-[#03045e] leading-snug">
+              <span className="block whitespace-nowrap font-roboto text-sm font-medium text-[#03045e] leading-snug">
                 {t("support.teaser")}
               </span>
               {/* Tail pointing down toward the chat icon */}

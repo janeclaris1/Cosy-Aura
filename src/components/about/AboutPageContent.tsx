@@ -235,8 +235,8 @@ export async function AboutPageContent() {
             <p className="text-[15px] sm:text-base leading-relaxed text-black max-w-xl mb-6">
               We are here to help you feel and smell your absolute best. Browse
               the full oil collection, read scent stories in the Journal, or
-              follow Cosy Aura on Instagram and Facebook for new drops and
-              atelier notes.
+              follow Cosy Aura on Instagram, TikTok, and our other channels for
+              new drops and atelier notes.
             </p>
             <Link href="/fragrances" className="btn-gold inline-block">
               Shop now
@@ -268,7 +268,7 @@ export async function AboutPageContent() {
                 before you buy and after it ships.
               </p>
               <p className="text-sm text-[#6b6b6b] leading-relaxed">
-                Visit us: Accra (No 56 Olympic Street, Kokomlemle) · Monte
+                Visit us: Accra (15 Odaw Street, Kokomlemle) · Monte
                 Meecham, Yaounde · Mamfe
               </p>
               <div className="mt-6 flex flex-wrap gap-3">

@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { convertFromGhs, getMoneyDisplay } from "@/lib/money-display";
+import { rateFromGhs } from "@/lib/fx";
+import { getMoneyDisplay } from "@/lib/money-display";
 import type { UiLang } from "@/lib/geo-locale";
 import {
   bottleMaterialLabel as bottleMaterialLabelI18n,
@@ -15,10 +16,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatPrice(price: number, currency = "GHS"): string {
+export function formatPrice(
+  price: number,
+  currency = "GHS",
+  rates?: Record<string, number>
+): string {
   const code = (currency || "GHS").toUpperCase();
-  const value = convertFromGhs(Number(price) || 0, code);
-  const { locale } = getMoneyDisplay();
+  const display = getMoneyDisplay();
+  const value =
+    Number(price || 0) * rateFromGhs(rates ?? display.rates, code);
+  const locale = display.locale;
   try {
     return new Intl.NumberFormat(locale || "en", {
       style: "currency",

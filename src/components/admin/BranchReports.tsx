@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminTableWrap,
+  adminTableClass,
+  adminTdClass,
+  adminThClass,
+  adminTheadClass,
+  adminTrClass,
+} from "@/components/admin/admin-ui";
 import { formatPrice } from "@/lib/utils";
 
 type Row = {
@@ -8,8 +18,12 @@ type Row = {
   name: string;
   country: string;
   city: string | null;
-  orders: number;
+  transactions: number;
   revenue: number;
+  posTransactions: number;
+  posRevenue: number;
+  webTransactions: number;
+  webRevenue: number;
   toFulfil: number;
   delivered: number;
   stockUnits: number;
@@ -18,8 +32,12 @@ type Row = {
 };
 
 type Totals = {
-  orders: number;
+  transactions: number;
   revenue: number;
+  posTransactions: number;
+  posRevenue: number;
+  webTransactions: number;
+  webRevenue: number;
   stockUnits: number;
   toFulfil: number;
 };
@@ -50,96 +68,104 @@ export function BranchReports() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-mocha">
+        <p className="text-sm text-mocha max-w-xl">
           {generatedAt
-            ? `Updated ${new Date(generatedAt).toLocaleString()}`
-            : "Branch roll-up"}
+            ? `Updated ${new Date(generatedAt).toLocaleString()} · `
+            : ""}
+          Paid POS and online sales per branch. Voided/refunded and unpaid orders are
+          excluded from revenue.
         </p>
         <div className="flex flex-wrap gap-2">
-          <a
-            href="/api/admin/reports/export?kind=branches"
-            className="border border-wf-border bg-white px-3 py-2 text-sm hover:bg-wf-light"
-          >
+          <AdminButton href="/api/admin/reports/export?kind=branches" variant="secondary">
             Export branches CSV
-          </a>
-          <a
-            href="/api/admin/reports/export?kind=orders"
-            className="border border-wf-border bg-white px-3 py-2 text-sm hover:bg-wf-light"
-          >
+          </AdminButton>
+          <AdminButton href="/api/admin/reports/export?kind=orders" variant="secondary">
             Export orders CSV
-          </a>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="border border-wf-border bg-white px-3 py-2 text-sm hover:bg-wf-light"
-          >
+          </AdminButton>
+          <AdminButton type="button" variant="secondary" onClick={() => void load()}>
             Refresh
-          </button>
+          </AdminButton>
         </div>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {totals ? (
-        <div className="grid sm:grid-cols-4 gap-3">
-          <Stat label="Orders" value={String(totals.orders)} />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat label="Transactions" value={String(totals.transactions)} />
           <Stat label="Revenue" value={formatPrice(totals.revenue)} />
-          <Stat label="To fulfil" value={String(totals.toFulfil)} />
-          <Stat label="Stock units" value={String(totals.stockUnits)} />
+          <Stat
+            label="In-store (POS)"
+            value={`${totals.posTransactions} · ${formatPrice(totals.posRevenue)}`}
+          />
+          <Stat
+            label="Online"
+            value={`${totals.webTransactions} · ${formatPrice(totals.webRevenue)}`}
+          />
         </div>
       ) : null}
 
-      <div className="border border-wf-border bg-white overflow-x-auto">
-        <table className="w-full text-sm min-w-[860px]">
-          <thead className="bg-wf-light">
+      <AdminTableWrap>
+        <table className={`${adminTableClass} min-w-[980px]`}>
+          <thead className={adminTheadClass}>
             <tr>
-              <th className="text-left p-3 font-medium">Branch</th>
-              <th className="text-left p-3 font-medium">Orders</th>
-              <th className="text-left p-3 font-medium">Revenue</th>
-              <th className="text-left p-3 font-medium">To fulfil</th>
-              <th className="text-left p-3 font-medium">Delivered</th>
-              <th className="text-left p-3 font-medium">Stock</th>
-              <th className="text-left p-3 font-medium">Transfers</th>
+              <th className={adminThClass}>Branch</th>
+              <th className={adminThClass}>Transactions</th>
+              <th className={adminThClass}>Revenue</th>
+              <th className={adminThClass}>POS</th>
+              <th className={adminThClass}>Online</th>
+              <th className={adminThClass}>To fulfil</th>
+              <th className={adminThClass}>Delivered</th>
+              <th className={adminThClass}>Stock</th>
+              <th className={adminThClass}>Transfers</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.branchId} className="border-t border-wf-border">
-                <td className="p-3">
+              <tr key={row.branchId} className={adminTrClass}>
+                <td className={adminTdClass}>
                   <span className="font-medium">{row.name}</span>
                   <span className="block text-xs text-mocha">
                     {row.country}
                     {row.city ? ` · ${row.city}` : ""}
                   </span>
                 </td>
-                <td className="p-3">{row.orders}</td>
-                <td className="p-3">{formatPrice(row.revenue)}</td>
-                <td className="p-3">{row.toFulfil}</td>
-                <td className="p-3">{row.delivered}</td>
-                <td className="p-3">{row.stockUnits}</td>
-                <td className="p-3 text-xs text-mocha">
+                <td className={adminTdClass}>{row.transactions}</td>
+                <td className={adminTdClass}>{formatPrice(row.revenue)}</td>
+                <td className={`${adminTdClass} text-xs`}>
+                  <span className="block">{row.posTransactions} sales</span>
+                  <span className="text-mocha">{formatPrice(row.posRevenue)}</span>
+                </td>
+                <td className={`${adminTdClass} text-xs`}>
+                  <span className="block">{row.webTransactions} sales</span>
+                  <span className="text-mocha">{formatPrice(row.webRevenue)}</span>
+                </td>
+                <td className={adminTdClass}>{row.toFulfil}</td>
+                <td className={adminTdClass}>{row.delivered}</td>
+                <td className={adminTdClass}>{row.stockUnits}</td>
+                <td className={`${adminTdClass} text-xs text-mocha`}>
                   in {row.transfersIn.qty} · out {row.transfersOut.qty}
                 </td>
               </tr>
             ))}
             {!rows.length ? (
               <tr>
-                <td colSpan={7} className="p-6 text-center text-mocha">
+                <td colSpan={9} className={`${adminTdClass} text-center text-mocha`}>
                   No branches in scope.
                 </td>
               </tr>
             ) : null}
           </tbody>
         </table>
-      </div>
+      </AdminTableWrap>
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-wf-border bg-white p-4">
+    <AdminCard>
       <p className="text-xs text-mocha">{label}</p>
-      <p className="font-playfair text-xl mt-1">{value}</p>
-    </div>
+      <p className="font-playfair text-xl mt-1 text-[#03045e]">{value}</p>
+    </AdminCard>
   );
 }

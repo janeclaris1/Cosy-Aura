@@ -1,6 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import {
+  AdminButton,
+  AdminCard,
+  AdminSectionTitle,
+  adminInputClass,
+  adminLabelClass,
+} from "@/components/admin/admin-ui";
 
 type PricingConfig = {
   nonAfricaMarkupEnabled: boolean;
@@ -51,15 +58,13 @@ export function PricingSettings({ initialConfig }: { initialConfig: PricingConfi
 
   return (
     <div className="max-w-2xl space-y-8">
-      <section className="border border-wf-border bg-white p-6">
+      <AdminCard padding="lg">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-playfair text-xl mb-2">International markup</h2>
-            <p className="text-sm text-wf-gray leading-relaxed">
-              When enabled, shoppers outside Africa see catalog prices plus a flat USD
-              surcharge. African countries keep standard pricing. Checkout always
-              recalculates server-side from the visitor&apos;s country.
-            </p>
+            <AdminSectionTitle
+              title="International markup"
+              description="When enabled, shoppers outside Africa see catalog prices plus a flat USD surcharge. African countries keep standard pricing. Checkout always recalculates server-side from the visitor's country."
+            />
           </div>
           <button
             type="button"
@@ -68,7 +73,7 @@ export function PricingSettings({ initialConfig }: { initialConfig: PricingConfi
             disabled={saving}
             onClick={() => void toggleEnabled()}
             className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-              config.nonAfricaMarkupEnabled ? "bg-espresso" : "bg-wf-border"
+              config.nonAfricaMarkupEnabled ? "bg-[#03045e]" : "bg-stone-200/90"
             }`}
           >
             <span
@@ -80,22 +85,22 @@ export function PricingSettings({ initialConfig }: { initialConfig: PricingConfi
         </div>
         <p className="mt-4 text-sm">
           Status:{" "}
-          <span className={config.nonAfricaMarkupEnabled ? "text-green-700" : "text-wf-gray"}>
+          <span className={config.nonAfricaMarkupEnabled ? "text-green-700" : "text-mocha"}>
             {config.nonAfricaMarkupEnabled ? "Enabled" : "Disabled"}
           </span>
         </p>
-      </section>
+      </AdminCard>
 
-      <section className="border border-wf-border bg-white p-6">
-        <h2 className="font-playfair text-xl mb-2">Markup amount</h2>
-        <p className="text-sm text-wf-gray mb-4">
-          Added to each product&apos;s USD-equivalent price for non-African visitors
-          (e.g. $10 → a $10 product becomes $20).
-        </p>
+      <AdminCard padding="lg">
+        <AdminSectionTitle
+          title="Markup amount"
+          description="Added to each product's USD-equivalent price for non-African visitors (e.g. $10 → a $10 product becomes $20)."
+          className="mb-4"
+        />
         <div className="flex flex-wrap items-end gap-3">
           <label className="block">
-            <span className="text-xs uppercase tracking-wider text-wf-gray">USD surcharge</span>
-            <div className="mt-1 flex items-center gap-2">
+            <span className={adminLabelClass}>USD surcharge</span>
+            <div className="flex items-center gap-2">
               <span className="text-sm">$</span>
               <input
                 type="number"
@@ -103,20 +108,15 @@ export function PricingSettings({ initialConfig }: { initialConfig: PricingConfi
                 step={1}
                 value={markupUsd}
                 onChange={(e) => setMarkupUsd(e.target.value)}
-                className="border border-wf-border px-3 py-2 w-28 text-sm"
+                className={`${adminInputClass} w-28`}
               />
             </div>
           </label>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void saveMarkup()}
-            className="btn-primary text-sm px-4 py-2"
-          >
+          <AdminButton type="button" disabled={saving} onClick={() => void saveMarkup()}>
             Save amount
-          </button>
+          </AdminButton>
         </div>
-      </section>
+      </AdminCard>
 
       {message && <p className="text-sm text-green-700">{message}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -103,15 +103,21 @@ export async function requireAdminApi(
   return { ctx, error: null };
 }
 
+function isLegacyAdmin(ctx: AdminContext): boolean {
+  return ctx.role === "ADMIN" && !ctx.staffRole;
+}
+
 /** Branch IDs this admin may act on (empty = none unless global). */
 export function scopedBranchIds(ctx: AdminContext): string[] | "all" {
   if (ctx.isGlobal || ctx.isSuperAdmin) return "all";
   if (ctx.staffRole === "COUNTRY_MANAGER") return "all"; // filtered by country in queries
+  if (isLegacyAdmin(ctx)) return "all";
   return ctx.branchIds;
 }
 
 export function orderBranchWhere(ctx: AdminContext): Record<string, unknown> | undefined {
   if (ctx.isGlobal || ctx.isSuperAdmin) return undefined;
+  if (isLegacyAdmin(ctx)) return undefined;
   if (ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry) {
     return {
       OR: [

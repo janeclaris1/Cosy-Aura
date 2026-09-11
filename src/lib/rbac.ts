@@ -23,6 +23,10 @@ export const PERMISSIONS = [
   "notifications.read",
   "audit.read",
   "reports.read",
+  "pos.read",
+  "pos.write",
+  "attendance.read",
+  "attendance.write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -46,6 +50,10 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "notifications.read",
     "audit.read",
     "reports.read",
+    "pos.read",
+    "pos.write",
+    "attendance.read",
+    "attendance.write",
   ],
   BRANCH_MANAGER: [
     "dashboard.read",
@@ -60,6 +68,10 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "notifications.read",
     "audit.read",
     "reports.read",
+    "pos.read",
+    "pos.write",
+    "attendance.read",
+    "attendance.write",
   ],
   FULFILMENT: [
     "dashboard.read",
@@ -71,6 +83,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "notifications.read",
     "audit.read",
     "reports.read",
+    "pos.read",
+    "pos.write",
+    "attendance.read",
   ],
   CONTENT: [
     "dashboard.read",
