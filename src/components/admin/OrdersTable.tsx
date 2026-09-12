@@ -3,7 +3,11 @@ import { OrderItemsCell } from "@/components/admin/OrderItemsCell";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
 import { StaffAvatar } from "@/components/admin/StaffAvatar";
 import { AdminEmptyState } from "@/components/admin/admin-ui";
-import { formatOrderTotalWithBookHint } from "@/lib/order-money";
+import {
+  BOOK_CURRENCY,
+  formatOrderBookTotal,
+  formatOrderPaidAmount,
+} from "@/lib/order-money";
 import { paymentGatewayLabel } from "@/lib/order-payment";
 import type { OrderChannel, OrderStatus, PosPaymentMethod } from "@prisma/client";
 
@@ -54,6 +58,26 @@ function formatOrderDateTime(date: Date) {
   };
 }
 
+function OrderTotalCell({ order }: { order: OrdersTableRow }) {
+  const hasForeignCharge =
+    order.chargeAmount != null &&
+    order.chargeCurrency &&
+    order.chargeCurrency.toUpperCase() !== BOOK_CURRENCY;
+
+  return (
+    <div className="min-w-0 max-w-[9rem]">
+      <p className="font-semibold tabular-nums text-[#03045e] text-xs leading-tight">
+        {formatOrderPaidAmount(order)}
+      </p>
+      {hasForeignCharge ? (
+        <p className="text-[10px] text-mocha tabular-nums mt-0.5 leading-snug">
+          {formatOrderBookTotal(order)} book
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function ChannelBadge({ channel }: { channel: OrderChannel }) {
   const isPos = channel === "POS";
   return (
@@ -86,9 +110,9 @@ export function OrdersTable({ orders }: { orders: OrdersTableRow[] }) {
           <col className="w-[7%]" />
           <col className="w-[16%]" />
           <col className="w-[10%]" />
+          <col className="w-[9%]" />
+          <col className="w-[11%]" />
           <col className="w-[10%]" />
-          <col className="w-[9%]" />
-          <col className="w-[9%]" />
           <col className="w-[10%]" />
           <col className="w-[9%]" />
         </colgroup>
@@ -171,13 +195,11 @@ export function OrdersTable({ orders }: { orders: OrdersTableRow[] }) {
                     orderHref={orderHref(order)}
                   />
                 </td>
-                <td className="px-3 py-3.5 align-top">
-                  <span className="font-semibold tabular-nums text-[#03045e] text-xs whitespace-nowrap">
-                    {formatOrderTotalWithBookHint(order)}
-                  </span>
+                <td className="px-3 py-3.5 align-top overflow-hidden">
+                  <OrderTotalCell order={order} />
                 </td>
-                <td className="px-3 py-3.5 align-top text-[11px] text-espresso">
-                  <span className="line-clamp-2 leading-snug">
+                <td className="px-3 py-3.5 align-top text-[11px] text-espresso overflow-hidden">
+                  <span className="block leading-snug break-words">
                     {paymentGatewayLabel(order)}
                   </span>
                 </td>
