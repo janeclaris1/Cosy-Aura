@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { ExternalLink, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { adminSidebarLinkClass } from "@/components/admin/admin-ui";
 import { ADMIN_NAV_GROUPS } from "@/lib/admin-nav";
 import { canAccessNavItem } from "@/lib/rbac";
 import type { Permission } from "@/lib/rbac";
@@ -56,7 +57,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
+  const canReadOrders =
+    permissions?.includes("orders.read") ?? false;
+
   useEffect(() => {
+    if (!canReadOrders) {
+      setOrderCount(null);
+      return;
+    }
     let cancelled = false;
     async function loadOrderCount() {
       try {
@@ -81,7 +89,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       clearInterval(id);
       window.removeEventListener("admin:orders-changed", onOrdersChanged);
     };
-  }, [pathname]);
+  }, [pathname, canReadOrders]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,20 +134,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname]);
 
-  const navPillBorder =
-    "rounded-2xl bg-white border border-[#03045e]/15";
-
-  const navLinkClass = (active: boolean) =>
+  const navIconClass = (active: boolean) =>
     cn(
-      "group flex items-center gap-3 px-3.5 py-2.5 text-[13px] text-[#03045e] transition-all duration-200",
-      navPillBorder,
-      active
-        ? "font-semibold border-[#03045e]/35"
-        : "font-medium hover:border-[#03045e]/25"
+      "w-[18px] h-[18px] shrink-0 transition-colors",
+      active ? "text-[#03045e]" : "text-white/80 group-hover:text-white"
     );
 
-  const navIconClass = () =>
-    cn("w-[18px] h-[18px] shrink-0 text-[#03045e]");
+  const sidebarFooterBtn =
+    "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium font-roboto rounded-xl bg-white text-[#03045e] shadow-sm hover:bg-white/95 transition-colors";
 
   const navGroups = ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
@@ -177,9 +179,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={navLinkClass(active)}
+                    className={adminSidebarLinkClass(active)}
                   >
-                    <Icon className={navIconClass()} strokeWidth={1.75} />
+                    <Icon className={navIconClass(active)} strokeWidth={1.75} />
                     <span className="flex-1 truncate">{item.label}</span>
                     {showAlertBadge && (
                       <span className="text-[10px] font-semibold tabular-nums min-w-[1.25rem] h-[1.25rem] px-1 rounded-full flex items-center justify-center bg-[#03045e] text-white">
@@ -236,23 +238,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="border-t border-white/[0.08] p-3 space-y-2 shrink-0">
       <AdminBranchSwitcher />
       <div className="flex items-center gap-1.5 px-0.5">
-        <Link
-          href="/"
-          className={cn(
-            "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-[#03045e] hover:border-[#03045e]/25 transition-colors",
-            navPillBorder
-          )}
-        >
+        <Link href="/" className={sidebarFooterBtn}>
           <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.75} />
           View site
         </Link>
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: "/admin/login" })}
-          className={cn(
-            "flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium text-[#03045e] hover:border-[#03045e]/25 transition-colors",
-            navPillBorder
-          )}
+          className={sidebarFooterBtn}
         >
           <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
           Sign out

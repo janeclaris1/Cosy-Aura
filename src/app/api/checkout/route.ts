@@ -95,6 +95,23 @@ export async function POST(req: Request) {
 
     // Provisional order - email/shipping filled from Stripe session on payment
     // Order totals stay in GHS (catalog currency); Stripe charges the USD equivalent.
+    const { orderLinesWithUnitCost } = await import("@/lib/cogs");
+    const orderItemRows = await orderLinesWithUnitCost(
+      pricedItems.map(
+        (item: {
+          fragranceId: string;
+          price: number;
+          quantity: number;
+          bottleSize?: number;
+        }) => ({
+          fragranceId: item.fragranceId,
+          price: item.price,
+          quantity: item.quantity,
+          bottleSize: item.bottleSize ?? 50,
+        })
+      )
+    );
+
     const order = await prisma.order.create({
       data: {
         email: "pending@checkout.cosyaura.com",
@@ -103,21 +120,7 @@ export async function POST(req: Request) {
         shippingMethod: null,
         shippingCost: 0,
         deliveryDate,
-        items: {
-          create: pricedItems.map(
-            (item: {
-              fragranceId: string;
-              price: number;
-              quantity: number;
-              bottleSize?: number;
-            }) => ({
-              fragranceId: item.fragranceId,
-              price: item.price,
-              quantity: item.quantity,
-              bottleSize: item.bottleSize ?? 50,
-            })
-          ),
-        },
+        items: { create: orderItemRows },
       },
     });
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { AdminTabBar } from "@/components/admin/admin-ui";
 import { EmployeeProfilesManager } from "@/components/admin/EmployeeProfilesManager";
 import { LeaveManager } from "@/components/admin/LeaveManager";
 import { PayrollManager } from "@/components/admin/PayrollManager";
@@ -59,23 +59,7 @@ function HrHubInner({ access }: { access: HrHubAccess }) {
 
   return (
     <div className="space-y-5">
-      <div className="inline-flex flex-wrap rounded-2xl bg-[#fafafa] p-1 ring-1 ring-stone-200/80">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "rounded-xl px-5 py-2.5 text-sm font-roboto transition-all",
-              tab === t.id
-                ? "bg-[#03045e] text-white shadow-sm"
-                : "text-mocha hover:text-espresso hover:bg-white/80"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <AdminTabBar tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === "staff" && access.staff && <StaffManager />}
       {tab === "employees" && access.hr && <EmployeeProfilesManager />}

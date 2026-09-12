@@ -1,3 +1,4 @@
+import { hookOrderSalesJournal } from "./accounting-order-hook";
 import { prisma } from "./prisma";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { verifyPaystackTransaction } from "./paystack";
@@ -22,6 +23,7 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   });
 
   if (freeCheckoutOrder) {
+    const previousStatus = freeCheckoutOrder.status;
     const order =
       freeCheckoutOrder.status === "PENDING"
         ? await prisma.order.update({
@@ -29,6 +31,10 @@ export async function fulfillPaystackReference(reference: string): Promise<{
             data: { status: "PAID" },
           })
         : freeCheckoutOrder;
+
+    if (previousStatus === "PENDING") {
+      hookOrderSalesJournal(order.id, { previousStatus });
+    }
 
     if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {
       void dispatchGhanaForOrder(order.id).then((result) => {
@@ -61,6 +67,8 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   const email = txn.customer?.email || order.email;
   const alreadyPaid = order.status !== "PENDING";
 
+  const previousStatus = order.status;
+
   await prisma.order.update({
     where: { id: order.id },
     data: {
@@ -72,6 +80,10 @@ export async function fulfillPaystackReference(reference: string): Promise<{
       shippingPhone: txn.customer?.phone || order.shippingPhone,
     },
   });
+
+  if (!alreadyPaid) {
+    hookOrderSalesJournal(order.id, { previousStatus });
+  }
 
   // Ghana hybrid dispatch (Dawurobo Accra / ShaQ nationwide)
   if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {

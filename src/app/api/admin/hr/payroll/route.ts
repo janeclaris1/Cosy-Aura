@@ -12,6 +12,7 @@ import {
   sendPayslipEmailsForPayRun,
   type PayslipEmailLine,
 } from "@/lib/payslip-email";
+import { postPayRunJournal } from "@/lib/accounting-payroll-post";
 import { enrichPayRunLines } from "@/lib/payroll-present";
 
 export async function GET(req: Request) {
@@ -297,16 +298,24 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unsupported update" }, { status: 400 });
   }
 
-  const updated = await enrichPayRunLines(
-    await prisma.payRun.update({
+  const payRunUpdated = await prisma.$transaction(async (tx) => {
+    const run = await tx.payRun.update({
       where: { id },
       data: updates,
       include: {
         branch: { select: { id: true, name: true } },
         lines: { orderBy: { grossPay: "desc" } },
       },
-    })
-  );
+    });
+
+    if (updates.status === "PAID" && run.country === "GH") {
+      await postPayRunJournal(tx, id, ctx.userId);
+    }
+
+    return run;
+  });
+
+  const updated = await enrichPayRunLines(payRunUpdated);
 
   await writeAuditLog({
     actorId: ctx.userId,
@@ -317,6 +326,17 @@ export async function PATCH(req: Request) {
     req,
     metadata: { status: updates.status || "notes" },
   });
+
+  if (updates.status === "PAID" && payRunUpdated.country === "GH") {
+    await writeAuditLog({
+      actorId: ctx.userId,
+      action: "accounting.payroll_post",
+      entityType: "PayRun",
+      entityId: id,
+      summary: `Posted payroll journal for ${payRunUpdated.periodLabel}`,
+      req,
+    });
+  }
 
   let payslipEmails: { sent: number; failed: number; errors: string[] } | undefined;
 

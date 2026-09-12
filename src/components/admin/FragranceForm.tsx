@@ -28,6 +28,7 @@ interface FragranceFormProps {
     description: string;
     conditionReport: string | null;
     price: number;
+    costPriceGhs?: number;
     condition: string;
     year: number | null;
     fragranceFamily: string;
@@ -102,6 +103,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     description: fragrance?.description || "",
     conditionReport: fragrance?.conditionReport || "",
     price: fragrance?.price || 0,
+    costPriceGhs: fragrance?.costPriceGhs ?? 0,
     condition: fragrance?.condition || "UNWORN",
     year: fragrance?.year || new Date().getFullYear(),
     fragranceFamily: fragrance?.fragranceFamily || "FLORAL",
@@ -146,6 +148,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       heartNotes: parseNotes(form.heartNotes),
       baseNotes: parseNotes(form.baseNotes),
       bottleSize: Number(form.bottleSize),
+      costPriceGhs: Math.max(0, Number(form.costPriceGhs) || 0),
       stock: Number(form.stock),
       rating:
         form.rating === "" || form.rating === null
@@ -240,7 +243,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           />
         </div>
         <div>
-          <label className={adminLabelClass}>Price ($)</label>
+          <label className={adminLabelClass}>Price (GHS)</label>
           <input
             type="number"
             step="0.01"
@@ -249,6 +252,22 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             className={adminInputClass}
             required
           />
+        </div>
+        <div>
+          <label className={adminLabelClass}>Unit cost (GHS)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.costPriceGhs}
+            onChange={(e) =>
+              setForm({ ...form, costPriceGhs: Number(e.target.value) })
+            }
+            className={adminInputClass}
+          />
+          <p className="text-[11px] text-mocha mt-1">
+            For catalog bottle size; COGS scales for 30ml / 50ml / 100ml sales.
+          </p>
         </div>
       </div>
 

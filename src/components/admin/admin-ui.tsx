@@ -1,10 +1,180 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Cosy Aura admin brand colour */
+export const ADMIN_BRAND = "#03045e";
 
 /** Shared admin design tokens */
 export const adminPageWrap = "max-w-6xl space-y-6 font-roboto";
+
+/** Pill tab bar container (Accounting / HR hub style) */
+export const adminTabBarClass =
+  "inline-flex flex-wrap rounded-2xl bg-[#fafafa] p-1 ring-1 ring-stone-200/80";
+
+/** Active / inactive tab button classes */
+export function adminTabButtonClass(active: boolean, size: "sm" | "md" = "md") {
+  return cn(
+    "font-roboto transition-all",
+    size === "md" ? "rounded-xl px-5 py-2.5 text-sm" : "rounded-xl px-3 py-1.5 text-xs",
+    active
+      ? "bg-[#03045e] text-white shadow-sm font-medium"
+      : "text-mocha hover:text-espresso hover:bg-white/80"
+  );
+}
+
+/** Sidebar nav link on navy chrome */
+export function adminSidebarLinkClass(active: boolean) {
+  return cn(
+    "group flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-roboto rounded-xl transition-all duration-200",
+    active
+      ? "bg-white text-[#03045e] font-semibold shadow-sm"
+      : "text-white/75 font-medium hover:bg-white/10 hover:text-white"
+  );
+}
+
+export function AdminTabBar<T extends string>({
+  tabs,
+  value,
+  onChange,
+  size = "md",
+  className,
+}: {
+  tabs: readonly { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  return (
+    <div className={cn(adminTabBarClass, className)} role="tablist">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={value === t.id}
+          onClick={() => onChange(t.id)}
+          className={adminTabButtonClass(value === t.id, size)}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function AdminTabLinks({
+  items,
+  activeId,
+  size = "md",
+  className,
+}: {
+  items: { id: string; label: string; href: string }[];
+  activeId: string;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  return (
+    <div className={cn(adminTabBarClass, className)}>
+      {items.map((item) => (
+        <Link
+          key={item.id}
+          href={item.href}
+          className={adminTabButtonClass(activeId === item.id, size)}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** Navy section header bar (chart of accounts, tables) */
+export function AdminSectionBar({
+  title,
+  meta,
+  icon: Icon,
+  className,
+}: {
+  title: string;
+  meta?: string;
+  icon?: LucideIcon;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "bg-[#03045e] px-4 sm:px-5 py-3 flex items-center justify-between gap-3",
+        className
+      )}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        {Icon ? (
+          <Icon className="w-4 h-4 text-white/90 shrink-0" strokeWidth={1.75} />
+        ) : null}
+        <h3 className="font-playfair text-white text-lg truncate">{title}</h3>
+      </div>
+      {meta ? (
+        <span className="text-[11px] uppercase tracking-[0.12em] text-white/70 shrink-0">
+          {meta}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** Summary stat tile (accounting dashboard style) */
+export function AdminStatTile({
+  label,
+  value,
+  icon: Icon,
+  active,
+  onClick,
+  className,
+}: {
+  label: string;
+  value: string | number;
+  icon?: LucideIcon;
+  active?: boolean;
+  onClick?: () => void;
+  className?: string;
+}) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={cn(
+        "rounded-2xl px-3 py-3 text-left transition-all ring-1 w-full",
+        active
+          ? "bg-[#03045e] text-white ring-[#03045e]/40 shadow-sm"
+          : "bg-white text-espresso ring-stone-200/80 hover:ring-[#03045e]/20",
+        onClick && "cursor-pointer",
+        className
+      )}
+    >
+      {Icon ? (
+        <div className="flex items-center gap-2">
+          <Icon
+            className={cn("w-4 h-4 shrink-0", active ? "text-white/90" : "text-[#03045e]")}
+            strokeWidth={1.75}
+          />
+          <span className="text-[10px] uppercase tracking-[0.14em] font-medium opacity-80">
+            {label}
+          </span>
+        </div>
+      ) : (
+        <span className="text-[10px] uppercase tracking-[0.14em] font-medium text-mocha">
+          {label}
+        </span>
+      )}
+      <p className="text-2xl font-semibold tabular-nums mt-1">{value}</p>
+    </Tag>
+  );
+}
 export const adminInputClass =
-  "w-full font-roboto bg-[#fafafa] border border-stone-200/90 px-3 py-2.5 text-sm text-espresso focus:outline-none focus:border-[#03045e]/40 focus:bg-white transition-colors";
+  "w-full font-roboto rounded-xl bg-[#fafafa] border border-stone-200/90 px-3 py-2.5 text-sm text-espresso focus:outline-none focus:border-[#03045e]/40 focus:bg-white transition-colors";
 export const adminSelectClass = adminInputClass;
 export const adminLabelClass =
   "block font-roboto text-[10px] uppercase tracking-[0.16em] text-mocha mb-1.5";
@@ -61,7 +231,7 @@ export function AdminCard({
   return (
     <div
       className={cn(
-        "bg-white shadow-sm ring-1 ring-black/[0.04] overflow-hidden",
+        "bg-white rounded-2xl shadow-sm ring-1 ring-stone-200/80 overflow-hidden",
         padding === "default" && "p-4 sm:p-5",
         padding === "lg" && "p-5 sm:p-6",
         className
@@ -146,8 +316,8 @@ export function AdminTableWrap({
 
 export const adminTableClass = "w-full text-sm font-roboto";
 export const adminTheadClass =
-  "text-left font-roboto text-[10px] uppercase tracking-[0.14em] text-mocha bg-[#fafafa] border-b border-stone-100";
-export const adminThClass = "px-4 py-3 font-medium font-roboto";
+  "text-left font-roboto text-[10px] uppercase tracking-[0.14em] text-white bg-[#03045e] border-b border-[#020338]";
+export const adminThClass = "px-4 py-3 font-medium font-roboto text-white";
 export const adminTdClass = "px-4 py-3.5 align-middle font-roboto";
 export const adminTrClass = "border-b border-stone-100 last:border-0 hover:bg-[#fafafa]/60 transition-colors";
 
@@ -218,26 +388,11 @@ export function AdminSearchForm({
 export function AdminFilterPills({
   items,
   activeId,
+  size = "sm",
 }: {
   items: { id: string; label: string; href: string }[];
   activeId: string;
+  size?: "sm" | "md";
 }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          className={cn(
-            "px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
-            activeId === item.id
-              ? "bg-[#03045e] text-white ring-[#03045e]"
-              : "bg-white text-mocha ring-stone-200/80 hover:ring-[#03045e]/30"
-          )}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </div>
-  );
+  return <AdminTabLinks items={items} activeId={activeId} size={size} />;
 }

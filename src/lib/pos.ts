@@ -371,6 +371,16 @@ export async function createPosSale(
   const name = input.customerName?.trim() || "Walk-in customer";
   const phone = input.customerPhone?.trim() || null;
 
+  const { orderLinesWithUnitCost } = await import("./cogs");
+  const orderItemRows = await orderLinesWithUnitCost(
+    items.map((item) => ({
+      fragranceId: item.fragranceId,
+      price: item.unitPriceGhs,
+      quantity: item.quantity,
+      bottleSize: item.bottleSize,
+    }))
+  );
+
   const order = await prisma.order.create({
     data: {
       email,
@@ -395,14 +405,7 @@ export async function createPosSale(
       posNotes: input.notes?.trim() || null,
       fulfillmentBranchId: input.branchId,
       inventoryCommittedAt: null,
-      items: {
-        create: items.map((item) => ({
-          fragranceId: item.fragranceId,
-          price: item.unitPriceGhs,
-          quantity: item.quantity,
-          bottleSize: item.bottleSize,
-        })),
-      },
+      items: { create: orderItemRows },
     },
     select: { id: true, receiptNumber: true, total: true },
   });
@@ -413,6 +416,11 @@ export async function createPosSale(
     access.branch.country as ManagedStockCountry,
     items
   );
+
+  if (access.branch.country === "GH") {
+    const { hookOrderSalesJournal } = await import("./accounting-order-hook");
+    hookOrderSalesJournal(order.id, { actorUserId: ctx.userId });
+  }
 
   return {
     ok: true,

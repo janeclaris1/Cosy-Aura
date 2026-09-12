@@ -184,7 +184,7 @@ export function BarcodeLabelSheet({
                 <p className="text-[10px] uppercase tracking-[0.16em] text-mocha mb-2">
                   Preview mode
                 </p>
-                <div className="inline-flex p-1 bg-[#fafafa] ring-1 ring-stone-200/80">
+                <div className="inline-flex flex-wrap rounded-2xl p-1 bg-[#fafafa] ring-1 ring-stone-200/80">
                   <PreviewToggle
                     active={!barcodeOnly}
                     onClick={() => setBarcodeOnly(false)}
@@ -357,10 +357,10 @@ function PreviewToggle({
       type="button"
       onClick={onClick}
       className={cn(
-        "px-3 py-1.5 text-xs font-medium transition-colors",
+        "rounded-xl px-3 py-1.5 text-xs font-roboto transition-all",
         active
-          ? "bg-white text-[#03045e] shadow-sm ring-1 ring-stone-200/80"
-          : "text-mocha hover:text-[#03045e]"
+          ? "bg-[#03045e] text-white shadow-sm font-medium"
+          : "text-mocha hover:text-espresso hover:bg-white/80"
       )}
     >
       {label}

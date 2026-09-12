@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       description: body.description,
       conditionReport: body.conditionReport,
       price: body.price,
+      costPriceGhs: Math.max(0, Number(body.costPriceGhs) || 0),
       condition: body.condition,
       year: body.year,
       fragranceFamily: body.fragranceFamily,

@@ -1,3 +1,4 @@
+import { hookOrderSalesJournal } from "./accounting-order-hook";
 import { prisma } from "./prisma";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { verifyFlutterwaveTransaction } from "./flutterwave";
@@ -42,6 +43,7 @@ export async function fulfillFlutterwavePayment(input: {
 
   const email = txn.customer?.email || order.email;
   const alreadyPaid = order.status !== "PENDING";
+  const previousStatus = order.status;
 
   await prisma.order.update({
     where: { id: order.id },
@@ -57,6 +59,10 @@ export async function fulfillFlutterwavePayment(input: {
         order.shippingPhone,
     },
   });
+
+  if (!alreadyPaid) {
+    hookOrderSalesJournal(order.id, { previousStatus });
+  }
 
   if (order.confirmationEmailedAt) {
     await ensureCustomerReceiptWhatsApp(order.id);

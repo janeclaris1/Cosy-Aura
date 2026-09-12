@@ -19,6 +19,7 @@ import { AdminBranchSelect } from "@/components/admin/AdminBranchSelect";
 import {
   AdminButton,
   AdminSectionTitle,
+  AdminTabBar,
   adminInputClass,
   adminLabelClass,
   adminSelectClass,
@@ -511,32 +512,16 @@ export function BranchStockManager() {
         <form onSubmit={(e) => void applyAdjust(e)} className="space-y-5">
           <div>
             <p className={adminLabelClass}>Adjustment type</p>
-            <div className="inline-flex flex-wrap p-1 bg-[#fafafa] ring-1 ring-stone-200/80 gap-0.5">
-              {(
-                [
-                  { id: "receive" as const, label: "Receive", hint: "+" },
-                  { id: "damage" as const, label: "Damage", hint: "−" },
-                  { id: "recount" as const, label: "Recount", hint: "set" },
-                ] as const
-              ).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setAdjustType(t.id)}
-                  className={cn(
-                    "px-3 py-2 text-sm font-medium transition-colors",
-                    adjustType === t.id
-                      ? "bg-white text-[#03045e] shadow-sm ring-1 ring-stone-200/80"
-                      : "text-mocha hover:text-[#03045e]"
-                  )}
-                >
-                  {t.label}
-                  <span className="ml-1.5 text-[10px] font-normal text-mocha/80">
-                    {t.hint}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <AdminTabBar
+              size="sm"
+              tabs={[
+                { id: "receive", label: "Receive +" },
+                { id: "damage", label: "Damage −" },
+                { id: "recount", label: "Recount set" },
+              ]}
+              value={adjustType}
+              onChange={setAdjustType}
+            />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

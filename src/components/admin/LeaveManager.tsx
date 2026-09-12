@@ -14,6 +14,7 @@ import {
   AdminButton,
   AdminCard,
   AdminEmptyState,
+  AdminTabBar,
   adminInputClass,
   adminLabelClass,
 } from "@/components/admin/admin-ui";
@@ -438,23 +439,12 @@ export function LeaveManager() {
                 <Plus className="h-4 w-4" />
                 New request
               </button>
-              <div className="inline-flex rounded-2xl bg-[#fafafa] p-1 ring-1 ring-stone-200/80">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.id || "all"}
-                    type="button"
-                    onClick={() => setFilter(f.id)}
-                    className={cn(
-                      "rounded-xl px-3 py-1.5 text-xs font-roboto transition-all",
-                      filter === f.id
-                        ? "bg-white text-[#03045e] shadow-sm ring-1 ring-stone-200/60"
-                        : "text-mocha hover:text-espresso"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+              <AdminTabBar
+                size="sm"
+                tabs={FILTERS.map((f) => ({ id: f.id || "all", label: f.label }))}
+                value={filter || "all"}
+                onChange={(id) => setFilter(id === "all" ? "" : id)}
+              />
             </div>
           </div>
 

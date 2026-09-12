@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { foreignToGhs, orderItemsSubtotalGhs } from "./order-money";
 import { prisma } from "./prisma";
+import { hookOrderSalesJournal } from "./accounting-order-hook";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { parseDeliveryDate } from "./delivery-dates";
 
@@ -96,6 +97,8 @@ export async function fulfillCheckoutSession(
 
   // Always sync Stripe customer/shipping onto the order - including when an
   // admin marked PAID early and left the placeholder checkout email.
+  const previousStatus = existing.status;
+
   await prisma.order.update({
     where: { id: orderId },
     data: {
@@ -128,6 +131,10 @@ export async function fulfillCheckoutSession(
       ...(deliveryDate ? { deliveryDate } : {}),
     },
   });
+
+  if (!alreadyPaid) {
+    hookOrderSalesJournal(orderId, { previousStatus });
+  }
 
   if (existing.confirmationEmailedAt) {
     await ensureCustomerReceiptWhatsApp(orderId);

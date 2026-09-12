@@ -32,6 +32,8 @@ export const PERMISSIONS = [
   "hr.self.read",
   "payroll.read",
   "payroll.write",
+  "accounting.read",
+  "accounting.write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -55,6 +57,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "notifications.read",
     "audit.read",
     "reports.read",
+    "accounting.read",
+    "accounting.write",
+    "payroll.read",
     "pos.read",
     "pos.write",
     "attendance.read",
@@ -97,6 +102,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "hr.self.read",
     "payroll.read",
     "payroll.write",
+    "accounting.read",
+    "accounting.write",
     "attendance.read",
     "reports.read",
     "audit.read",
@@ -168,7 +175,7 @@ export function staffRoleDescription(role: StaffRole | null | undefined): string
     case "HR":
       return "Employee records, leave approvals, and staff list (country-scoped).";
     case "ACCOUNTANT":
-      return "Payroll runs, payslips, and payroll exports (country-scoped).";
+      return "Payroll, Ghana ledger, expenses, and financial reports (country-scoped).";
     case "COUNTRY_MANAGER":
       return "Full country operations — orders, stock, POS, and staff invites.";
     case "BRANCH_MANAGER":

@@ -156,6 +156,7 @@ model User {
   leaveRequestsReviewed  LeaveRequest[]           @relation("LeaveReviewedBy")
   payRunsCreated         PayRun[]                 @relation("PayRunCreatedBy")
   payRunsApproved        PayRun[]                 @relation("PayRunApprovedBy")
+  journalsCreated        JournalEntry[]           @relation("JournalCreatedBy")
 
   @@index([email])
   @@index([phone])
@@ -241,6 +242,8 @@ model Fragrance {
   description         String           @db.Text
   conditionReport     String?          @db.Text
   price               Float
+  /** Unit cost in GHS for catalog bottleSize (used for COGS). */
+  costPriceGhs        Float               @default(0)
   condition           Condition
   year                Int?
   fragranceFamily     FragranceFamily
@@ -365,6 +368,7 @@ model Branch {
   attendanceDevices  AttendanceDevice[]
   attendancePunches  AttendancePunch[]
   payRuns            PayRun[]
+  journalEntries     JournalEntry[]
 
   @@index([country])
   @@index([active])
@@ -638,6 +642,8 @@ model OrderItem {
   price       Float
   quantity    Int    @default(1)
   bottleSize  Int    @default(50)
+  /** Snapshot unit cost in GHS at time of sale (scaled to bottleSize). */
+  unitCostGhs Float?
 
   order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
   fragrance Fragrance @relation(fields: [fragranceId], references: [id])
@@ -954,6 +960,92 @@ model PayRunLine {
   @@index([payRunId])
   @@index([employeeId])
   @@index([userId])
+}
+
+enum GlAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+}
+
+enum JournalSource {
+  MANUAL
+  PAYROLL
+  EXPENSE
+  ORDER
+  ORDER_COGS
+}
+
+/** Chart of accounts line (Ghana ledger). */
+model GlAccount {
+  id          String        @id @default(cuid())
+  country     String        @default("GH")
+  code        String
+  name        String
+  type        GlAccountType
+  description String?       @db.Text
+  parentId    String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  parent   GlAccount?   @relation("GlAccountHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children GlAccount[]  @relation("GlAccountHierarchy")
+  lines    JournalLine[]
+
+  @@unique([country, code])
+  @@index([country])
+  @@index([type])
+  @@index([active])
+}
+
+model JournalEntry {
+  id          String             @id @default(cuid())
+  country     String             @default("GH")
+  entryDate   DateTime           @db.Date
+  reference   String
+  memo        String?            @db.Text
+  status      JournalEntryStatus @default(POSTED)
+  source      JournalSource      @default(MANUAL)
+  sourceId    String?
+  branchId    String?
+  createdById String
+  postedAt    DateTime           @default(now())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  branch    Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  createdBy User          @relation("JournalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  lines     JournalLine[]
+
+  @@unique([source, sourceId])
+  @@index([country])
+  @@index([entryDate])
+  @@index([status])
+  @@index([branchId])
+}
+
+model JournalLine {
+  id             String   @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  debit          Float    @default(0)
+  credit         Float    @default(0)
+  memo           String?
+  createdAt      DateTime @default(now())
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      GlAccount    @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([journalEntryId])
+  @@index([accountId])
 }
 
 /** Singleton storefront settings (row id = "default"). */

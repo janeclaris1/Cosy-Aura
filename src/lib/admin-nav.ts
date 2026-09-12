@@ -21,6 +21,7 @@ import {
   UserCircle,
   Wallet,
   Warehouse,
+  Calculator,
 } from "lucide-react";
 import type { Permission } from "@/lib/rbac";
 
@@ -95,6 +96,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "Insights",
     items: [
       { href: "/admin/reports", label: "Reports", icon: BarChart3, permission: "reports.read" },
+      {
+        href: "/admin/accounting",
+        label: "Accounting",
+        icon: Calculator,
+        permission: "accounting.read",
+      },
       { href: "/admin/activity", label: "Activity log", icon: ScrollText, permission: "audit.read" },
     ],
   },

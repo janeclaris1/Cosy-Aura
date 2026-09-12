@@ -345,6 +345,16 @@ export async function POST(req: Request) {
         ? String(city || "").trim() || pickupCommerce?.city || "Accra"
         : String(city).trim();
 
+    const { orderLinesWithUnitCost } = await import("@/lib/cogs");
+    const orderItemRows = await orderLinesWithUnitCost(
+      pricedItems.map((item) => ({
+        fragranceId: item.fragranceId,
+        price: item.price,
+        quantity: item.quantity,
+        bottleSize: item.bottleSize ?? 50,
+      }))
+    );
+
     const order = await prisma.order.create({
       data: {
         email: customerEmail,
@@ -369,14 +379,7 @@ export async function POST(req: Request) {
         ...(fulfillmentBranchId
           ? { fulfillmentBranch: { connect: { id: fulfillmentBranchId } } }
           : {}),
-        items: {
-          create: pricedItems.map((item) => ({
-            fragranceId: item.fragranceId,
-            price: item.price,
-            quantity: item.quantity,
-            bottleSize: item.bottleSize ?? 50,
-          })),
-        },
+        items: { create: orderItemRows },
       },
     });
 
