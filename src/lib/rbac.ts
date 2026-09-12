@@ -27,6 +27,11 @@ export const PERMISSIONS = [
   "pos.write",
   "attendance.read",
   "attendance.write",
+  "hr.read",
+  "hr.write",
+  "hr.self.read",
+  "payroll.read",
+  "payroll.write",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -54,6 +59,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "pos.write",
     "attendance.read",
     "attendance.write",
+    "hr.self.read",
   ],
   BRANCH_MANAGER: [
     "dashboard.read",
@@ -72,6 +78,29 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "pos.write",
     "attendance.read",
     "attendance.write",
+    "hr.self.read",
+  ],
+  HR: [
+    "dashboard.read",
+    "staff.read",
+    "hr.read",
+    "hr.write",
+    "hr.self.read",
+    "notifications.read",
+    "audit.read",
+    "reports.read",
+    "attendance.read",
+  ],
+  ACCOUNTANT: [
+    "dashboard.read",
+    "hr.read",
+    "hr.self.read",
+    "payroll.read",
+    "payroll.write",
+    "attendance.read",
+    "reports.read",
+    "audit.read",
+    "notifications.read",
   ],
   FULFILMENT: [
     "dashboard.read",
@@ -86,6 +115,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "pos.read",
     "pos.write",
     "attendance.read",
+    "hr.self.read",
   ],
   CONTENT: [
     "dashboard.read",
@@ -93,6 +123,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "catalog.write",
     "content.write",
     "notifications.read",
+    "hr.self.read",
   ],
   SUPPORT: [
     "dashboard.read",
@@ -102,6 +133,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "enquiries.read",
     "enquiries.write",
     "notifications.read",
+    "hr.self.read",
   ],
 };
 
@@ -116,6 +148,10 @@ export function staffRoleLabel(role: StaffRole | null | undefined): string {
       return "Country manager";
     case "BRANCH_MANAGER":
       return "Branch manager";
+    case "HR":
+      return "HR";
+    case "ACCOUNTANT":
+      return "Accountant";
     case "FULFILMENT":
       return "Fulfilment";
     case "CONTENT":
@@ -127,9 +163,53 @@ export function staffRoleLabel(role: StaffRole | null | undefined): string {
   }
 }
 
+export function staffRoleDescription(role: StaffRole | null | undefined): string {
+  switch (role) {
+    case "HR":
+      return "Employee records, leave approvals, and staff list (country-scoped).";
+    case "ACCOUNTANT":
+      return "Payroll runs, payslips, and payroll exports (country-scoped).";
+    case "COUNTRY_MANAGER":
+      return "Full country operations — orders, stock, POS, and staff invites.";
+    case "BRANCH_MANAGER":
+      return "Single-branch operations — orders, stock, and POS.";
+    case "FULFILMENT":
+      return "Pick, pack, and branch stock for assigned branches.";
+    case "CONTENT":
+      return "Catalogue and journal content.";
+    case "SUPPORT":
+      return "Orders, customers, and enquiries.";
+    default:
+      return "";
+  }
+}
+
+/** Grouped options for the staff role picker (People roles listed first). */
+export const STAFF_ROLE_GROUPS: { label: string; roles: StaffRole[] }[] = [
+  { label: "People & finance", roles: ["HR", "ACCOUNTANT"] },
+  {
+    label: "Operations",
+    roles: ["COUNTRY_MANAGER", "BRANCH_MANAGER", "FULFILMENT"],
+  },
+  { label: "Other", roles: ["CONTENT", "SUPPORT"] },
+];
+
+/** Roles scoped to a single country (GH / CM). */
+export const COUNTRY_SCOPED_STAFF_ROLES: StaffRole[] = [
+  "COUNTRY_MANAGER",
+  "HR",
+  "ACCOUNTANT",
+];
+
+export function staffRoleNeedsCountry(role: StaffRole | string | null | undefined): boolean {
+  return COUNTRY_SCOPED_STAFF_ROLES.includes(role as StaffRole);
+}
+
 export const STAFF_ROLES: StaffRole[] = [
   "COUNTRY_MANAGER",
   "BRANCH_MANAGER",
+  "HR",
+  "ACCOUNTANT",
   "FULFILMENT",
   "CONTENT",
   "SUPPORT",
@@ -184,4 +264,23 @@ export function hasPermission(
 ): boolean {
   const need = Array.isArray(required) ? required : [required];
   return need.every((p) => perms.includes(p));
+}
+
+/** True when the user has at least one of the listed permissions. */
+export function hasAnyPermission(
+  perms: Permission[],
+  required: Permission[]
+): boolean {
+  return required.some((p) => perms.includes(p));
+}
+
+export function canAccessNavItem(
+  perms: Permission[],
+  required?: Permission | Permission[],
+  match?: "all" | "any"
+): boolean {
+  if (!required) return true;
+  const list = Array.isArray(required) ? required : [required];
+  if (match === "any") return hasAnyPermission(perms, list);
+  return hasPermission(perms, list);
 }

@@ -38,7 +38,7 @@ recordExtractor: ({ url, $, helpers }) => {
           'main h1',
           'head title',
         ],
-        defaultValue: 'COSY AURA WATCH STORE',
+        defaultValue: 'COSY AURA',
       },
       // Model name on PDPs, section titles elsewhere
       lvl1: [

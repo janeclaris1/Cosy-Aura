@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdminApi, orderBranchWhere, scopedBranchIds } from "@/lib/admin";
+import {
+  countryScopedBranchWhere,
+  requireAdminApi,
+  orderBranchWhere,
+  scopedBranchIds,
+} from "@/lib/admin";
 import { fetchMonthlyAbsenceReport } from "@/lib/attendance-absence-report";
 import { fetchAttendanceReport } from "@/lib/attendance-report";
 import { aggregateBranchReportRows } from "@/lib/branch-reports";
@@ -231,11 +236,7 @@ export async function GET(req: Request) {
 
     const scope = scopedBranchIds(ctx);
     const branchWhere =
-      scope === "all"
-        ? ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
-          ? { country: ctx.staffCountry }
-          : {}
-        : { id: { in: scope } };
+      scope === "all" ? countryScopedBranchWhere(ctx) : { id: { in: scope } };
 
     const branches = await prisma.branch.findMany({
       where: { ...branchWhere, active: true },
@@ -346,14 +347,120 @@ export async function GET(req: Request) {
     });
   }
 
+  if (kind === "payroll") {
+    const { ctx: payrollCtx, error: payrollErr } = await requireAdminApi("payroll.read");
+    if (payrollErr) return payrollErr;
+    if (!payrollCtx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const payRunId = String(searchParams.get("payRunId") || "").trim();
+    if (!payRunId) {
+      return NextResponse.json({ error: "payRunId required" }, { status: 400 });
+    }
+
+    const payRun = await prisma.payRun.findUnique({
+      where: { id: payRunId },
+      include: {
+        branch: { select: { name: true } },
+        lines: { orderBy: { grossPay: "desc" } },
+      },
+    });
+    if (!payRun) {
+      return NextResponse.json({ error: "Pay run not found" }, { status: 404 });
+    }
+
+    const userIds = [...new Set(payRun.lines.map((l) => l.userId))];
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        employeeProfile: {
+          select: {
+            employeeNumber: true,
+            bankName: true,
+            bankAccountNo: true,
+            momoProvider: true,
+            momoNumber: true,
+            paymentMethod: true,
+          },
+        },
+      },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const header = [
+      "period",
+      "country",
+      "branch",
+      "employee_name",
+      "employee_email",
+      "employee_number",
+      "basic_ghs",
+      "allowances_ghs",
+      "gross_ghs",
+      "paye_ghs",
+      "ssnit_employee_ghs",
+      "ssnit_employer_ghs",
+      "other_deductions_ghs",
+      "total_deductions_ghs",
+      "net_pay_ghs",
+      "working_days",
+      "present_days",
+      "leave_days",
+      "pro_rate_pct",
+      "payment_method",
+      "bank_or_momo",
+    ];
+    const csvLines = [header.join(",")];
+    for (const line of payRun.lines) {
+      const user = userMap.get(line.userId);
+      const profile = user?.employeeProfile;
+      const payout =
+        profile?.paymentMethod === "MOMO"
+          ? `${profile.momoProvider || ""} ${profile.momoNumber || ""}`.trim()
+          : profile?.paymentMethod === "BANK"
+            ? `${profile.bankName || ""} ${profile.bankAccountNo || ""}`.trim()
+            : "cash";
+      csvLines.push(
+        [
+          csvEscape(payRun.periodLabel),
+          csvEscape(payRun.country),
+          csvEscape(payRun.branch?.name || "All"),
+          csvEscape(user?.name || ""),
+          csvEscape(user?.email || ""),
+          csvEscape(profile?.employeeNumber || ""),
+          csvEscape(line.basicSalary.toFixed(2)),
+          csvEscape(line.allowances.toFixed(2)),
+          csvEscape(line.grossPay.toFixed(2)),
+          csvEscape(line.paye.toFixed(2)),
+          csvEscape(line.ssnitEmployee.toFixed(2)),
+          csvEscape(line.ssnitEmployer.toFixed(2)),
+          csvEscape(line.otherDeductions.toFixed(2)),
+          csvEscape(line.totalDeductions.toFixed(2)),
+          csvEscape(line.netPay.toFixed(2)),
+          csvEscape(line.workingDays),
+          csvEscape(line.presentDays),
+          csvEscape(line.leaveDays),
+          csvEscape(Math.round(line.proRateFactor * 100)),
+          csvEscape(profile?.paymentMethod || ""),
+          csvEscape(payout),
+        ].join(",")
+      );
+    }
+
+    return new NextResponse(csvLines.join("\n"), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="payroll-${payRun.periodLabel}.csv"`,
+      },
+    });
+  }
+
   // Default: branch roll-up (same logic as reports API)
   const scope = scopedBranchIds(ctx);
   const branchWhere =
-    scope === "all"
-      ? ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
-        ? { country: ctx.staffCountry }
-        : {}
-      : { id: { in: scope } };
+    scope === "all" ? countryScopedBranchWhere(ctx) : { id: { in: scope } };
 
   const branches = await prisma.branch.findMany({
     where: { ...branchWhere, active: true },

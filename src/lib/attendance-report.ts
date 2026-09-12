@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import type { AdminContext } from "@/lib/admin";
 import { scopedBranchIds } from "@/lib/admin";
 import { branchDayKey, branchTimezone } from "@/lib/attendance";
+import { staffRoleNeedsCountry } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 
 export type AttendanceReportRow = {
@@ -76,7 +77,7 @@ export async function resolveAttendanceReportBranchIds(
       return { branchIds: [], error: "You are not assigned to this branch" };
     }
     if (
-      ctx.staffRole === "COUNTRY_MANAGER" &&
+      staffRoleNeedsCountry(ctx.staffRole) &&
       ctx.staffCountry &&
       branch.country.toUpperCase() !== ctx.staffCountry.toUpperCase()
     ) {
@@ -87,7 +88,7 @@ export async function resolveAttendanceReportBranchIds(
 
   if (scope === "all") {
     const where: Prisma.BranchWhereInput = { active: true };
-    if (ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry) {
+    if (staffRoleNeedsCountry(ctx.staffRole) && ctx.staffCountry) {
       where.country = ctx.staffCountry;
     }
     const branches = await prisma.branch.findMany({

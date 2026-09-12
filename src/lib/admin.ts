@@ -6,9 +6,12 @@ import { authOptions } from "./auth";
 import { isAdminRateLimited } from "./admin-rate-limit";
 import { prisma } from "./prisma";
 import {
+  canAccessNavItem,
+  hasAnyPermission,
   hasFullAdminAccess,
   hasPermission,
   resolvePermissions,
+  staffRoleNeedsCountry,
   type Permission,
 } from "./rbac";
 
@@ -70,6 +73,18 @@ export async function requireAdminPage(permission?: Permission | Permission[]) {
   return ctx;
 }
 
+/** Page gate: user needs at least one of the listed permissions. */
+export async function requireAdminPageAny(permissions: Permission[]) {
+  const ctx = await loadAdminContext();
+  if (!ctx) redirect("/admin/login");
+  if (!hasAnyPermission(ctx.permissions, permissions)) {
+    redirect("/admin");
+  }
+  return ctx;
+}
+
+export { canAccessNavItem, hasAnyPermission };
+
 export async function requireAdminApi(
   permission?: Permission | Permission[],
   options?: { req?: Request; rateLimitKey?: string }
@@ -110,9 +125,19 @@ function isLegacyAdmin(ctx: AdminContext): boolean {
 /** Branch IDs this admin may act on (empty = none unless global). */
 export function scopedBranchIds(ctx: AdminContext): string[] | "all" {
   if (ctx.isGlobal || ctx.isSuperAdmin) return "all";
-  if (ctx.staffRole === "COUNTRY_MANAGER") return "all"; // filtered by country in queries
+  if (staffRoleNeedsCountry(ctx.staffRole)) return "all"; // filtered by country in queries
   if (isLegacyAdmin(ctx)) return "all";
   return ctx.branchIds;
+}
+
+/** Prisma branch filter for country-scoped roles (HR, accountant, country manager). */
+export function countryScopedBranchWhere(
+  ctx: AdminContext
+): { country: string } | Record<string, never> {
+  if (staffRoleNeedsCountry(ctx.staffRole) && ctx.staffCountry) {
+    return { country: ctx.staffCountry };
+  }
+  return {};
 }
 
 export function orderBranchWhere(ctx: AdminContext): Record<string, unknown> | undefined {

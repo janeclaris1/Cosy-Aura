@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi, scopedBranchIds } from "@/lib/admin";
+import { countryScopedBranchWhere, requireAdminApi, scopedBranchIds } from "@/lib/admin";
 
 /** Branches the current admin can “act as”, for the header switcher. */
 export async function GET() {
@@ -11,9 +11,7 @@ export async function GET() {
   const scope = scopedBranchIds(ctx);
   const where =
     scope === "all"
-      ? ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
-        ? { country: ctx.staffCountry, active: true }
-        : { active: true }
+      ? { ...countryScopedBranchWhere(ctx), active: true }
       : { id: { in: scope }, active: true };
 
   const branches = await prisma.branch.findMany({
@@ -27,5 +25,6 @@ export async function GET() {
     staffRole: ctx.staffRole,
     staffCountry: ctx.staffCountry,
     isSuperAdmin: ctx.isSuperAdmin,
+    permissions: ctx.permissions,
   });
 }

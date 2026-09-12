@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
 import type { StaffRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
-import { isSuperAdminEmail, STAFF_ROLES, staffRoleLabel } from "@/lib/rbac";
-import { sendEmail } from "@/lib/notifications";
 import {
-  createAdminPasswordToken,
-  writeAuditLog,
-} from "@/lib/audit";
+  isSuperAdminEmail,
+  STAFF_ROLES,
+  staffRoleLabel,
+  staffRoleNeedsCountry,
+} from "@/lib/rbac";
+import { sendEmail } from "@/lib/notifications";
+import { writeAuditLog } from "@/lib/audit";
 
 function isStaffRole(value: string): value is StaffRole {
   return (STAFF_ROLES as string[]).includes(value);
@@ -23,32 +24,30 @@ function siteBaseUrl(): string {
   ).replace(/\/$/, "");
 }
 
-async function sendPasswordLinkEmail(input: {
+function validatePassword(password: string): string | null {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  return null;
+}
+
+async function sendStaffWelcomeEmail(input: {
   email: string;
   name: string | null;
   roleLabel: string;
-  rawToken: string;
-  purpose: "invite" | "reset";
 }) {
-  const setUrl = `${siteBaseUrl()}/admin/set-password?token=${encodeURIComponent(input.rawToken)}`;
-  const isInvite = input.purpose === "invite";
+  const loginUrl = `${siteBaseUrl()}/admin/login`;
   await sendEmail({
     to: input.email,
-    subject: isInvite
-      ? "Your Cosy Aura admin invite"
-      : "Reset your Cosy Aura admin password",
+    subject: "Your Cosy Aura admin account",
     html: `<!DOCTYPE html><body style="font-family:Georgia,serif;color:#1A1A1A;max-width:560px;margin:0 auto;padding:24px;">
       <p style="letter-spacing:2px;font-size:14px;color:#03045e;">COSY AURA</p>
-      <h1 style="font-size:22px;">${isInvite ? "Welcome to the admin portal" : "Password reset"}</h1>
+      <h1 style="font-size:22px;">Welcome to the admin portal</h1>
       <p>Hi ${input.name || "there"},</p>
-      ${
-        isInvite
-          ? `<p>You have been invited as <strong>${input.roleLabel}</strong>.</p>`
-          : `<p>A Super Admin requested a password reset for your admin account.</p>`
-      }
-      <p><a href="${setUrl}" style="display:inline-block;background:#03045e;color:#fff;padding:12px 20px;text-decoration:none;">Set your password</a></p>
-      <p style="font-size:13px;color:#666;">Or open: ${setUrl}</p>
-      <p style="font-size:13px;color:#666;">This link expires in 48 hours and can only be used once. We never email your password.</p>
+      <p>You have been added as <strong>${input.roleLabel}</strong>.</p>
+      <p>Your administrator will provide your login password separately. We never email passwords.</p>
+      <p><a href="${loginUrl}" style="display:inline-block;background:#03045e;color:#fff;padding:12px 20px;text-decoration:none;">Sign in</a></p>
+      <p style="font-size:13px;color:#666;">Or open: ${loginUrl}</p>
     </body></html>`,
   });
 }
@@ -58,6 +57,7 @@ export async function GET() {
   if (error) return error;
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  try {
   const staff = await prisma.user.findMany({
     where: { role: "ADMIN" },
     orderBy: { createdAt: "desc" },
@@ -86,6 +86,13 @@ export async function GET() {
       isSuperAdmin: isSuperAdminEmail(u.email),
     })),
   });
+  } catch (err) {
+    console.error("[staff GET]", err);
+    return NextResponse.json(
+      { error: "Could not load staff. Check your database connection and try again." },
+      { status: 503 }
+    );
+  }
 }
 
 /** Invite or update an admin staff member. Super Admin only. */
@@ -111,38 +118,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Valid email is required." }, { status: 400 });
   }
 
-  // Password-reset link only (no plaintext passwords).
-  if (body.sendResetLink === true) {
+  /** Super Admin sets a staff member's password directly. */
+  if (body.setPassword === true) {
+    const password = String(body.password || "");
+    const confirmPassword = String(body.confirmPassword || "");
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+    if (password !== confirmPassword) {
+      return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || user.role !== "ADMIN") {
       return NextResponse.json({ error: "Staff member not found." }, { status: 404 });
     }
     if (isSuperAdminEmail(user.email)) {
       return NextResponse.json(
-        { error: "Reset Super Admin password via your account settings / env owner." },
+        { error: "Super Admin passwords are managed outside staff settings." },
         { status: 400 }
       );
     }
-    const rawToken = await createAdminPasswordToken({
-      userId: user.id,
-      purpose: "reset",
+
+    const hash = await bcrypt.hash(password, 12);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hash, activeStaff: true },
     });
-    await sendPasswordLinkEmail({
-      email: user.email,
-      name: user.name,
-      roleLabel: staffRoleLabel(user.staffRole || "FULFILMENT"),
-      rawToken,
-      purpose: "reset",
-    });
+
     await writeAuditLog({
       actorId: ctx.userId,
-      action: "staff.reset_link",
+      action: "staff.set_password",
       entityType: "User",
       entityId: user.id,
-      summary: `Sent password reset link to ${email}`,
+      summary: `Super Admin set password for ${email}`,
       req,
     });
-    return NextResponse.json({ ok: true, resetLinkSent: true });
+
+    return NextResponse.json({ ok: true, passwordSet: true });
   }
 
   const staffRoleRaw = String(body.staffRole || "").trim().toUpperCase();
@@ -157,13 +171,13 @@ export async function POST(req: Request) {
     body.staffCountry != null
       ? String(body.staffCountry).trim().toUpperCase() || null
       : null;
-  if (staffRoleRaw === "COUNTRY_MANAGER" && !staffCountry) {
+  if (staffRoleNeedsCountry(staffRoleRaw) && !staffCountry) {
     return NextResponse.json(
-      { error: "Country managers need a staff country (GH or CM)." },
+      { error: "This role needs a staff country (GH or CM)." },
       { status: 400 }
     );
   }
-  if (staffRoleRaw !== "COUNTRY_MANAGER") staffCountry = null;
+  if (!staffRoleNeedsCountry(staffRoleRaw)) staffCountry = null;
 
   const branchIds: string[] = Array.isArray(body.branchIds)
     ? body.branchIds.map((id: unknown) => String(id)).filter(Boolean)
@@ -181,19 +195,28 @@ export async function POST(req: Request) {
 
   const name = body.name != null ? String(body.name).trim() : null;
   const phone = body.phone != null ? String(body.phone).trim() : null;
+  const password = String(body.password || "");
+  const confirmPassword = String(body.confirmPassword || "");
 
   let user = await prisma.user.findUnique({ where: { email } });
   let created = false;
 
   if (!user) {
-    // Placeholder hash — staff must set password via invite link (never emailed).
-    const placeholder = await bcrypt.hash(randomBytes(32).toString("hex"), 12);
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+    if (password !== confirmPassword) {
+      return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
+    }
+
+    const hash = await bcrypt.hash(password, 12);
     user = await prisma.user.create({
       data: {
         email,
         name,
         phone,
-        password: placeholder,
+        password: hash,
         role: "ADMIN",
         staffRole: staffRoleRaw,
         staffCountry,
@@ -254,23 +277,17 @@ export async function POST(req: Request) {
   });
 
   if (created) {
-    const rawToken = await createAdminPasswordToken({
-      userId: user.id,
-      purpose: "invite",
-    });
-    await sendPasswordLinkEmail({
+    await sendStaffWelcomeEmail({
       email,
       name,
       roleLabel: staffRoleLabel(staffRoleRaw),
-      rawToken,
-      purpose: "invite",
     });
     await writeAuditLog({
       actorId: ctx.userId,
       action: "staff.invite",
       entityType: "User",
       entityId: user.id,
-      summary: `Invited staff ${email} as ${staffRoleRaw}`,
+      summary: `Invited staff ${email} as ${staffRoleRaw} (password set by Super Admin)`,
       req,
     });
   } else {
@@ -285,7 +302,7 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(
-    { staff: full, invited: created, inviteLinkSent: created },
+    { staff: full, invited: created },
     { status: created ? 201 : 200 }
   );
 }

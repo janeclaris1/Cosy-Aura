@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi, scopedBranchIds } from "@/lib/admin";
+import { countryScopedBranchWhere, requireAdminApi, scopedBranchIds } from "@/lib/admin";
 import { aggregateBranchReportRows } from "@/lib/branch-reports";
 
 export async function GET() {
@@ -10,11 +10,7 @@ export async function GET() {
 
   const scope = scopedBranchIds(ctx);
   const branchWhere =
-    scope === "all"
-      ? ctx.staffRole === "COUNTRY_MANAGER" && ctx.staffCountry
-        ? { country: ctx.staffCountry }
-        : {}
-      : { id: { in: scope } };
+    scope === "all" ? countryScopedBranchWhere(ctx) : { id: { in: scope } };
 
   const branches = await prisma.branch.findMany({
     where: { ...branchWhere, active: true },

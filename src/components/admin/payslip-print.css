@@ -1,0 +1,191 @@
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600&display=swap");
+
+@media print {
+  @page {
+    margin: 14mm;
+    size: A4;
+  }
+}
+
+.payslip-classic {
+  position: relative;
+  background: #fff;
+  color: #1a1a1a;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.payslip-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.payslip-watermark img {
+  width: min(320px, 55vw);
+  height: auto;
+  opacity: 0.07;
+  filter: grayscale(20%);
+  object-fit: contain;
+}
+
+.payslip-classic-body {
+  position: relative;
+  z-index: 1;
+}
+
+.payslip-field-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.65rem;
+}
+
+.payslip-field-line .label {
+  flex-shrink: 0;
+  color: #333;
+}
+
+.payslip-field-line .value {
+  flex: 1;
+  border-bottom: 1px dashed #666;
+  padding-bottom: 2px;
+  font-weight: 600;
+  min-height: 1.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payslip-payment-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.payslip-payment-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem 2rem;
+}
+
+.payslip-payment-half {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.payslip-payment-half .label {
+  width: 5.5rem;
+}
+
+.payslip-bank-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.payslip-bank-label {
+  flex-shrink: 0;
+  color: #333;
+  padding-top: 2px;
+  width: 5.5rem;
+}
+
+.payslip-bank-values {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.payslip-stacked-value {
+  border-bottom: 1px dashed #666;
+  padding-bottom: 3px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.payslip-stacked-value--secondary {
+  font-weight: 600;
+  color: #333;
+}
+
+.payslip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.payslip-table th,
+.payslip-table td {
+  border: 1px solid #bbb;
+  padding: 0.4rem 0.55rem;
+  vertical-align: middle;
+}
+
+.payslip-table th {
+  background: #03045e;
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  border-color: #02033a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.payslip-table td.amount {
+  text-align: right;
+  width: 22%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.payslip-table td.desc {
+  width: 28%;
+}
+
+.payslip-table tr.total-row td {
+  background: #ececec;
+  font-weight: 700;
+}
+
+.payslip-table tr.net-row td.desc,
+.payslip-table tr.net-row td.amount {
+  background: #03045e;
+  color: #fff;
+  font-weight: 700;
+  border-color: #02033a;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.payslip-signature-script {
+  font-family: "Dancing Script", "Brush Script MT", "Segoe Script", cursive;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  color: #1a1a1a;
+}
+
+.payslip-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.payslip-signatures .sig-line {
+  border-top: 2px dotted #666;
+  padding-top: 0.35rem;
+  margin-top: 2.5rem;
+  font-style: italic;
+  font-size: 0.85rem;
+  text-align: center;
+}

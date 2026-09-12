@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { ExternalLink, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV_GROUPS } from "@/lib/admin-nav";
+import { canAccessNavItem } from "@/lib/rbac";
+import type { Permission } from "@/lib/rbac";
 import { AdminNotificationListener } from "@/components/admin/AdminNotificationListener";
 import { AdminBranchSwitcher } from "@/components/admin/AdminBranchSwitcher";
 import { StaffAvatar } from "@/components/admin/StaffAvatar";
@@ -27,6 +29,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [unread, setUnread] = useState(0);
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [profile, setProfile] = useState<AdminProfileSummary | null>(null);
+  const [permissions, setPermissions] = useState<Permission[] | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -82,6 +85,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    void fetch("/api/admin/context", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data?.permissions)) {
+          setPermissions(data.permissions as Permission[]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
     async function loadProfile() {
       try {
         const res = await fetch("/api/admin/profile", { cache: "no-store" });
@@ -124,9 +141,21 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const navIconClass = () =>
     cn("w-[18px] h-[18px] shrink-0 text-[#03045e]");
 
+  const navGroups = ADMIN_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      if (!permissions) return true;
+      return canAccessNavItem(
+        permissions,
+        item.permission,
+        item.permissionMatch
+      );
+    }),
+  })).filter((group) => group.items.length > 0);
+
   const navContent = (
     <nav className="flex-1 overflow-y-auto px-3 py-2 scrollbar-thin">
-      {ADMIN_NAV_GROUPS.map((group) => (
+      {navGroups.map((group) => (
         <div key={group.label} className="mb-1">
           <p className="px-3.5 pt-4 pb-2 font-playfair text-[11px] uppercase tracking-[0.14em] text-white/45">
             {group.label}

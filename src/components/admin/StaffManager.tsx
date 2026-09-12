@@ -9,7 +9,13 @@ import {
   adminLabelClass,
   adminSelectClass,
 } from "@/components/admin/admin-ui";
-import { STAFF_ROLES, staffRoleLabel } from "@/lib/rbac";
+import { readAdminJson } from "@/lib/admin-fetch";
+import {
+  STAFF_ROLE_GROUPS,
+  staffRoleDescription,
+  staffRoleLabel,
+  staffRoleNeedsCountry,
+} from "@/lib/rbac";
 import { StaffAvatar } from "@/components/admin/StaffAvatar";
 
 type Branch = { id: string; name: string; country: string };
@@ -33,6 +39,8 @@ const empty = {
   email: "",
   name: "",
   phone: "",
+  password: "",
+  confirmPassword: "",
   staffRole: "FULFILMENT" as string,
   staffCountry: "GH",
   branchIds: [] as string[],
@@ -47,16 +55,36 @@ export function StaffManager() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<StaffRow | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   async function load() {
-    const [staffRes, branchRes] = await Promise.all([
-      fetch("/api/admin/staff"),
-      fetch("/api/admin/branches"),
-    ]);
-    const staffData = await staffRes.json();
-    const branchData = await branchRes.json();
-    if (staffRes.ok) setStaff(staffData.staff || []);
-    if (branchRes.ok) setBranches(branchData.branches || []);
+    setError(null);
+    try {
+      const [staffRes, branchRes] = await Promise.all([
+        fetch("/api/admin/staff"),
+        fetch("/api/admin/branches"),
+      ]);
+      const staffResult = await readAdminJson<{ staff?: StaffRow[] }>(staffRes);
+      const branchResult = await readAdminJson<{ branches?: Branch[] }>(branchRes);
+
+      if (staffResult.ok) {
+        setStaff(staffResult.data.staff || []);
+      } else {
+        setError(staffResult.error);
+        setStaff([]);
+      }
+
+      if (branchResult.ok) {
+        setBranches(branchResult.data.branches || []);
+      } else if (!staffResult.ok) {
+        setError(branchResult.error);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load staff");
+      setStaff([]);
+    }
   }
 
   useEffect(() => {
@@ -105,12 +133,12 @@ export function StaffManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Could not save staff");
+      const result = await readAdminJson(res);
+      if (!result.ok) throw new Error(result.error);
       setMessage(
         editing
           ? "Staff updated."
-          : "Invite sent — they will receive a link to set their password."
+          : "Staff added. Share their login password with them directly — we never email passwords."
       );
       resetForm();
       await load();
@@ -138,44 +166,55 @@ export function StaffManager() {
         activeStaff: false,
       }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Could not deactivate");
+    const result = await readAdminJson(res);
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
     await load();
   }
 
-  async function resetPassword(row: StaffRow) {
-    if (row.isSuperAdmin) return;
-    if (
-      !confirm(
-        `Send a password reset link to ${row.email}? They will set a new password themselves (we never email passwords).`
-      )
-    ) {
+  async function savePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!passwordTarget) return;
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setSaving(true);
     setError(null);
     setMessage(null);
-    const res = await fetch("/api/admin/staff", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: row.email,
-        sendResetLink: true,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Could not send reset link");
-      return;
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: passwordTarget.email,
+          setPassword: true,
+          password: newPassword,
+          confirmPassword,
+        }),
+      });
+      const result = await readAdminJson(res);
+      if (!result.ok) throw new Error(result.error);
+      setMessage(`Password updated for ${passwordTarget.email}. Share it with them securely.`);
+      setPasswordTarget(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not set password");
+    } finally {
+      setSaving(false);
     }
-    setMessage(`Password reset link sent to ${row.email}.`);
   }
 
   const needsBranch =
     form.staffRole === "BRANCH_MANAGER" || form.staffRole === "FULFILMENT";
-  const needsCountry = form.staffRole === "COUNTRY_MANAGER";
+  const needsCountry = staffRoleNeedsCountry(form.staffRole);
 
   return (
     <div className="grid lg:grid-cols-2 gap-8">
@@ -186,7 +225,8 @@ export function StaffManager() {
           className="!mb-3"
         />
         <p className="text-xs text-mocha">
-          Super Admin is only you (via SUPER_ADMIN_EMAILS). Other roles are assigned here.
+          Super Admin is only you (via SUPER_ADMIN_EMAILS). Assign{" "}
+          <strong>HR</strong>, <strong>Accountant</strong>, and other portal roles here.
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {message && <p className="text-sm text-green-700">{message}</p>}
@@ -218,10 +258,39 @@ export function StaffManager() {
           />
         </label>
         {!editing ? (
-          <p className="text-xs text-mocha">
-            New staff get an email with a secure link to set their own password.
-            Passwords are never sent in plain text.
-          </p>
+          <>
+            <label className="block">
+              <span className={adminLabelClass}>Password</span>
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className={adminInputClass}
+                autoComplete="new-password"
+                placeholder="Min 8 characters"
+              />
+            </label>
+            <label className="block">
+              <span className={adminLabelClass}>Confirm password</span>
+              <input
+                required
+                type="password"
+                minLength={8}
+                value={form.confirmPassword}
+                onChange={(e) =>
+                  setForm({ ...form, confirmPassword: e.target.value })
+                }
+                className={adminInputClass}
+                autoComplete="new-password"
+              />
+            </label>
+            <p className="text-xs text-mocha">
+              Only Super Admin can set staff passwords. Share credentials with the
+              team member directly — passwords are never emailed.
+            </p>
+          </>
         ) : null}
         <label className="block">
           <span className={adminLabelClass}>Role</span>
@@ -230,12 +299,21 @@ export function StaffManager() {
             onChange={(e) => setForm({ ...form, staffRole: e.target.value })}
             className={adminSelectClass}
           >
-            {STAFF_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {staffRoleLabel(role)}
-              </option>
+            {STAFF_ROLE_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.roles.map((role) => (
+                  <option key={role} value={role}>
+                    {staffRoleLabel(role)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
+          {staffRoleDescription(form.staffRole as never) ? (
+            <p className="mt-1.5 text-xs text-mocha">
+              {staffRoleDescription(form.staffRole as never)}
+            </p>
+          ) : null}
         </label>
         {needsCountry ? (
           <label className="block">
@@ -336,9 +414,15 @@ export function StaffManager() {
                 <button
                   type="button"
                   className="text-[#03045e] hover:underline font-medium"
-                  onClick={() => void resetPassword(row)}
+                  onClick={() => {
+                    setPasswordTarget(row);
+                    setNewPassword("");
+                    setConfirmPassword("");
+                    setError(null);
+                    setMessage(null);
+                  }}
                 >
-                  Send reset link
+                  Set password
                 </button>
                 {row.activeStaff ? (
                   <button
@@ -355,6 +439,60 @@ export function StaffManager() {
         ))}
         {!staff.length ? <p className="text-sm text-mocha">No admin staff yet.</p> : null}
       </div>
+
+      {passwordTarget ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <AdminCard className="w-full max-w-md">
+            <AdminSectionTitle
+              title="Set staff password"
+              description={`${passwordTarget.name || passwordTarget.email} · Only Super Admin can do this.`}
+              className="!mb-4"
+            />
+            <form onSubmit={savePassword} className="space-y-3">
+              <label className="block">
+                <span className={adminLabelClass}>New password</span>
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={adminInputClass}
+                  autoComplete="new-password"
+                />
+              </label>
+              <label className="block">
+                <span className={adminLabelClass}>Confirm password</span>
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={adminInputClass}
+                  autoComplete="new-password"
+                />
+              </label>
+              <div className="flex gap-2 pt-1">
+                <AdminButton type="submit" disabled={saving}>
+                  {saving ? "Saving…" : "Save password"}
+                </AdminButton>
+                <AdminButton
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setPasswordTarget(null);
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                >
+                  Cancel
+                </AdminButton>
+              </div>
+            </form>
+          </AdminCard>
+        </div>
+      ) : null}
     </div>
   );
 }
