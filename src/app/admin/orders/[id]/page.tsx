@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import {
   formatOrderBookTotal,
   formatOrderPaidAmount,
+  resolveOrderBookTotalGhs,
 } from "@/lib/order-money";
 import { formatPrice } from "@/lib/utils";
 import { resolveShippingMethodLabel } from "@/lib/shipping-methods";
@@ -72,6 +73,14 @@ export default async function AdminOrderDetailPage({
   const posDiscountAmount = Number(order.posDiscountAmount || 0);
   const posInclusiveTotal = Math.max(0, itemsSubtotal - posDiscountAmount);
   const posTaxes = isPos ? extractGhanaPosTaxBreakdown(posInclusiveTotal) : null;
+  const bookTotalGhs = resolveOrderBookTotalGhs({
+    total: order.total,
+    chargeAmount: order.chargeAmount,
+    chargeCurrency: order.chargeCurrency,
+    shippingCost: order.shippingCost,
+    posDiscountAmount: order.posDiscountAmount,
+    items: order.items,
+  });
 
   function posPaymentLabel(method: string | null) {
     switch (method) {
@@ -166,11 +175,11 @@ export default async function AdminOrderDetailPage({
                       Ref. {item.fragrance.reference}
                     </p>
                     <p className="text-sm mt-1">
-                      {formatPrice(item.price)} × {item.quantity}
+                      {formatPrice(item.price, "GHS")} × {item.quantity}
                     </p>
                   </div>
                   <p className="font-medium">
-                    {formatPrice(item.price * item.quantity)}
+                    {formatPrice(item.price * item.quantity, "GHS")}
                   </p>
                 </li>
               ))}
@@ -180,7 +189,10 @@ export default async function AdminOrderDetailPage({
                 <span className="text-mocha">Subtotal</span>
                 <span>
                   {formatPrice(
-                    isPos ? itemsSubtotal : order.total - (order.shippingCost ?? 0)
+                    isPos
+                      ? itemsSubtotal
+                      : bookTotalGhs - (order.shippingCost ?? 0),
+                    "GHS"
                   )}
                 </span>
               </div>

@@ -1,0 +1,12 @@
+html,
+body.accounting-report-print-body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+.accounting-report-print-document {
+  padding: 0;
+  margin: 0;
+  max-width: none;
+}

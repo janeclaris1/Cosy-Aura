@@ -1,10 +1,9 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { GH_ACCOUNTING_COUNTRY, GH_COA_SEED } from "@/lib/accounting-gh-coa";
+import { roundLedger } from "@/lib/accounting-ledger";
 
-export function roundLedger(value: number): number {
-  return Math.round(value * 100) / 100;
-}
+export { roundLedger };
 
 type TxClient = Prisma.TransactionClient | PrismaClient;
 
@@ -83,7 +82,15 @@ export async function createPostedJournal(
     entryDate: Date;
     reference: string;
     memo?: string;
-    source: "MANUAL" | "PAYROLL" | "EXPENSE" | "ORDER" | "ORDER_COGS";
+    source:
+      | "MANUAL"
+      | "PAYROLL"
+      | "EXPENSE"
+      | "ORDER"
+      | "ORDER_COGS"
+      | "DEBT"
+      | "CREDIT_PAYMENT"
+      | "CREDIT_DEFAULT";
     sourceId?: string | null;
     branchId?: string | null;
     createdById: string;

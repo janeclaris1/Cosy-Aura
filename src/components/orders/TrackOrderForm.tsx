@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { OrderStatus } from "@prisma/client";
 import { OrderStatusTimeline } from "@/components/orders/OrderStatusTimeline";
+import { formatOrderBookTotal } from "@/lib/order-money";
 import { formatPrice } from "@/lib/utils";
-import { useLocaleStore } from "@/lib/locale-store";
 import { deliveryDateIso, formatDeliveryDateLabel } from "@/lib/delivery-dates";
 
 type TrackedOrder = {
@@ -15,6 +15,10 @@ type TrackedOrder = {
   status: OrderStatus;
   statusLabel: string;
   total: number;
+  chargeAmount?: number | null;
+  chargeCurrency?: string | null;
+  shippingCost?: number | null;
+  posDiscountAmount?: number | null;
   createdAt: string;
   shippedAt: string | null;
   shippingMethod: string | null;
@@ -41,8 +45,6 @@ export function TrackOrderForm({
   initialRef?: string;
   initialEmail?: string;
 }) {
-  const currency = useLocaleStore((s) => s.currency);
-  useLocaleStore((s) => s.rates);
   const [orderRef, setOrderRef] = useState(initialRef);
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
@@ -133,7 +135,14 @@ export function TrackOrderForm({
             <h2 className="font-playfair text-2xl mb-1">#{order.ref}</h2>
             <p className="text-sm text-wf-gray mb-6">
               Placed {new Date(order.createdAt).toLocaleDateString()} ·{" "}
-              {formatPrice(order.total, currency)}
+              {formatOrderBookTotal({
+                total: order.total,
+                chargeAmount: order.chargeAmount,
+                chargeCurrency: order.chargeCurrency,
+                shippingCost: order.shippingCost,
+                posDiscountAmount: order.posDiscountAmount,
+                items: order.items,
+              })}
             </p>
 
             <OrderStatusTimeline status={order.status} />
@@ -208,7 +217,7 @@ export function TrackOrderForm({
                       Ref. {item.reference}
                     </p>
                     <p className="text-sm mt-1">
-                      {formatPrice(item.price, currency)} × {item.quantity}
+                      {formatPrice(item.price, "GHS")} × {item.quantity}
                     </p>
                   </div>
                 </li>

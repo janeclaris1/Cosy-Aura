@@ -4,9 +4,21 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cn } from "@/lib/utils";
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Pending",
+  PAID: "Paid",
+  PARTIALLY_PAID: "Partially paid",
+  PROCESSING: "Processing",
+  SHIPPED: "Shipped",
+  DELIVERED: "Delivered",
+  CANCELLED: "Cancelled",
+  REFUNDED: "Refunded",
+};
+
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-stone-100 text-stone-700 ring-stone-200/80",
   PAID: "bg-sky-50 text-sky-800 ring-sky-200/80",
+  PARTIALLY_PAID: "bg-orange-50 text-orange-900 ring-orange-200/80",
   PROCESSING: "bg-amber-50 text-amber-900 ring-amber-200/80",
   SHIPPED: "bg-indigo-50 text-indigo-800 ring-indigo-200/80",
   DELIVERED: "bg-emerald-50 text-emerald-800 ring-emerald-200/80",
@@ -15,7 +27,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 function statusLabel(status: string) {
-  return status.charAt(0) + status.slice(1).toLowerCase();
+  return STATUS_LABELS[status] || status;
 }
 
 export function OrderStatusSelect({
@@ -74,6 +86,7 @@ export function OrderStatusSelect({
         >
           <option value="PENDING">Pending</option>
           <option value="PAID">Paid</option>
+          <option value="PARTIALLY_PAID">Partially paid</option>
           <option value="PROCESSING">Processing</option>
           <option value="SHIPPED">Shipped</option>
           <option value="DELIVERED">Delivered</option>

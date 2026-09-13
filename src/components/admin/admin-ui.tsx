@@ -68,20 +68,32 @@ export function AdminTabLinks({
   items,
   activeId,
   size = "md",
+  nowrap = false,
   className,
 }: {
   items: { id: string; label: string; href: string }[];
   activeId: string;
   size?: "sm" | "md";
+  /** Keep tabs on one row; scroll horizontally on narrow viewports. */
+  nowrap?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn(adminTabBarClass, className)}>
+    <div
+      className={cn(
+        adminTabBarClass,
+        nowrap && "flex-nowrap overflow-x-auto scrollbar-thin max-w-full",
+        className
+      )}
+    >
       {items.map((item) => (
         <Link
           key={item.id}
           href={item.href}
-          className={adminTabButtonClass(activeId === item.id, size)}
+          className={cn(
+            adminTabButtonClass(activeId === item.id, size),
+            nowrap && "shrink-0"
+          )}
         >
           {item.label}
         </Link>
@@ -320,6 +332,21 @@ export const adminTheadClass =
 export const adminThClass = "px-4 py-3 font-medium font-roboto text-white";
 export const adminTdClass = "px-4 py-3.5 align-middle font-roboto";
 export const adminTrClass = "border-b border-stone-100 last:border-0 hover:bg-[#fafafa]/60 transition-colors";
+
+/** Inline row actions (Edit · Delete) — use inside table cells. */
+export function AdminTableActions({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-center gap-3 whitespace-nowrap", className)}>
+      {children}
+    </div>
+  );
+}
 
 export function AdminEmptyState({
   message,

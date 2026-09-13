@@ -34,6 +34,12 @@ export const COGS_ACCOUNTS = {
   inventoryFinished: "1110",
 } as const;
 
+/** Customer credit posting account codes (Ghana). */
+export const CREDIT_ACCOUNTS = {
+  receivable: "1200",
+  penaltyRevenue: "4091",
+} as const;
+
 export type CoaSeedRow = {
   id: string;
   code: string;
@@ -49,6 +55,7 @@ export const GH_COA_SEED: CoaSeedRow[] = [
   { id: "glacc_gh_1100", code: "1100", name: "Inventory - Perfume Oils", type: "ASSET" },
   { id: "glacc_gh_1110", code: "1110", name: "Inventory - Finished Goods", type: "ASSET" },
   { id: "glacc_gh_1120", code: "1120", name: "Inventory - Packaging", type: "ASSET" },
+  { id: "glacc_gh_1200", code: "1200", name: "Accounts Receivable", type: "ASSET", description: "Customer credit balances" },
   { id: "glacc_gh_1300", code: "1300", name: "Store Equipment & Fixtures", type: "ASSET" },
   { id: "glacc_gh_1310", code: "1310", name: "POS Hardware", type: "ASSET" },
   { id: "glacc_gh_2100", code: "2100", name: "Accounts Payable", type: "LIABILITY" },
@@ -57,6 +64,8 @@ export const GH_COA_SEED: CoaSeedRow[] = [
   { id: "glacc_gh_2130", code: "2130", name: "VAT Payable", type: "LIABILITY" },
   { id: "glacc_gh_2140", code: "2140", name: "NHIL Payable", type: "LIABILITY" },
   { id: "glacc_gh_2150", code: "2150", name: "GETFund Payable", type: "LIABILITY" },
+  { id: "glacc_gh_2200", code: "2200", name: "Long-term Loans Payable", type: "LIABILITY", description: "Bank & term loans" },
+  { id: "glacc_gh_2210", code: "2210", name: "Short-term Loans Payable", type: "LIABILITY", description: "Overdrafts & short-term borrowings" },
   { id: "glacc_gh_3100", code: "3100", name: "Owner's Equity", type: "EQUITY" },
   { id: "glacc_gh_3200", code: "3200", name: "Retained Earnings", type: "EQUITY" },
   { id: "glacc_gh_4010", code: "4010", name: "Retail Sales - Fragrances", type: "REVENUE" },
@@ -67,6 +76,8 @@ export const GH_COA_SEED: CoaSeedRow[] = [
   { id: "glacc_gh_4060", code: "4060", name: "Retail Sales - Shoes", type: "REVENUE" },
   { id: "glacc_gh_4070", code: "4070", name: "Retail Sales - Sunglasses", type: "REVENUE" },
   { id: "glacc_gh_4080", code: "4080", name: "Retail Sales - Jewelry", type: "REVENUE" },
+  { id: "glacc_gh_4090", code: "4090", name: "Other Revenue", type: "REVENUE", description: "Non-retail income, commissions, interest" },
+  { id: "glacc_gh_4091", code: "4091", name: "Credit Contract Penalties", type: "REVENUE", description: "Forfeited deposits on defaulted credit sales" },
   { id: "glacc_gh_5100", code: "5100", name: "COGS - Fragrances & Oils", type: "EXPENSE" },
   { id: "glacc_gh_5110", code: "5110", name: "COGS - Packaging", type: "EXPENSE" },
   { id: "glacc_gh_5120", code: "5120", name: "Inbound Freight & Customs", type: "EXPENSE" },
@@ -80,8 +91,12 @@ export const GH_COA_SEED: CoaSeedRow[] = [
   { id: "glacc_gh_6250", code: "6250", name: "Merchant Processing Fees", type: "EXPENSE" },
   { id: "glacc_gh_6260", code: "6260", name: "Software & Subscriptions", type: "EXPENSE" },
   { id: "glacc_gh_6270", code: "6270", name: "Depreciation Expense", type: "EXPENSE" },
+  { id: "glacc_gh_6280", code: "6280", name: "Interest Expense", type: "EXPENSE" },
   { id: "glacc_gh_6290", code: "6290", name: "Other Operating Expenses", type: "EXPENSE" },
 ];
+
+/** Liability accounts used for debt register postings. */
+export const DEBT_LIABILITY_CODES = ["2200", "2210"] as const;
 
 /** Expense accounts available for manual entry (6200–6299). */
 export const GH_EXPENSE_ACCOUNT_CODES = GH_COA_SEED.filter(

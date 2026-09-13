@@ -10,6 +10,8 @@ import {
   adminSelectClass,
 } from "@/components/admin/admin-ui";
 import { MANAGED_STOCK_COUNTRIES } from "@/lib/country-stock";
+import { salePriceForSize } from "@/lib/pricing";
+import { formatPrice } from "@/lib/utils";
 
 interface Brand {
   id: string;
@@ -243,15 +245,31 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           />
         </div>
         <div>
-          <label className={adminLabelClass}>Price (GHS)</label>
-          <input
-            type="number"
-            step="0.01"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-            className={adminInputClass}
-            required
-          />
+          <label className={adminLabelClass}>Storefront prices (GHS)</label>
+          <div className="rounded-xl bg-[#fafafa] ring-1 ring-stone-200/80 px-3 py-2.5 text-sm tabular-nums space-y-1">
+            <p>
+              30ml ·{" "}
+              <span className="font-semibold text-[#03045e]">
+                {formatPrice(salePriceForSize(30, fragrance?.slug || form.model))}
+              </span>
+            </p>
+            <p>
+              50ml ·{" "}
+              <span className="font-semibold text-[#03045e]">
+                {formatPrice(salePriceForSize(50, fragrance?.slug || form.model))}
+              </span>
+            </p>
+            <p>
+              100ml ·{" "}
+              <span className="font-semibold text-[#03045e]">
+                {formatPrice(salePriceForSize(100, fragrance?.slug || form.model))}
+              </span>
+            </p>
+          </div>
+          <p className="text-[11px] text-mocha mt-1">
+            Calculated from list tiers and the 7% store discount — same as the website and POS.
+          </p>
+          <input type="hidden" name="price" value={form.price} />
         </div>
         <div>
           <label className={adminLabelClass}>Unit cost (GHS)</label>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice, conditionLabel } from "@/lib/utils";
+import { salePriceForSize } from "@/lib/pricing";
 import { DeleteFragranceButton } from "@/components/admin/DeleteFragranceButton";
 import {
   AdminButton,
@@ -10,6 +11,7 @@ import {
   AdminLink,
   AdminPageHeader,
   AdminSearchForm,
+  AdminTableActions,
   AdminTableWrap,
   adminPageWrap,
   adminTdClass,
@@ -81,7 +83,7 @@ export default async function AdminFragrancesPage({
               <th className={adminThClass}>Name</th>
               <th className={adminThClass}>Reference</th>
               <th className={adminThClass}>Category</th>
-              <th className={adminThClass}>Price</th>
+              <th className={adminThClass}>Retail (GHS)</th>
               <th className={adminThClass}>Condition</th>
               <th className={adminThClass}>Featured</th>
               <th className={adminThClass}>Actions</th>
@@ -130,18 +132,32 @@ export default async function AdminFragrancesPage({
                     <td className={`${adminTdClass} text-mocha`}>
                       {fragrance.category || "—"}
                     </td>
-                    <td className={adminTdClass}>{formatPrice(fragrance.price)}</td>
+                    <td className={adminTdClass}>
+                      <div className="tabular-nums text-xs space-y-0.5">
+                        <p className="font-semibold text-[#03045e]">
+                          {formatPrice(salePriceForSize(50, fragrance.slug))}
+                          <span className="font-normal text-mocha"> · 50ml</span>
+                        </p>
+                        <p className="text-[10px] text-mocha">
+                          30ml {formatPrice(salePriceForSize(30, fragrance.slug))}
+                          {" · "}
+                          100ml {formatPrice(salePriceForSize(100, fragrance.slug))}
+                        </p>
+                      </div>
+                    </td>
                     <td className={adminTdClass}>
                       {conditionLabel(fragrance.condition)}
                     </td>
                     <td className={adminTdClass}>
                       {fragrance.featured ? "Yes" : "No"}
                     </td>
-                    <td className={`${adminTdClass} space-x-3`}>
-                      <AdminLink href={`/admin/fragrances/${fragrance.id}/edit`}>
-                        Edit
-                      </AdminLink>
-                      <DeleteFragranceButton id={fragrance.id} />
+                    <td className={adminTdClass}>
+                      <AdminTableActions>
+                        <AdminLink href={`/admin/fragrances/${fragrance.id}/edit`}>
+                          Edit
+                        </AdminLink>
+                        <DeleteFragranceButton id={fragrance.id} />
+                      </AdminTableActions>
                     </td>
                   </tr>
                 );

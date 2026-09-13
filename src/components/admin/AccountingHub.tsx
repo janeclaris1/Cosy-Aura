@@ -5,13 +5,19 @@ import { useSearchParams } from "next/navigation";
 import { AdminTabBar } from "@/components/admin/admin-ui";
 import { AccountingCoaPanel } from "@/components/admin/AccountingCoaPanel";
 import { AccountingExpenseForm } from "@/components/admin/AccountingExpenseForm";
+import { AccountingManualEntryForm } from "@/components/admin/AccountingManualEntryForm";
 import { AccountingJournalsPanel } from "@/components/admin/AccountingJournalsPanel";
+import { AccountingDebtsPanel } from "@/components/admin/AccountingDebtsPanel";
+import { AccountingCreditPanel } from "@/components/admin/AccountingCreditPanel";
 import { AccountingReportsPanel } from "@/components/admin/AccountingReportsPanel";
 
 const TABS = [
   { id: "expenses", label: "Record expense" },
+  { id: "manual", label: "Manual entry" },
   { id: "journals", label: "Journal" },
   { id: "reports", label: "Reports" },
+  { id: "credit", label: "Customer credit" },
+  { id: "debts", label: "Debts" },
   { id: "coa", label: "Chart of accounts" },
 ] as const;
 
@@ -32,8 +38,13 @@ function AccountingHubInner() {
       {tab === "expenses" && (
         <AccountingExpenseForm onRecorded={() => setJournalRefresh((k) => k + 1)} />
       )}
+      {tab === "manual" && (
+        <AccountingManualEntryForm onRecorded={() => setJournalRefresh((k) => k + 1)} />
+      )}
       {tab === "journals" && <AccountingJournalsPanel refreshKey={journalRefresh} />}
       {tab === "reports" && <AccountingReportsPanel />}
+      {tab === "credit" && <AccountingCreditPanel />}
+      {tab === "debts" && <AccountingDebtsPanel />}
       {tab === "coa" && <AccountingCoaPanel />}
     </div>
   );

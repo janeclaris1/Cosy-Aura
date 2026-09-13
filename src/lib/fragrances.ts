@@ -403,14 +403,20 @@ export async function getDashboardStats() {
     await Promise.all([
       prisma.fragrance.count(),
       prisma.order.count({
-        where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
+        where: {
+          status: { in: ["PAID", "PARTIALLY_PAID", "PROCESSING", "SHIPPED", "DELIVERED"] },
+        },
       }),
       prisma.order.aggregate({
-        where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
+        where: {
+          status: { in: ["PAID", "PARTIALLY_PAID", "PROCESSING", "SHIPPED", "DELIVERED"] },
+        },
         _sum: { total: true },
       }),
       prisma.order.findMany({
-        where: { status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] } },
+        where: {
+          status: { in: ["PAID", "PARTIALLY_PAID", "PROCESSING", "SHIPPED", "DELIVERED"] },
+        },
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {

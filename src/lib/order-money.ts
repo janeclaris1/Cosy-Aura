@@ -9,6 +9,46 @@ export type OrderMoneyFields = {
   chargeCurrency?: string | null;
 };
 
+export type OrderBookTotalInput = OrderMoneyFields & {
+  shippingCost?: number | null;
+  posDiscountAmount?: number | null;
+  items?: { price: number; quantity: number }[];
+};
+
+/** Authoritative GHS book total — prefers line items when stored total is stale. */
+export function resolveOrderBookTotalGhs(order: OrderBookTotalInput): number {
+  if (!order.items?.length) {
+    return order.total;
+  }
+
+  let computed =
+    orderItemsSubtotalGhs(order.items) -
+    Number(order.posDiscountAmount ?? 0) +
+    Number(order.shippingCost ?? 0);
+  computed = Math.round(computed * 100) / 100;
+  computed = Math.max(0, computed);
+
+  const foreignCurrency = order.chargeCurrency?.toUpperCase();
+  const hasForeignCharge =
+    order.chargeAmount != null &&
+    foreignCurrency &&
+    foreignCurrency !== BOOK_CURRENCY;
+
+  // Legacy Stripe rows saved USD charge into `total`.
+  if (
+    hasForeignCharge &&
+    Math.abs(order.total - Number(order.chargeAmount)) < 0.02
+  ) {
+    return computed;
+  }
+
+  if (Math.abs(computed - order.total) > 0.02) {
+    return computed;
+  }
+
+  return order.total;
+}
+
 /** Sum line items in GHS (catalog prices at time of order). */
 export function orderItemsSubtotalGhs(
   items: { price: number; quantity: number }[]
@@ -27,12 +67,12 @@ export function formatOrderPaidAmount(order: OrderMoneyFields): string {
   ) {
     return formatPrice(order.chargeAmount, order.chargeCurrency);
   }
-  return formatPrice(order.total, BOOK_CURRENCY);
+  return formatPrice(resolveOrderBookTotalGhs(order), BOOK_CURRENCY);
 }
 
 /** Book value in GHS (reports, tax, revenue). */
-export function formatOrderBookTotal(order: OrderMoneyFields): string {
-  return formatPrice(order.total, BOOK_CURRENCY);
+export function formatOrderBookTotal(order: OrderBookTotalInput): string {
+  return formatPrice(resolveOrderBookTotalGhs(order), BOOK_CURRENCY);
 }
 
 /** Admin label when charge currency differs from GHS book total. */

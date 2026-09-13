@@ -6,6 +6,7 @@ import {
   AdminButton,
   AdminCard,
   AdminSectionTitle,
+  AdminTableActions,
   AdminTableWrap,
   adminInputClass,
   adminLabelClass,
@@ -274,17 +275,23 @@ function ShippingRowEditor({
             {method.enabled ? "Enabled" : "Disabled"}
           </span>
         </td>
-        <td className={`${adminTdClass} space-x-3`}>
-          <button
-            type="button"
-            onClick={onEdit}
-            className="text-[#03045e] hover:underline font-medium"
-          >
-            Edit
-          </button>
-          <button type="button" onClick={onDelete} className="text-red-600 hover:underline">
-            Delete
-          </button>
+        <td className={adminTdClass}>
+          <AdminTableActions>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="text-sm font-medium text-[#03045e] hover:underline"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-sm font-medium text-red-600 hover:underline"
+            >
+              Delete
+            </button>
+          </AdminTableActions>
         </td>
       </tr>
     );
@@ -360,21 +367,23 @@ function ShippingRowEditor({
           Enabled
         </label>
       </td>
-      <td className={`${adminTdClass} align-top space-x-3`}>
-        <button
-          type="button"
-          onClick={() => onSave(draft)}
-          className="text-[#03045e] hover:underline font-medium"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-[#03045e] hover:underline font-medium"
-        >
-          Cancel
-        </button>
+      <td className={`${adminTdClass} align-top`}>
+        <AdminTableActions>
+          <button
+            type="button"
+            onClick={() => onSave(draft)}
+            className="text-sm font-medium text-[#03045e] hover:underline"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="text-sm font-medium text-[#03045e] hover:underline"
+          >
+            Cancel
+          </button>
+        </AdminTableActions>
       </td>
     </tr>
   );

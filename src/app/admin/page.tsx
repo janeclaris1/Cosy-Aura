@@ -18,19 +18,21 @@ import {
   buildDashboardChartData,
   REVENUE_STATUSES,
 } from "@/lib/dashboard-analytics";
+import { OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatPrice } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatOrderBookTotal } from "@/lib/order-money";
+import { cn, formatPrice } from "@/lib/utils";
 
 const CHART_PERIOD_DAYS = 30;
 
-const PIPELINE_STATUSES = [
-  "PENDING",
-  "PAID",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-] as const;
+const PIPELINE_STATUSES: OrderStatus[] = [
+  OrderStatus.PENDING,
+  OrderStatus.PAID,
+  OrderStatus.PARTIALLY_PAID,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];
 
 type QuickLink = { href: string; label: string; primary?: boolean };
 
@@ -50,6 +52,8 @@ function statusTone(status: string) {
     case "PAID":
     case "DELIVERED":
       return "bg-emerald-50 text-emerald-800 ring-emerald-200/80";
+    case "PARTIALLY_PAID":
+      return "bg-orange-50 text-orange-900 ring-orange-200/80";
     case "PROCESSING":
     case "SHIPPED":
       return "bg-sky-50 text-sky-800 ring-sky-200/80";
@@ -100,7 +104,7 @@ export default async function AdminDashboard() {
     prisma.order.aggregate({
       where: {
         ...orderWhere,
-        status: { in: ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] },
+        status: { in: REVENUE_STATUSES },
       },
       _sum: { total: true },
     }),
@@ -365,7 +369,14 @@ export default async function AdminDashboard() {
                     {order.items.length}
                   </td>
                   <td className="px-5 py-4 font-medium text-espresso tabular-nums">
-                    {formatPrice(order.total)}
+                    {formatOrderBookTotal({
+                      total: order.total,
+                      chargeAmount: order.chargeAmount,
+                      chargeCurrency: order.chargeCurrency,
+                      shippingCost: order.shippingCost,
+                      posDiscountAmount: order.posDiscountAmount,
+                      items: order.items,
+                    })}
                   </td>
                   <td className="px-5 py-4">
                     <span

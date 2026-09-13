@@ -54,7 +54,7 @@ export default function WishlistPage() {
   return (
     <div className="max-w-[1500px] mx-auto px-4 py-8">
       <h1 className="font-playfair text-3xl mb-8">{t("wishlist.title")}</h1>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
         {fragrances.map((fragrance) => (
           <ProductCard key={fragrance.id} fragrance={fragrance} />
         ))}

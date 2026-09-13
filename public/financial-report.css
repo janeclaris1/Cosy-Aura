@@ -1,0 +1,166 @@
+.accounting-report-print-root {
+  width: 100%;
+}
+
+.fin-report-shell {
+  width: 100%;
+  max-width: 52rem;
+}
+
+.fin-report-shell--wide {
+  max-width: 72rem;
+}
+
+.fin-report {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: Calibri, "Segoe UI", Roboto, system-ui, sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  width: 100%;
+  max-width: 52rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fin-report-header {
+  margin-bottom: 1.25rem;
+}
+
+.fin-report-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: #1a1a1a;
+}
+
+.fin-report--wide {
+  max-width: none;
+  min-width: 36rem;
+}
+
+.fin-report--wide .fin-report-th--label {
+  width: 28%;
+}
+
+.fin-report-company,
+.fin-report-currency,
+.fin-report-period {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.fin-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.fin-report-th {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: #333;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #bbb;
+}
+
+.fin-report-th--label {
+  width: 55%;
+  text-align: left;
+}
+
+.fin-report-th--amount {
+  width: auto;
+  text-align: right;
+}
+
+.fin-report-row td {
+  padding: 0.2rem 0.5rem;
+  vertical-align: top;
+}
+
+.fin-report-label {
+  text-align: left;
+  color: #1a1a1a;
+}
+
+.fin-report-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #2f75b5;
+  white-space: nowrap;
+}
+
+.fin-report-row--section .fin-report-label {
+  font-weight: 700;
+  padding-top: 0.65rem;
+}
+
+.fin-report-row--subsection .fin-report-label {
+  font-weight: 600;
+  padding-left: 1rem;
+}
+
+.fin-report-row--item .fin-report-label {
+  padding-left: 2rem;
+}
+
+.fin-report-row--subtotal .fin-report-label,
+.fin-report-row--subtotal .fin-report-amount,
+.fin-report-row--total .fin-report-label,
+.fin-report-row--total .fin-report-amount {
+  font-weight: 700;
+}
+
+.fin-report-row--subtotal td,
+.fin-report-row--total td {
+  border-top: 1px solid #888;
+  padding-top: 0.35rem;
+}
+
+.fin-report-row--grand-total .fin-report-label,
+.fin-report-row--grand-total .fin-report-amount {
+  font-weight: 700;
+}
+
+.fin-report-row--grand-total td {
+  border-top: 1px solid #888;
+  border-bottom: 3px double #444;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
+.fin-report-row--note td {
+  font-size: 0.78rem;
+  color: #92400e;
+  font-style: italic;
+  padding-top: 0.75rem;
+}
+
+.fin-report-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ccc;
+  font-size: 0.72rem;
+  color: #666;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+    size: A4;
+  }
+
+  html,
+  body.accounting-report-print-body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .fin-report {
+    max-width: none;
+  }
+}

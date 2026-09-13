@@ -6,8 +6,7 @@ import { normalizePosDiscount, type PosDiscountInput } from "@/lib/pos-discount"
 import { createPosSale, type PosCartLine } from "@/lib/pos";
 import { isBottleSize } from "@/lib/bottle-sizes";
 
-const PAYMENT_METHODS: PosPaymentMethod[] = ["CASH", "MOMO", "CARD", "OTHER"];
-
+const PAYMENT_METHODS: PosPaymentMethod[] = ["CASH", "MOMO", "CARD", "OTHER", "CREDIT"];
 export async function POST(req: Request) {
   try {
   const { ctx, error } = await requireAdminApi("pos.write", { req });
@@ -50,6 +49,13 @@ export async function POST(req: Request) {
     }
   }
 
+  let credit: Parameters<typeof createPosSale>[1]["credit"];
+  if (paymentMethod === "CREDIT") {
+    credit = {
+      customerIdNumber: String(body.credit?.customerIdNumber || "").trim(),
+    };
+  }
+
   const result = await createPosSale(ctx, {
     branchId,
     items,
@@ -61,6 +67,7 @@ export async function POST(req: Request) {
     amountTendered: body.amountTendered,
     paymentReference: body.paymentReference,
     discount,
+    credit,
   });
 
   if (!result.ok) {
@@ -84,11 +91,16 @@ export async function POST(req: Request) {
     },
   });
 
+  const isCredit = paymentMethod === "CREDIT";
+
   return NextResponse.json({
     orderId: result.orderId,
     receiptNumber: result.receiptNumber,
     total: result.total,
-    receiptUrl: `/admin/pos/receipt/${result.orderId}`,
+    receiptUrl: isCredit ? undefined : `/admin/pos/receipt/${result.orderId}`,
+    legalContractUrl: isCredit
+      ? `/admin/legal/credit-contracts/${result.orderId}`
+      : undefined,
   });
   } catch (err) {
     console.error("[pos/sale]", err);

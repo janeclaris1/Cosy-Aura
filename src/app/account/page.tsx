@@ -2,14 +2,14 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { creditBalanceRemaining } from "@/lib/credit-agreement";
+import { formatCreditDate } from "@/lib/credit-contract";
 import { formatPrice } from "@/lib/utils";
+import { AccountOrderHistoryButton } from "@/components/account/AccountOrderHistoryButton";
+import { countAccountOrders } from "@/lib/account-orders";
 import { SignOutButton } from "@/components/account/SignOutButton";
-import { LOCALE_COOKIE, parseLocaleCookie } from "@/lib/locale-cookie";
 
 export default async function AccountPage() {
-  const loc = parseLocaleCookie((await cookies()).get(LOCALE_COOKIE)?.value);
-  const currency = loc?.currency || "GHS";
   const session = await getServerSession(authOptions);
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
 
@@ -20,27 +20,34 @@ export default async function AccountPage() {
       })
     : null;
 
-  const orders =
-    session?.user?.email
-      ? await prisma.order.findMany({
+  const creditAgreements =
+    session?.user?.id
+      ? await prisma.creditAgreement.findMany({
           where: {
             OR: [
               { userId: session.user.id },
-              { email: session.user.email },
+              ...(session.user.email
+                ? [{ order: { email: session.user.email } }]
+                : []),
             ],
-            status: { not: "PENDING" },
           },
           include: {
-            items: {
-              include: {
-                fragrance: { include: { brand: true } },
+            order: {
+              select: {
+                receiptNumber: true,
+                createdAt: true,
+                shippingName: true,
               },
             },
           },
-          orderBy: { createdAt: "desc" },
-          take: 20,
+          orderBy: { dueDate: "asc" },
         })
       : [];
+
+  const orderCount =
+    session?.user?.id && session.user.email
+      ? await countAccountOrders(session.user.id, session.user.email)
+      : 0;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -107,53 +114,71 @@ export default async function AccountPage() {
             </section>
           </div>
 
-          <section className="border border-wf-border p-6 bg-white">
-            <h2 className="font-semibold mb-4">Order history</h2>
-            {orders.length === 0 ? (
-              <p className="text-sm text-wf-gray">
-                No orders yet.{" "}
-                <Link href="/fragrances" className="text-gold hover:underline">
-                  Browse fragrances
-                </Link>
+          {creditAgreements.length > 0 && (
+            <section className="border border-wf-border p-6 bg-white">
+              <h2 className="font-semibold mb-2">Credit agreements</h2>
+              <p className="text-sm text-wf-gray mb-4">
+                In-store credit: 70% down payment, balance due within 30 days. Goods are
+                released when paid in full.
               </p>
-            ) : (
               <ul className="divide-y divide-wf-border">
-                {orders.map((order) => (
-                  <li
-                    key={order.id}
-                    className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        #{order.id.slice(0, 8).toUpperCase()}
+                {creditAgreements.map((agreement) => {
+                  const remaining = creditBalanceRemaining(agreement);
+                  return (
+                    <li key={agreement.id} className="py-4 space-y-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">
+                            {agreement.order.receiptNumber ||
+                              agreement.orderId.slice(0, 8).toUpperCase()}
+                          </p>
+                          <p className="text-sm text-wf-gray">
+                            {new Date(agreement.order.createdAt).toLocaleDateString()}
+                            {agreement.order.shippingName
+                              ? ` · ${agreement.order.shippingName}`
+                              : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={
+                            agreement.status === "ACTIVE"
+                              ? "text-amber-700 text-sm font-medium"
+                              : agreement.status === "PAID"
+                                ? "text-emerald-700 text-sm font-medium"
+                                : "text-red-700 text-sm font-medium"
+                          }
+                        >
+                          {agreement.status}
+                        </span>
+                      </div>
+                      <p className="text-sm">
+                        Total {formatPrice(agreement.totalGhs, "GHS")} · Down{" "}
+                        {formatPrice(agreement.downPaymentGhs, "GHS")} · Balance{" "}
+                        {formatPrice(remaining, "GHS")}
                       </p>
-                      <p className="text-sm text-wf-gray">
-                        {new Date(order.createdAt).toLocaleDateString()} ·{" "}
-                        {order.items
-                          .map(
-                            (item) =>
-                              `${item.fragrance.brand.name} ${item.fragrance.model}`
-                          )
-                          .join(", ")}
-                      </p>
-                    </div>
-                    <div className="text-sm sm:text-right space-y-1">
-                      <p>{formatPrice(order.total, currency)}</p>
-                      <p className="text-wf-gray">{order.status}</p>
-                      <Link
-                        href={`/track?ref=${order.id.slice(0, 8).toUpperCase()}&email=${encodeURIComponent(
-                          session.user.email
-                        )}`}
-                        className="text-gold hover:underline"
-                      >
-                        Track order
-                      </Link>
-                    </div>
-                  </li>
-                ))}
+                      {agreement.status === "ACTIVE" && remaining > 0 && (
+                        <p className="text-sm text-wf-gray">
+                          Due by {formatCreditDate(new Date(agreement.dueDate))}. Pay
+                          in store or contact support@cosyaura.com.
+                        </p>
+                      )}
+                      {agreement.status === "DEFAULTED" &&
+                        agreement.penaltyGhs != null &&
+                        agreement.refundGhs != null && (
+                          <p className="text-sm text-wf-gray">
+                            Agreement defaulted. Penalty{" "}
+                            {formatPrice(agreement.penaltyGhs, "GHS")} · Refund issued{" "}
+                            {formatPrice(agreement.refundGhs, "GHS")}.
+                          </p>
+                        )}
+                    </li>
+                  );
+                })}
               </ul>
-            )}
-          </section>
+            </section>
+          )}
+
+          <AccountOrderHistoryButton orderCount={orderCount} />
         </div>
       ) : (
         <div className="border border-wf-border p-6 bg-white max-w-lg">

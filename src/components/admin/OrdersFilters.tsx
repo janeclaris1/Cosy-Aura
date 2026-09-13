@@ -1,32 +1,7 @@
-import Link from "next/link";
-import { AdminButton, AdminCard, adminInputClass } from "@/components/admin/admin-ui";
+import { AdminButton, AdminCard, AdminTabLinks, adminInputClass, adminLabelClass } from "@/components/admin/admin-ui";
 import { cn } from "@/lib/utils";
 
 type Pill = { id: string; label: string; href: string };
-
-function FilterGroup({ label, items, activeId }: { label: string; items: Pill[]; activeId: string }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-mocha font-medium">{label}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {items.map((item) => (
-          <Link
-            key={item.id}
-            href={item.href}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-              activeId === item.id
-                ? "bg-[#03045e] text-white shadow-sm"
-                : "bg-[#fafafa] text-mocha ring-1 ring-stone-200/80 hover:bg-white hover:ring-[#03045e]/20"
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function OrdersFilters({
   q,
@@ -62,9 +37,25 @@ export function OrdersFilters({
           Search
         </AdminButton>
       </form>
-      <div className="grid sm:grid-cols-2 gap-5 pt-1 border-t border-stone-100">
-        <FilterGroup label="Channel" items={channelPills} activeId={activeChannel} />
-        <FilterGroup label="Status" items={statusPills} activeId={activeStatus} />
+      <div className="space-y-4 pt-1 border-t border-stone-100">
+        <div className="min-w-0">
+          <p className={adminLabelClass}>Channel</p>
+          <AdminTabLinks
+            items={channelPills}
+            activeId={activeChannel}
+            size="sm"
+            nowrap
+          />
+        </div>
+        <div className="min-w-0">
+          <p className={adminLabelClass}>Status</p>
+          <AdminTabLinks
+            items={statusPills}
+            activeId={activeStatus}
+            size="sm"
+            nowrap
+          />
+        </div>
       </div>
     </AdminCard>
   );

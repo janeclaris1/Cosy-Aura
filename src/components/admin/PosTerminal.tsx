@@ -21,6 +21,7 @@ import { extractGhanaPosTaxBreakdown } from "@/lib/pos-taxes";
 import { cn, formatPrice } from "@/lib/utils";
 import { readAdminBranchCookie, writeAdminBranchCookie } from "@/lib/admin-context";
 import type { PosDiscountType } from "@prisma/client";
+import { computeCreditSplit } from "@/lib/credit-contract";
 
 type Branch = { id: string; name: string; country: string; isDefault?: boolean };
 
@@ -47,6 +48,7 @@ const PAYMENTS = [
   { id: "MOMO", label: "Mobile money" },
   { id: "CARD", label: "Card" },
   { id: "OTHER", label: "Other" },
+  { id: "CREDIT", label: "Credit (70% down)" },
 ] as const;
 
 const DISCOUNT_TYPES = [
@@ -118,6 +120,7 @@ export function PosTerminal() {
   const [searching, setSearching] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<(typeof PAYMENTS)[number]["id"]>("CASH");
+  const [customerIdNumber, setCustomerIdNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -129,6 +132,11 @@ export function PosTerminal() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creditCheck, setCreditCheck] = useState<{
+    loading: boolean;
+    eligible: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -270,6 +278,76 @@ export function PosTerminal() {
     return () => clearTimeout(id);
   }, [runSearch]);
 
+  const selectedBranch = branches.find((b) => b.id === branchId);
+  const creditAvailable = selectedBranch?.country?.toUpperCase() === "GH";
+
+  useEffect(() => {
+    if (!creditAvailable && paymentMethod === "CREDIT") {
+      setPaymentMethod("CASH");
+    }
+  }, [creditAvailable, paymentMethod]);
+
+  useEffect(() => {
+    const isCredit = paymentMethod === "CREDIT";
+    if (!isCredit || !branchId || !creditAvailable) {
+      setCreditCheck(null);
+      return;
+    }
+    if (!customerPhone.trim() && !customerEmail.trim()) {
+      setCreditCheck({
+        loading: false,
+        eligible: false,
+        message: "Enter customer phone or email to verify credit approval",
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setCreditCheck((prev) => ({
+          loading: true,
+          eligible: prev?.eligible ?? false,
+          message: "Checking credit approval…",
+        }));
+        try {
+          const params = new URLSearchParams({ branchId });
+          if (customerPhone.trim()) params.set("phone", customerPhone.trim());
+          if (customerEmail.trim()) params.set("email", customerEmail.trim());
+          const res = await fetch(
+            `/api/admin/pos/credit-eligibility?${params.toString()}`
+          );
+          const data = await res.json();
+          if (cancelled) return;
+          setCreditCheck({
+            loading: false,
+            eligible: Boolean(data.eligible),
+            message: String(data.message || "Could not verify credit eligibility"),
+          });
+        } catch {
+          if (!cancelled) {
+            setCreditCheck({
+              loading: false,
+              eligible: false,
+              message: "Could not verify credit eligibility",
+            });
+          }
+        }
+      })();
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    paymentMethod,
+    branchId,
+    creditAvailable,
+    customerPhone,
+    customerEmail,
+  ]);
+
   const updateQty = (key: string, delta: number) => {
     setCart((prev) =>
       prev
@@ -302,9 +380,15 @@ export function PosTerminal() {
   });
   const total = roundGhs(Math.max(0, subtotal - discountAmount));
   const taxes = extractGhanaPosTaxBreakdown(total);
-  const tendered =
-    paymentMethod === "CASH" ? parseGhsInput(amountTendered) : 0;
-  const cashBalance = roundGhs(tendered - total);
+  const creditSplit = computeCreditSplit(total);
+  const branch = selectedBranch;
+  const paymentOptions = PAYMENTS.filter(
+    (p) => p.id !== "CREDIT" || creditAvailable
+  );
+  const isCredit = paymentMethod === "CREDIT";
+  const tendered = paymentMethod === "CASH" ? parseGhsInput(amountTendered) : 0;
+  const cashDue = total;
+  const cashBalance = roundGhs(tendered - cashDue);
 
   const completeSale = async () => {
     if (!branchId || !cart.length) return;
@@ -322,11 +406,15 @@ export function PosTerminal() {
           customerPhone: customerPhone || undefined,
           customerEmail: customerEmail || undefined,
           notes: notes || undefined,
-          amountTendered: paymentMethod === "CASH" ? tendered || undefined : undefined,
+          amountTendered:
+            paymentMethod === "CASH" ? tendered || undefined : undefined,
           paymentReference:
             paymentMethod === "MOMO" || paymentMethod === "CARD"
               ? paymentReference.trim() || undefined
               : undefined,
+          credit: isCredit
+            ? { customerIdNumber: customerIdNumber.trim() }
+            : undefined,
           items: cart.map((l) => ({
             fragranceId: l.fragranceId,
             bottleSize: l.bottleSize,
@@ -343,6 +431,7 @@ export function PosTerminal() {
         error?: string;
         receiptNumber?: string;
         receiptUrl?: string;
+        legalContractUrl?: string;
       }>(res);
       if (parseError || !data) {
         setError(parseError || "Sale failed");
@@ -352,7 +441,11 @@ export function PosTerminal() {
         setError(data.error || "Sale failed");
         return;
       }
-      setMessage(`Sale complete · ${data.receiptNumber}`);
+      setMessage(
+        isCredit
+          ? `Credit sale ${data.receiptNumber} sent to Legal. Generate the contract there before printing a receipt.`
+          : `Sale complete · ${data.receiptNumber}`
+      );
       setCart([]);
       setAmountTendered("");
       setPaymentReference("");
@@ -361,14 +454,14 @@ export function PosTerminal() {
       setCustomerPhone("");
       setCustomerEmail("");
       setNotes("");
-      if (data.receiptUrl) router.push(data.receiptUrl);
+      setCustomerIdNumber("");
+      if (data.legalContractUrl) router.push(data.legalContractUrl);
+      else if (data.receiptUrl) router.push(data.receiptUrl);
     } finally {
       setBusy(false);
       focusScan();
     }
   };
-
-  const branch = branches.find((b) => b.id === branchId);
 
   return (
     <div className="admin-app min-h-screen bg-[#f7f6f3] text-espresso flex flex-col">
@@ -477,7 +570,10 @@ export function PosTerminal() {
               <p className="text-xs text-mocha">Searching…</p>
             )}
             {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-              <p className="text-xs text-mocha">No products found</p>
+              <p className="text-xs text-mocha">
+                No products found. Check spelling (e.g.{" "}
+                <span className="font-medium">Creed Aventus</span>) or scan the barcode.
+              </p>
             )}
             {searchResults.length > 0 && (
               <ul className="divide-y divide-stone-100 max-h-64 overflow-y-auto">
@@ -655,7 +751,7 @@ export function PosTerminal() {
           <div>
             <p className={cn(adminLabelClass, "mb-2")}>Payment</p>
             <div className="grid grid-cols-2 gap-2">
-              {PAYMENTS.map((p) => (
+              {paymentOptions.map((p) => (
                 <button
                   key={p.id}
                   type="button"
@@ -673,6 +769,42 @@ export function PosTerminal() {
             </div>
           </div>
 
+          {isCredit && total > 0 && (
+            <div className="rounded-xl border border-[#03045e]/15 bg-[#03045e]/[0.03] p-3 space-y-2 text-sm">
+              <p className="font-medium text-[#03045e]">Credit breakdown</p>
+              <div className="flex justify-between">
+                <span className="text-mocha">Down payment (70%)</span>
+                <span className="font-medium tabular-nums">
+                  {formatPosGhs(creditSplit.downPaymentGhs)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-mocha">Balance due (30%)</span>
+                <span className="font-medium tabular-nums">
+                  {formatPosGhs(creditSplit.balanceDueGhs)}
+                </span>
+              </div>
+              <p className="text-xs text-mocha pt-1">
+                Ghana only · Admin-approved customers · Contract and down payment in
+                Legal before receipt prints.
+              </p>
+              {creditCheck && (
+                <p
+                  className={cn(
+                    "text-xs pt-1 font-medium",
+                    creditCheck.loading
+                      ? "text-mocha"
+                      : creditCheck.eligible
+                        ? "text-emerald-800"
+                        : "text-red-700"
+                  )}
+                >
+                  {creditCheck.message}
+                </p>
+              )}
+            </div>
+          )}
+
           {paymentMethod === "CASH" && (
             <div className="space-y-2">
               <label className={adminLabelClass}>Amount tendered (GHS)</label>
@@ -684,7 +816,7 @@ export function PosTerminal() {
                 onChange={(e) => setAmountTendered(e.target.value)}
                 className={adminInputClass}
               />
-              {tendered > 0 && total > 0 && (
+              {tendered > 0 && cashDue > 0 && (
                 <p className="text-sm">
                   {cashBalance >= 0 ? (
                     <>
@@ -707,19 +839,27 @@ export function PosTerminal() {
           {(paymentMethod === "MOMO" || paymentMethod === "CARD") && (
             <div className="space-y-2">
               <label className={adminLabelClass}>
-                {paymentMethod === "MOMO" ? "MoMo transaction ID" : "Card / auth reference"}
+                {paymentMethod === "MOMO"
+                  ? "MoMo transaction ID"
+                  : "Card / auth reference"}
               </label>
               <input
                 value={paymentReference}
                 onChange={(e) => setPaymentReference(e.target.value)}
-                placeholder={paymentMethod === "MOMO" ? "e.g. MTN ref 1234567890" : "Auth code or last 4"}
+                placeholder={
+                  paymentMethod === "MOMO"
+                    ? "e.g. MTN ref 1234567890"
+                    : "Auth code or last 4"
+                }
                 className={cn(adminInputClass, "font-mono")}
               />
             </div>
           )}
 
           <div className="space-y-2 border-t border-stone-100 pt-4">
-            <p className={cn(adminLabelClass, "mb-2")}>Customer (optional)</p>
+            <p className={cn(adminLabelClass, "mb-2")}>
+              Customer {isCredit ? "(required for credit)" : "(optional)"}
+            </p>
             <input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
@@ -737,8 +877,16 @@ export function PosTerminal() {
               onChange={(e) => setCustomerEmail(e.target.value)}
               placeholder="Email"
               type="email"
-              className={adminInputClass}
+              className={cn(adminInputClass, "mb-2")}
             />
+            {isCredit && (
+              <input
+                value={customerIdNumber}
+                onChange={(e) => setCustomerIdNumber(e.target.value)}
+                placeholder="ID number (Ghana card / passport)"
+                className={adminInputClass}
+              />
+            )}
           </div>
 
           <textarea
@@ -759,11 +907,29 @@ export function PosTerminal() {
           <button
             type="button"
             onClick={() => void completeSale()}
-            disabled={busy || !cart.length || !branchId}
+            disabled={
+              busy ||
+              !cart.length ||
+              !branchId ||
+              (isCredit &&
+                (!customerName.trim() ||
+                  !customerPhone.trim() ||
+                  !customerIdNumber.trim() ||
+                  !creditCheck?.eligible ||
+                  creditCheck.loading)) ||
+              (paymentMethod === "CASH" &&
+                !isCredit &&
+                total > 0 &&
+                tendered + 0.009 < total)
+            }
             className="mt-auto w-full bg-[#03045e] text-white font-medium py-3.5 hover:bg-[#020338] disabled:opacity-40 flex items-center justify-center gap-2 transition-colors"
           >
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
-            Complete sale & print
+            {busy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isCredit ? null : (
+              <Printer className="w-4 h-4" />
+            )}
+            {isCredit ? "Submit to Legal" : "Complete sale & print"}
           </button>
         </aside>
       </div>

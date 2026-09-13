@@ -1,6 +1,8 @@
 import { requireAdminPage } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
+import { hasPermission } from "@/lib/rbac";
+import { CustomerCreditToggle } from "@/components/admin/CustomerCreditToggle";
 import {
   AdminEmptyState,
   AdminLink,
@@ -16,7 +18,8 @@ import {
 } from "@/components/admin/admin-ui";
 
 export default async function AdminCustomersPage() {
-  await requireAdminPage();
+  const ctx = await requireAdminPage("customers.read");
+  const canEditCredit = hasPermission(ctx.permissions, "customers.write");
 
   const [users, guestOrders] = await Promise.all([
     prisma.user.findMany({
@@ -47,7 +50,7 @@ export default async function AdminCustomersPage() {
       <AdminPageHeader
         eyebrow="Sales"
         title="Customers"
-        description="Registered accounts and recent guest checkout emails."
+        description="Registered accounts and recent guest checkout emails. Approve in-store credit for Ghana POS — customers must be approved before buying on credit."
       />
 
       <section>
@@ -61,6 +64,7 @@ export default async function AdminCustomersPage() {
                 <th className={adminThClass}>Phone</th>
                 <th className={adminThClass}>Orders</th>
                 <th className={adminThClass}>Wishlist</th>
+                <th className={adminThClass}>In-store credit</th>
                 <th className={adminThClass}>Joined</th>
               </tr>
             </thead>
@@ -72,6 +76,13 @@ export default async function AdminCustomersPage() {
                   <td className={adminTdClass}>{user.phone || "—"}</td>
                   <td className={adminTdClass}>{user._count.orders}</td>
                   <td className={adminTdClass}>{user._count.wishlist}</td>
+                  <td className={adminTdClass}>
+                    <CustomerCreditToggle
+                      userId={user.id}
+                      approved={user.creditApproved}
+                      canEdit={canEditCredit}
+                    />
+                  </td>
                   <td className={`${adminTdClass} text-mocha`}>
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
@@ -79,7 +90,7 @@ export default async function AdminCustomersPage() {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <AdminEmptyState message="No customer accounts yet" />
                   </td>
                 </tr>

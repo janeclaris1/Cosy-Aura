@@ -123,6 +123,9 @@ export async function postOrderSalesJournal(
   if (!isRevenueOrder(order.status)) {
     throw new Error("Order is not in a paid/revenue status");
   }
+  if (order.posPaymentMethod === "CREDIT") {
+    return null;
+  }
 
   if (!(await isGhanaOrder(client, order))) {
     return null;

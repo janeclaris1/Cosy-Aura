@@ -2,7 +2,7 @@ export default function FragrancesLoading() {
   return (
     <div className="max-w-[1500px] mx-auto px-4 py-6" aria-busy="true" aria-label="Loading fragrances">
       <div className="skeleton h-10 w-48 rounded mb-6" />
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} className="space-y-3">
             <div className="skeleton aspect-[3/4] rounded" />

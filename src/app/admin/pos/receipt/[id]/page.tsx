@@ -11,6 +11,7 @@ import { PosTaxSummary } from "@/components/admin/PosTaxSummary";
 import { formatPosDiscountLabel } from "@/lib/pos-discount";
 import { extractGhanaPosTaxBreakdown } from "@/lib/pos-taxes";
 import { siteUrl } from "@/lib/seo";
+import { creditBalanceRemaining, creditReceiptReady } from "@/lib/credit-agreement";
 
 function paymentLabel(method: string | null) {
   switch (method) {
@@ -22,6 +23,8 @@ function paymentLabel(method: string | null) {
       return "Card";
     case "OTHER":
       return "Other";
+    case "CREDIT":
+      return "Credit (70% down / 30% balance)";
     default:
       return "—";
   }
@@ -44,6 +47,7 @@ export default async function PosReceiptPage({
       },
       fulfillmentBranch: true,
       posUser: { select: { name: true, email: true } },
+      creditAgreement: true,
     },
   });
 
@@ -70,10 +74,13 @@ export default async function PosReceiptPage({
   const discountAmount = Number(order.posDiscountAmount || 0);
   const inclusiveTotal = Math.max(0, itemsSubtotal - discountAmount);
   const taxes = extractGhanaPosTaxBreakdown(inclusiveTotal);
+  const credit = order.creditAgreement;
+  const creditRemaining = credit ? creditBalanceRemaining(credit) : 0;
+  const receiptLocked = credit && !creditReceiptReady(credit);
 
   return (
     <div className="pos-receipt-print-root max-w-sm mx-auto p-4 print:p-0 print:max-w-none">
-      {!voided && <PosReceiptAutoPrint />}
+      {!voided && !receiptLocked && <PosReceiptAutoPrint />}
       <div className="print:hidden flex flex-wrap items-center justify-between gap-3 mb-4">
         <AdminButton
           href="/admin/pos"
@@ -83,11 +90,22 @@ export default async function PosReceiptPage({
           <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
           Back to POS
         </AdminButton>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <AdminLink href={`/admin/orders/${order.id}`}>Order detail</AdminLink>
-          <PosReceiptPrintButton />
+          {!receiptLocked && <PosReceiptPrintButton />}
         </div>
       </div>
+
+      {receiptLocked && (
+        <div className="print:hidden mb-4 bg-amber-50 border border-amber-200 text-amber-950 text-sm px-4 py-3 rounded-xl">
+          Receipt not available yet. Complete the contract in{" "}
+          <AdminLink href={`/admin/legal/credit-contracts/${order.id}`}>
+            Legal → Credit contracts
+          </AdminLink>
+          : generate the contract, collect signature and 70% down payment, then return here
+          to print.
+        </div>
+      )}
 
       {voided && (
         <div className="print:hidden mb-4 bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3">
@@ -95,7 +113,11 @@ export default async function PosReceiptPage({
         </div>
       )}
 
-      <article className="pos-receipt-print bg-white border border-wf-border p-6 print:border-0 print:p-2 print:text-[11px]">
+      <article
+        className={`pos-receipt-print bg-white border border-wf-border p-6 print:border-0 print:p-2 print:text-[11px] ${
+          receiptLocked ? "print:hidden opacity-60" : ""
+        }`}
+      >
         <header className="text-center border-b border-dashed border-wf-border pb-4 mb-4">
           <p className="text-xs tracking-[0.25em] uppercase">Cosy Aura</p>
           <h1 className="font-playfair text-xl mt-1">Sales receipt</h1>
@@ -196,6 +218,19 @@ export default async function PosReceiptPage({
             className="pt-2 border-t border-dashed border-wf-border/60"
           />
         </div>
+
+        {credit && (
+          <div className="mt-4 border-t border-dashed border-wf-border pt-3 text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-mocha">Down payment (70%)</span>
+              <span className="font-medium">{formatPrice(credit.downPaymentGhs, "GHS")}</span>
+            </div>
+            <div className="flex justify-between font-medium">
+              <span>Balance due (30%)</span>
+              <span>{formatPrice(creditRemaining, "GHS")}</span>
+            </div>
+          </div>
+        )}
 
         {order.posNotes && (
           <p className="text-xs text-mocha mt-4 border-t border-dashed border-wf-border pt-3">

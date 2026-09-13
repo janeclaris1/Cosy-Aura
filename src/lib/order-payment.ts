@@ -20,6 +20,8 @@ export function paymentGatewayLabel(order: OrderPaymentFields): string {
         return "POS · Card";
       case "OTHER":
         return "POS · Other";
+      case "CREDIT":
+        return "POS · Credit (70/30)";
       default:
         return "POS";
     }

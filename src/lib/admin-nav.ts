@@ -22,6 +22,7 @@ import {
   Wallet,
   Warehouse,
   Calculator,
+  FileSignature,
 } from "lucide-react";
 import type { Permission } from "@/lib/rbac";
 
@@ -90,6 +91,17 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       { href: "/admin/branches", label: "Branches", icon: Building2, permission: "branches.read" },
       { href: "/admin/stock", label: "Stock", icon: Warehouse, permission: "stock.read" },
       { href: "/admin/transfers", label: "Transfers", icon: ArrowLeftRight, permission: "stock.read" },
+    ],
+  },
+  {
+    label: "Legal",
+    items: [
+      {
+        href: "/admin/legal/credit-contracts",
+        label: "Credit contracts",
+        icon: FileSignature,
+        permission: "legal.read",
+      },
     ],
   },
   {

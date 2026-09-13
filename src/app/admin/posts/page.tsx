@@ -6,6 +6,7 @@ import {
   AdminButton,
   AdminEmptyState,
   AdminLink,
+  AdminTableActions,
   AdminPageHeader,
   AdminTableWrap,
   adminPageWrap,
@@ -67,18 +68,20 @@ export default async function AdminPostsPage() {
                 <td className={`${adminTdClass} text-mocha`}>
                   {formatBlogDate(post.updatedAt) || "—"}
                 </td>
-                <td className={`${adminTdClass} space-x-3`}>
-                  {post.published && (
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      className="text-mocha hover:underline text-sm"
-                      target="_blank"
-                    >
-                      View
-                    </Link>
-                  )}
-                  <AdminLink href={`/admin/posts/${post.id}/edit`}>Edit</AdminLink>
-                  <DeletePostButton id={post.id} />
+                <td className={adminTdClass}>
+                  <AdminTableActions>
+                    {post.published && (
+                      <Link
+                        href={`/blog/${post.slug}`}
+                        className="text-mocha hover:underline text-sm font-medium"
+                        target="_blank"
+                      >
+                        View
+                      </Link>
+                    )}
+                    <AdminLink href={`/admin/posts/${post.id}/edit`}>Edit</AdminLink>
+                    <DeletePostButton id={post.id} />
+                  </AdminTableActions>
                 </td>
               </tr>
             ))}

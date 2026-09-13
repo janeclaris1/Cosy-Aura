@@ -3,6 +3,7 @@ import { prisma } from "./prisma";
 
 export const VERIFIED_BUYER_ORDER_STATUSES: OrderStatus[] = [
   "PAID",
+  "PARTIALLY_PAID",
   "PROCESSING",
   "SHIPPED",
   "DELIVERED",

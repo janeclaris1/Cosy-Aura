@@ -77,6 +77,8 @@ enum Gender {
 enum OrderStatus {
   PENDING
   PAID
+  /** Credit sale: down payment received, balance outstanding. */
+  PARTIALLY_PAID
   PROCESSING
   SHIPPED
   DELIVERED
@@ -94,6 +96,14 @@ enum PosPaymentMethod {
   MOMO
   CARD
   OTHER
+  CREDIT
+}
+
+enum CreditAgreementStatus {
+  ACTIVE
+  PAID
+  DEFAULTED
+  CANCELLED
 }
 
 enum PosDiscountType {
@@ -133,6 +143,10 @@ model User {
   activeStaff    Boolean    @default(true)
   /** Permanent 5% member discount for email/account signups */
   memberDiscount Boolean    @default(true)
+  /** Admin-approved in-store credit (Ghana POS only). */
+  creditApproved            Boolean    @default(false)
+  creditApprovedAt          DateTime?
+  creditApprovedByUserId    String?
   emailVerified  DateTime?
   image          String?
   createdAt      DateTime   @default(now())
@@ -157,11 +171,21 @@ model User {
   payRunsCreated         PayRun[]                 @relation("PayRunCreatedBy")
   payRunsApproved        PayRun[]                 @relation("PayRunApprovedBy")
   journalsCreated        JournalEntry[]           @relation("JournalCreatedBy")
+  debtsCreated           CompanyDebt[]            @relation("DebtCreatedBy")
+  debtPaymentsCreated    DebtPayment[]            @relation("DebtPaymentCreatedBy")
+  creditAgreements            CreditAgreement[]
+  creditPaymentsRecorded      CreditPayment[]          @relation("CreditPaymentRecordedBy")
+  creditContractsApproved     CreditAgreement[]        @relation("CreditContractApprovedBy")
+  creditDownPaymentsRecorded  CreditAgreement[]        @relation("CreditDownPaymentRecordedBy")
+  creditApprovalsGranted      User[]                   @relation("CreditApprovedBy")
+
+  creditApprovedBy User? @relation("CreditApprovedBy", fields: [creditApprovedByUserId], references: [id], onDelete: SetNull)
 
   @@index([email])
   @@index([phone])
   @@index([staffRole])
   @@index([staffCountry])
+  @@index([creditApproved])
 }
 
 model Account {
@@ -619,6 +643,7 @@ model Order {
   fulfillmentBranch Branch?     @relation(fields: [fulfillmentBranchId], references: [id], onDelete: SetNull)
   items             OrderItem[]
   reviews           FragranceReview[]
+  creditAgreement   CreditAgreement?
 
   @@index([userId])
   @@index([status])
@@ -633,6 +658,61 @@ model Order {
   @@index([channel])
   @@index([posUserId])
   @@index([receiptNumber])
+}
+
+/** In-store credit sale: 70% down, 30% due within 30 days. */
+model CreditAgreement {
+  id                       String                @id @default(cuid())
+  orderId                  String                @unique
+  userId                   String?
+  /** Ghana card / passport / other ID captured at POS for the contract. */
+  customerIdNumber         String
+  totalGhs                 Float
+  downPaymentGhs           Float
+  balanceDueGhs            Float
+  balancePaidGhs           Float                 @default(0)
+  /** Collected in Legal after the customer signs the contract. */
+  downPaymentMethod            PosPaymentMethod?
+  downPaymentReference         String?
+  downPaymentReceivedAt        DateTime?
+  downPaymentRecordedByUserId  String?
+  /** Set when Legal generates the contract for A4 print & customer signature. */
+  contractApprovedAt           DateTime?
+  contractApprovedByUserId       String?
+  dueDate                  DateTime              @db.Date
+  status                   CreditAgreementStatus @default(ACTIVE)
+  defaultedAt              DateTime?
+  penaltyGhs               Float?
+  refundGhs                Float?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user               User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contractApprovedBy   User?           @relation("CreditContractApprovedBy", fields: [contractApprovedByUserId], references: [id], onDelete: SetNull)
+  downPaymentRecordedBy User?          @relation("CreditDownPaymentRecordedBy", fields: [downPaymentRecordedByUserId], references: [id], onDelete: SetNull)
+  payments             CreditPayment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([contractApprovedAt])
+}
+
+model CreditPayment {
+  id                String           @id @default(cuid())
+  creditAgreementId String
+  amountGhs         Float
+  paymentMethod     PosPaymentMethod
+  paymentReference  String?
+  recordedByUserId  String?
+  paidAt            DateTime         @default(now())
+
+  creditAgreement CreditAgreement @relation(fields: [creditAgreementId], references: [id], onDelete: Cascade)
+  recordedBy      User?           @relation("CreditPaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([creditAgreementId])
+  @@index([paidAt])
 }
 
 model OrderItem {
@@ -981,6 +1061,21 @@ enum JournalSource {
   EXPENSE
   ORDER
   ORDER_COGS
+  DEBT
+  CREDIT_PAYMENT
+  CREDIT_DEFAULT
+}
+
+enum DebtStatus {
+  ACTIVE
+  PAID_OFF
+  DEFAULTED
+}
+
+enum DebtType {
+  BANK_LOAN
+  SUPPLIER
+  OTHER
 }
 
 /** Chart of accounts line (Ghana ledger). */
@@ -1022,8 +1117,9 @@ model JournalEntry {
   updatedAt   DateTime           @updatedAt
 
   branch    Branch?       @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  createdBy User          @relation("JournalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  lines     JournalLine[]
+  createdBy    User          @relation("JournalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  lines        JournalLine[]
+  debtPayments DebtPayment[]
 
   @@unique([source, sourceId])
   @@index([country])
@@ -1046,6 +1142,53 @@ model JournalLine {
 
   @@index([journalEntryId])
   @@index([accountId])
+}
+
+/** Borrowings tracked for debt analysis and repayment scheduling. */
+model CompanyDebt {
+  id              String     @id @default(cuid())
+  country         String     @default("GH")
+  lender          String
+  description     String?    @db.Text
+  debtType        DebtType   @default(BANK_LOAN)
+  glAccountCode   String     @default("2200")
+  principalGhs    Float
+  balanceGhs      Float
+  interestRatePct Float?
+  startDate       DateTime   @db.Date
+  maturityDate    DateTime?  @db.Date
+  status          DebtStatus @default(ACTIVE)
+  notes           String?    @db.Text
+  createdById     String
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  createdBy User          @relation("DebtCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  payments  DebtPayment[]
+
+  @@index([country])
+  @@index([status])
+  @@index([maturityDate])
+}
+
+model DebtPayment {
+  id             String   @id @default(cuid())
+  debtId         String
+  paymentDate    DateTime @db.Date
+  principalGhs   Float    @default(0)
+  interestGhs    Float    @default(0)
+  paidFrom       String
+  journalEntryId String?
+  memo           String?
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  debt         CompanyDebt   @relation(fields: [debtId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  createdBy    User          @relation("DebtPaymentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([debtId])
+  @@index([paymentDate])
 }
 
 /** Singleton storefront settings (row id = "default"). */

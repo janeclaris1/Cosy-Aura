@@ -25,7 +25,7 @@ export function DeleteFragranceButton({ id }: { id: string }) {
       type="button"
       onClick={onDelete}
       disabled={loading}
-      className="text-red-600 hover:underline disabled:opacity-50"
+      className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
     >
       {loading ? "..." : "Delete"}
     </button>

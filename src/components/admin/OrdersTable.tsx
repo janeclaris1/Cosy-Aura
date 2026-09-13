@@ -26,10 +26,13 @@ export type OrdersTableRow = {
   createdAt: Date;
   fulfillmentBranch: { name: string; country: string } | null;
   posUser: { name: string | null; email: string; image: string | null } | null;
+  shippingCost?: number | null;
+  posDiscountAmount?: number | null;
   items: Array<{
     id: string;
     bottleSize: number;
     quantity: number;
+    price: number;
     fragrance: { model: string; brand: { name: string } };
   }>;
 };
@@ -67,11 +70,11 @@ function OrderTotalCell({ order }: { order: OrdersTableRow }) {
   return (
     <div className="min-w-0 max-w-[9rem]">
       <p className="font-semibold tabular-nums text-[#03045e] text-xs leading-tight">
-        {formatOrderPaidAmount(order)}
+        {formatOrderBookTotal(order)}
       </p>
       {hasForeignCharge ? (
         <p className="text-[10px] text-mocha tabular-nums mt-0.5 leading-snug">
-          {formatOrderBookTotal(order)} book
+          {formatOrderPaidAmount(order)} paid
         </p>
       ) : null}
     </div>

@@ -15,6 +15,7 @@ export function orderStatusLabel(status: string) {
   const labels: Record<string, string> = {
     PENDING: "Pending payment",
     PAID: "Paid",
+    PARTIALLY_PAID: "Partially paid",
     PROCESSING: "Preparing",
     SHIPPED: "Shipped",
     DELIVERED: "Delivered",
@@ -28,6 +29,8 @@ export function orderStatusDescription(status: string) {
   const descriptions: Record<string, string> = {
     PENDING: "Waiting for payment to complete.",
     PAID: "Payment received. Your order is in the queue.",
+    PARTIALLY_PAID:
+      "Down payment received. Pay the remaining balance to collect your order.",
     PROCESSING: "Your fragrance is being prepared for dispatch.",
     SHIPPED: "Your order is on the way.",
     DELIVERED: "Your order has been delivered.",
@@ -39,7 +42,12 @@ export function orderStatusDescription(status: string) {
 
 /** Active step index in the fulfillment timeline, or -1 if cancelled/refunded/pending. */
 export function timelineStepIndex(status: OrderStatus): number {
-  if (status === "CANCELLED" || status === "REFUNDED" || status === "PENDING") {
+  if (
+    status === "CANCELLED" ||
+    status === "REFUNDED" ||
+    status === "PENDING" ||
+    status === "PARTIALLY_PAID"
+  ) {
     return -1;
   }
   return ORDER_STATUS_STEPS.indexOf(status);

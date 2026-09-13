@@ -38,7 +38,7 @@ export default async function HomePage() {
       <section className="py-16 px-4">
         <div className="max-w-[1500px] mx-auto">
           <HomeSectionHeader titleKey="home.latest" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
             {latestFirstRow.map((fragrance) => (
               <ProductCard key={fragrance.id} fragrance={fragrance} />
             ))}
@@ -46,7 +46,7 @@ export default async function HomePage() {
 
           <ScentTalkStrip />
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
             {latestSecondRow.map((fragrance) => (
               <ProductCard key={fragrance.id} fragrance={fragrance} />
             ))}
@@ -60,7 +60,7 @@ export default async function HomePage() {
         <div className="max-w-[1500px] mx-auto">
           <HomeSectionHeader titleKey="home.bestSellers" />
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
             {bestSellersFirstRow.map((fragrance) => (
               <ProductCard key={fragrance.id} fragrance={fragrance} />
             ))}
@@ -70,7 +70,7 @@ export default async function HomePage() {
             <FeatureCtaPanels />
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-3 md:gap-x-4 gap-y-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
             {bestSellersSecondRow.map((fragrance) => (
               <ProductCard key={fragrance.id} fragrance={fragrance} />
             ))}

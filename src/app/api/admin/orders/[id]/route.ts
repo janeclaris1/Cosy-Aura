@@ -10,6 +10,7 @@ import type { OrderStatus, Prisma } from "@prisma/client";
 const VALID_STATUSES: OrderStatus[] = [
   "PENDING",
   "PAID",
+  "PARTIALLY_PAID",
   "PROCESSING",
   "SHIPPED",
   "DELIVERED",

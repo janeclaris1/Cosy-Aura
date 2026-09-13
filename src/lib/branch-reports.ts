@@ -136,7 +136,11 @@ export function aggregateBranchReportRows(
     const bucket = agg.get(branchId)!;
     const isPos = order.channel === "POS";
 
-    if (order.status === "PAID" || order.status === "PROCESSING") {
+    if (
+      order.status === "PAID" ||
+      order.status === "PARTIALLY_PAID" ||
+      order.status === "PROCESSING"
+    ) {
       bucket.toFulfil += 1;
     }
     if (order.status === "DELIVERED") {

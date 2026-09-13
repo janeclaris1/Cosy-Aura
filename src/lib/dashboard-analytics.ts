@@ -1,9 +1,22 @@
-export const REVENUE_STATUSES = ["PAID", "PROCESSING", "SHIPPED", "DELIVERED"] as const;
+import { OrderStatus } from "@prisma/client";
+
+/** Order statuses that count as revenue on dashboards and reports. */
+export const REVENUE_STATUSES: OrderStatus[] = [
+  OrderStatus.PAID,
+  OrderStatus.PARTIALLY_PAID,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];
 
 export type RevenueOrderStatus = (typeof REVENUE_STATUSES)[number];
 
 /** Paid orders still in the fulfilment pipeline (excludes unpaid checkout drafts). */
-export const OPEN_ORDER_STATUSES = ["PAID", "PROCESSING", "SHIPPED"] as const;
+export const OPEN_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.PAID,
+  OrderStatus.PROCESSING,
+  OrderStatus.SHIPPED,
+];
 
 export type OpenOrderStatus = (typeof OPEN_ORDER_STATUSES)[number];
 

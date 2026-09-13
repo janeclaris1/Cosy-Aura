@@ -1,0 +1,190 @@
+/* A4 credit purchase agreement — screen + print */
+
+.credit-contract-shell {
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+.credit-contract-doc {
+  background: #fff;
+  color: #1a1a1a;
+  font-family: var(--font-roboto, ui-sans-serif, system-ui, sans-serif);
+  font-size: 11pt;
+  line-height: 1.55;
+}
+
+.credit-contract-doc__header {
+  border-bottom: 3px solid #03045e;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.credit-contract-doc__brand {
+  font-family: var(--font-playfair, Georgia, serif);
+  font-size: 1.35rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #03045e;
+}
+
+.credit-contract-doc__title {
+  font-family: var(--font-playfair, Georgia, serif);
+  font-size: 1.5rem;
+  color: #03045e;
+  margin-top: 0.35rem;
+}
+
+.credit-contract-doc__meta {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: #5c5348;
+}
+
+.credit-contract-doc__section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #03045e;
+  margin-bottom: 0.5rem;
+}
+
+.credit-contract-doc__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.credit-contract-doc__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-bottom: 1.5rem;
+}
+
+.credit-contract-doc__table th {
+  text-align: left;
+  font-weight: 600;
+  color: #03045e;
+  border-bottom: 2px solid #03045e;
+  padding: 0.4rem 0.5rem;
+}
+
+.credit-contract-doc__table td {
+  border-bottom: 1px solid #e7e5e4;
+  padding: 0.5rem;
+  vertical-align: top;
+}
+
+.credit-contract-doc__table td:last-child,
+.credit-contract-doc__table th:last-child {
+  text-align: right;
+}
+
+.credit-contract-doc__summary {
+  margin-left: auto;
+  width: min(100%, 16rem);
+  font-size: 0.875rem;
+}
+
+.credit-contract-doc__summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+
+.credit-contract-doc__summary-row--total {
+  font-weight: 600;
+  color: #03045e;
+  border-top: 2px solid #03045e;
+  margin-top: 0.35rem;
+  padding-top: 0.5rem;
+}
+
+.credit-contract-doc__clauses {
+  margin: 1.5rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  color: #3d3832;
+}
+
+.credit-contract-doc__clauses li {
+  margin-bottom: 0.65rem;
+}
+
+.credit-contract-doc__signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #d6d3d1;
+  font-size: 0.8125rem;
+}
+
+.credit-contract-doc__sign-line {
+  border-bottom: 1px solid #1a1a1a;
+  height: 2.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.credit-contract-doc__footer {
+  margin-top: 2rem;
+  font-size: 0.6875rem;
+  color: #78716c;
+  text-align: center;
+}
+
+.credit-contract-doc__draft {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .credit-contract-print-root,
+  .credit-contract-print-root * {
+    visibility: visible;
+  }
+
+  .credit-contract-print-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0 !important;
+  }
+
+  .credit-contract-doc {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    page-break-inside: avoid;
+  }
+}

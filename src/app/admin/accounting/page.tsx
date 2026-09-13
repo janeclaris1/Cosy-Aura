@@ -15,7 +15,7 @@ export default async function AdminAccountingPage() {
       <AdminPageHeader
         eyebrow="Finance"
         title="Accounting"
-        description="Ghana general ledger — sales, COGS, and payroll post automatically when orders pay and pay runs close. Set unit cost on each fragrance for COGS. Record other expenses here and review P&L."
+        description="Ghana general ledger — sales, COGS, and payroll post automatically. Review P&L, balance sheet, cash flow, ratios, and track debts from the tabs below."
         actions={
           canPayroll ? (
             <AdminButton href="/admin/hr?tab=payroll" variant="secondary">

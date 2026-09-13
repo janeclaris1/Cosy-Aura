@@ -59,6 +59,7 @@ export default async function AdminOrdersPage({
     "ALL",
     "PENDING",
     "PAID",
+    "PARTIALLY_PAID",
     "PROCESSING",
     "SHIPPED",
     "DELIVERED",
@@ -84,7 +85,12 @@ export default async function AdminOrdersPage({
 
   const statusPills = statuses.map((s) => ({
     id: s,
-    label: s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase(),
+    label:
+      s === "ALL"
+        ? "All"
+        : s === "PARTIALLY_PAID"
+          ? "Partially paid"
+          : s.charAt(0) + s.slice(1).toLowerCase(),
     href: buildOrdersHref({
       status: s === "ALL" ? undefined : s,
       channel: channel && channel !== "ALL" ? channel : undefined,
