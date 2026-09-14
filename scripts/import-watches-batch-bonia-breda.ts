@@ -10,6 +10,7 @@ import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
 import { downloadWatchImagesFromEntries } from "./lib/catalog-image-import";
+import { rebuildWatchDescriptionFromRecord } from "./lib/catalog-product-description";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
@@ -676,7 +677,19 @@ async function importWatch(config: WatchConfig, prisma: PrismaClient) {
     seriesId: series.id,
     model: config.model,
     reference: config.reference,
-    description: config.description,
+    description: rebuildWatchDescriptionFromRecord({
+      model: config.model,
+      reference: config.reference,
+      category: config.category,
+      collection: config.collection,
+      bottleDetail: config.bottleDetail,
+      liquidColor: config.liquidColor,
+      longevity: config.longevity,
+      bottleSize: config.bottleSize,
+      condition: "UNWORN",
+      brandName: config.brand,
+      legacyDescription: config.description,
+    }),
     conditionReport: config.conditionReport,
     price: config.priceGhs,
     costPriceGhs: 0,

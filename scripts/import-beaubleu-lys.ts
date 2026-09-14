@@ -8,6 +8,7 @@
 import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import { rebuildWatchDescriptionFromRecord, sanitizeDescriptionText } from "./lib/catalog-product-description";
 import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
 
@@ -126,10 +127,20 @@ type ShopifyProduct = {
 
 const REFERENCE = "BB-LYS-Gold";
 
-function buildDescription(intro: string): string {
-  return `${intro}
-
-**Specifications**
+function buildDescription(intro: string, brandName: string): string {
+  return rebuildWatchDescriptionFromRecord({
+    model: "Lys Automatic White 39 mm",
+    reference: REFERENCE,
+    category: "Sports watch",
+    collection: "Lys",
+    bottleDetail: "39 mm stainless steel · sapphire crystal · 50 m WR",
+    liquidColor: "White dial",
+    longevity: "Miyota 9015 Slim automatic · ~42 h power reserve",
+    bottleSize: 39,
+    condition: "UNWORN",
+    brandName,
+    lead: sanitizeDescriptionText(intro),
+    legacyDescription: `Specifications
 - Reference: ${REFERENCE}
 - Collection: Lys
 - Case: 39 mm stainless steel
@@ -139,8 +150,8 @@ function buildDescription(intro: string): string {
 - Power reserve: ~42 hours
 - Functions: Hours, minutes, seconds, date
 - Water resistance: 50 m (5 ATM)
-- Bracelet: Polished stainless steel with red gold coating
-- Condition: New and unworn — complete set with box, papers and manufacturer warranty`;
+- Bracelet: Polished stainless steel with red gold coating`,
+  });
 }
 
 const CONDITION_REPORT =
@@ -201,7 +212,7 @@ async function main() {
     });
 
     const intro = stripHtml(product.body_html).replace(/\(Reference[^)]+\)\.?/i, "").trim();
-    const description = buildDescription(intro);
+    const description = buildDescription(intro, brandName);
 
     const data = {
       productType: "WATCH" as const,
