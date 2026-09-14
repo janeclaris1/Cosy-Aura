@@ -277,14 +277,9 @@ html.preload-skip .preloader {
   }
 }
 
-/* Watch showroom hero — split boutique layout */
+/* Catalog showroom hero — split boutique layout */
 .watch-showroom-hero__visual {
-  background-image: linear-gradient(
-    180deg,
-    #0a0a12 0%,
-    #080810 40%,
-    #050508 100%
-  );
+  background-color: #080810;
 }
 
 @media (prefers-reduced-motion: reduce) {

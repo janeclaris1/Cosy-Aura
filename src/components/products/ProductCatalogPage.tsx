@@ -4,7 +4,6 @@ import { CatalogShowroomHero } from "@/components/products/CatalogShowroomHero";
 import { InfiniteFragranceGrid } from "@/components/products/InfiniteFragranceGrid";
 import { ProductToolbar } from "@/components/products/ProductToolbar";
 import {
-  getCatalogHeroItems,
   getCatalogProductCount,
   getFilterOptions,
   getFragrances,
@@ -37,12 +36,7 @@ export async function ProductCatalogPage({
   const config = getCatalog(catalog);
   const containerId = containerIdProp ?? catalogContainerId(catalog);
 
-  const [catalogProductCount, heroItems] = await Promise.all([
-    getCatalogProductCount(config.productType),
-    showShowroomHero
-      ? getCatalogHeroItems(config.productType, 1)
-      : Promise.resolve([]),
-  ]);
+  const catalogProductCount = await getCatalogProductCount(config.productType);
 
   if (catalogProductCount === 0) {
     if (!showShowroomHero) return null;
@@ -50,11 +44,7 @@ export async function ProductCatalogPage({
   }
 
   const showroomHero = showShowroomHero ? (
-    <CatalogShowroomHero
-      catalog={catalog}
-      products={heroItems}
-      catalogAnchorId={containerId}
-    />
+    <CatalogShowroomHero catalog={catalog} catalogAnchorId={containerId} />
   ) : null;
 
   const filters = parseFragranceListFilters(searchParams, {
