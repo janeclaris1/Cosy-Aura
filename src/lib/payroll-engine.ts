@@ -6,6 +6,7 @@ import type { AdminContext } from "@/lib/admin";
 import { computePayslip } from "@/lib/payroll-gh";
 import { monthToDateRange } from "@/lib/hr-scope";
 import { prisma } from "@/lib/prisma";
+import { sumEarnedCommissionsForEmployee } from "@/lib/staff-commission";
 
 type EmployeeWithUser = EmployeeProfile & {
   user: Pick<User, "id" | "name" | "email" | "staffCountry" | "activeStaff">;
@@ -139,12 +140,21 @@ export async function generatePayRunLines(input: {
       leaveDays,
     });
 
+    const salesCommission = await sumEarnedCommissionsForEmployee({
+      employeeId: emp.id,
+      periodStart,
+      periodEnd,
+      country: input.country,
+      branchId: input.branchId,
+    });
+
     const slip = computePayslip({
       basicSalary: emp.basicSalary,
       housingAllowance: emp.housingAllowance,
       transportAllowance: emp.transportAllowance,
       otherAllowances: emp.otherAllowances,
       proRateFactor,
+      bonus: salesCommission,
     });
 
     lines.push({

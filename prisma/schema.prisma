@@ -39,6 +39,12 @@ enum FragranceFamily {
   SPICY
 }
 
+enum StaffCommissionStatus {
+  EARNED
+  VOIDED
+  PAID
+}
+
 enum BottleMaterial {
   GLASS
   CRYSTAL
@@ -178,7 +184,6 @@ model User {
   creditContractsApproved     CreditAgreement[]        @relation("CreditContractApprovedBy")
   creditDownPaymentsRecorded  CreditAgreement[]        @relation("CreditDownPaymentRecordedBy")
   creditApprovalsGranted      User[]                   @relation("CreditApprovedBy")
-
   creditApprovedBy User? @relation("CreditApprovedBy", fields: [creditApprovedByUserId], references: [id], onDelete: SetNull)
 
   @@index([email])
@@ -393,6 +398,7 @@ model Branch {
   attendancePunches  AttendancePunch[]
   payRuns            PayRun[]
   journalEntries     JournalEntry[]
+  staffCommissions   StaffCommissionEntry[]
 
   @@index([country])
   @@index([active])
@@ -624,6 +630,8 @@ model Order {
   channel               OrderChannel       @default(WEB)
   /** Staff member who completed a POS sale. */
   posUserId             String?
+  /** Employee who earns commission (sales staff; may differ from cashier). */
+  commissionEmployeeId  String?
   posPaymentMethod      PosPaymentMethod?
   /** MoMo / card transaction reference for POS sales. */
   posPaymentReference   String?
@@ -640,10 +648,12 @@ model Order {
 
   user              User?       @relation(fields: [userId], references: [id])
   posUser           User?       @relation("PosOrders", fields: [posUserId], references: [id], onDelete: SetNull)
+  commissionEmployee EmployeeProfile? @relation("OrderCommissionEmployee", fields: [commissionEmployeeId], references: [id], onDelete: SetNull)
   fulfillmentBranch Branch?     @relation(fields: [fulfillmentBranchId], references: [id], onDelete: SetNull)
   items             OrderItem[]
   reviews           FragranceReview[]
   creditAgreement   CreditAgreement?
+  staffCommissions  StaffCommissionEntry[]
 
   @@index([userId])
   @@index([status])
@@ -657,6 +667,7 @@ model Order {
   @@index([fulfillmentBranchId])
   @@index([channel])
   @@index([posUserId])
+  @@index([commissionEmployeeId])
   @@index([receiptNumber])
 }
 
@@ -725,8 +736,9 @@ model OrderItem {
   /** Snapshot unit cost in GHS at time of sale (scaled to bottleSize). */
   unitCostGhs Float?
 
-  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  fragrance Fragrance @relation(fields: [fragranceId], references: [id])
+  order            Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fragrance        Fragrance             @relation(fields: [fragranceId], references: [id])
+  staffCommission  StaffCommissionEntry?
 
   @@index([orderId])
   @@index([fragranceId])
@@ -919,6 +931,8 @@ model EmployeeProfile {
   leaveBalances LeaveBalance[]
   leaveRequests LeaveRequest[]
   payRunLines   PayRunLine[]
+  staffCommissions StaffCommissionEntry[]
+  commissionOrders Order[] @relation("OrderCommissionEmployee")
 
   @@index([employmentType])
   @@index([hireDate])
@@ -1033,13 +1047,63 @@ model PayRunLine {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  payRun   PayRun          @relation(fields: [payRunId], references: [id], onDelete: Cascade)
-  employee EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payRun             PayRun                 @relation(fields: [payRunId], references: [id], onDelete: Cascade)
+  employee           EmployeeProfile        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  commissionEntries  StaffCommissionEntry[]
 
   @@unique([payRunId, employeeId])
   @@index([payRunId])
   @@index([employeeId])
   @@index([userId])
+}
+
+/** Commission rate by scent family for in-store POS sales. */
+model CommissionCategoryRule {
+  id              String          @id @default(cuid())
+  fragranceFamily FragranceFamily
+  /** Percent of eligible line total (after POS discount share). */
+  ratePercent     Float           @default(10)
+  active          Boolean         @default(true)
+  /** ALL, GH, or CM */
+  country         String          @default("ALL")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([fragranceFamily, country])
+  @@index([active])
+}
+
+/** Staff commission earned on eligible POS line items. */
+model StaffCommissionEntry {
+  id              String                @id @default(cuid())
+  orderId         String
+  orderItemId     String                @unique
+  /** HR employee record (staff ID lives on EmployeeProfile.employeeNumber). */
+  employeeId      String
+  branchId        String
+  fragranceFamily FragranceFamily
+  productLabel    String
+  lineTotalGhs    Float
+  commissionRate  Float
+  commissionGhs   Float
+  status          StaffCommissionStatus @default(EARNED)
+  payRunLineId    String?
+  earnedAt        DateTime              @default(now())
+  voidedAt        DateTime?
+  paidAt          DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  employee   EmployeeProfile @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  branch     Branch          @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  payRunLine PayRunLine?     @relation(fields: [payRunLineId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, status, earnedAt])
+  @@index([orderId])
+  @@index([branchId])
+  @@index([payRunLineId])
 }
 
 enum GlAccountType {

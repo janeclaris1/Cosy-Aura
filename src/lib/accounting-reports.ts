@@ -26,6 +26,7 @@ import type {
   BalanceSheetRow,
   BalanceSheetSummary,
   PlTrendPoint,
+  CashFlowLine,
   CashFlowSummary,
   FinancialRatios,
 } from "@/lib/accounting-reports-types";

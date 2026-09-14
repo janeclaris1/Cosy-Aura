@@ -56,10 +56,14 @@ export async function POST(req: Request) {
     };
   }
 
+  const salesStaffId =
+    typeof body.salesStaffId === "string" ? body.salesStaffId.trim() : undefined;
+
   const result = await createPosSale(ctx, {
     branchId,
     items,
     paymentMethod,
+    salesStaffId: salesStaffId || undefined,
     customerName: body.customerName,
     customerPhone: body.customerPhone,
     customerEmail: body.customerEmail,

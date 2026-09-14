@@ -3,6 +3,10 @@ export type Gender = "MENS" | "WOMENS" | "UNISEX";
 
 export type Concentration = "EDT" | "EDP" | "PARFUM" | "EXTRAIT";
 
+import {
+  lanvinLattafaLaverneBatch,
+} from "./oil-catalog-batch-lanvin-lattafa-laverne";
+
 export type OilFragrance = {
   brand: string;
   brandSlug: string;
@@ -1544,4 +1548,5 @@ export const catalog: OilFragrance[] = [
     longevity: "10-12 hours",
     images: [`${IMG}/oil-oud-immortel.png`],
   }),
+  ...lanvinLattafaLaverneBatch,
 ];

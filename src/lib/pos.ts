@@ -33,6 +33,8 @@ export type PosSaleInput = {
   branchId: string;
   items: PosCartLine[];
   paymentMethod: PosPaymentMethod;
+  /** Employee number of the sales staff who served the customer (for commission). */
+  salesStaffId?: string;
   customerName?: string;
   customerPhone?: string;
   customerEmail?: string;
@@ -326,7 +328,7 @@ export async function searchPosProducts(
           ],
         };
 
-  let fragrances = await prisma.fragrance.findMany({
+  let fragrances: PosSearchFragrance[] = await prisma.fragrance.findMany({
     where,
     take: limit,
     select: posSearchSelect(branch?.id),
@@ -511,6 +513,15 @@ export async function createPosSale(
     linkedUserId = creditCheck.userId;
   }
 
+  let commissionEmployeeId: string | null = null;
+  const salesStaffId = input.salesStaffId?.trim();
+  if (salesStaffId) {
+    const { resolveCommissionEmployeeByNumber } = await import("./staff-commission");
+    const resolved = await resolveCommissionEmployeeByNumber(salesStaffId);
+    if (!resolved.ok) return { ok: false, reason: resolved.reason };
+    commissionEmployeeId = resolved.employeeId;
+  }
+
   const receiptNumber = await generateReceiptNumber(access.branch.country);
   const email =
     input.customerEmail?.trim().toLowerCase() ||
@@ -545,6 +556,7 @@ export async function createPosSale(
         paymentProvider: "pos",
         channel: "POS",
         posUserId: ctx.userId,
+        commissionEmployeeId,
         posPaymentMethod: input.paymentMethod,
         posPaymentReference: isCreditSale
           ? null
@@ -590,6 +602,13 @@ export async function createPosSale(
     });
   }
 
+  if (!isCreditSale) {
+    const { createStaffCommissionsForOrder } = await import("./staff-commission");
+    createStaffCommissionsForOrder(order.id).catch((err) => {
+      console.error("staff commission create failed", order.id, err);
+    });
+  }
+
   return {
     ok: true,
     orderId: order.id,
@@ -623,14 +642,17 @@ export async function releaseCreditOrderFulfillment(
     return { ok: false, reason: "No branch on this order" };
   }
 
-  const items: PosCartLine[] = order.items
-    .filter((i) => isBottleSize(i.bottleSize))
-    .map((i) => ({
-      fragranceId: i.fragranceId,
-      bottleSize: i.bottleSize,
-      quantity: i.quantity,
-      unitPriceGhs: i.price,
-    }));
+  const items: PosCartLine[] = order.items.flatMap((i) => {
+    if (!isBottleSize(i.bottleSize)) return [];
+    return [
+      {
+        fragranceId: i.fragranceId,
+        bottleSize: i.bottleSize,
+        quantity: i.quantity,
+        unitPriceGhs: i.price,
+      },
+    ];
+  });
 
   if (!order.inventoryCommittedAt) {
     const stockCheck = await assertBranchStock(order.fulfillmentBranchId, items);
@@ -653,6 +675,11 @@ export async function releaseCreditOrderFulfillment(
     const { hookCreditOrderCogsJournal } = await import("./accounting-order-hook");
     hookCreditOrderCogsJournal(orderId, { actorUserId: options?.actorUserId });
   }
+
+  const { createStaffCommissionsForOrder } = await import("./staff-commission");
+  createStaffCommissionsForOrder(orderId).catch((err) => {
+    console.error("staff commission create failed", orderId, err);
+  });
 
   return { ok: true };
 }
@@ -696,6 +723,11 @@ export async function voidPosSale(
   await prisma.order.update({
     where: { id: orderId },
     data: { status: "REFUNDED" },
+  });
+
+  const { voidStaffCommissionsForOrder } = await import("./staff-commission");
+  voidStaffCommissionsForOrder(orderId).catch((err) => {
+    console.error("staff commission void failed", orderId, err);
   });
 
   return { ok: true };

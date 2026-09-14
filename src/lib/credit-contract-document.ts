@@ -6,6 +6,10 @@ import {
   CREDIT_TERM_DAYS,
   formatCreditDate,
 } from "@/lib/credit-contract";
+import {
+  extractGhanaPosTaxBreakdown,
+  type GhanaPosTaxBreakdown,
+} from "@/lib/pos-taxes";
 
 export type CreditContractLineItem = {
   id: string;
@@ -30,8 +34,10 @@ export type CreditContractDocumentProps = {
   totalGhs: number;
   downPaymentGhs: number;
   balanceDueGhs: number;
-  downPaymentMethodLabel: string;
+  /** Payment method label when down payment has been recorded; empty before collection. */
+  downPaymentMethodLabel: string | null;
   downPaymentReference: string | null;
+  taxes: GhanaPosTaxBreakdown;
   contractApprovedAt: Date | null;
   approvedByName: string | null;
   status: string;
@@ -93,9 +99,10 @@ export function buildCreditContractDocumentProps(
     downPaymentGhs: credit.downPaymentGhs,
     balanceDueGhs: credit.balanceDueGhs,
     downPaymentMethodLabel: credit.downPaymentMethod
-    ? downPaymentMethodLabel(credit.downPaymentMethod)
-    : "Pending — collected in Legal",
+      ? downPaymentMethodLabel(credit.downPaymentMethod)
+      : null,
     downPaymentReference: credit.downPaymentReference,
+    taxes: extractGhanaPosTaxBreakdown(credit.totalGhs),
     contractApprovedAt: credit.contractApprovedAt,
     approvedByName:
       credit.contractApprovedBy?.name ||

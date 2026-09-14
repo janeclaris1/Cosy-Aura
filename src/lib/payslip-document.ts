@@ -141,6 +141,9 @@ type UserInfo = {
     employeeNumber: string | null;
     jobTitle: string | null;
     department: string | null;
+    ghanaCardId: string | null;
+    tin: string | null;
+    ssnitNumber: string | null;
     paymentMethod: string;
     bankName: string | null;
     bankAccountNo: string | null;

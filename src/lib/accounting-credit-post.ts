@@ -244,6 +244,9 @@ export async function postCreditDefaultJournal(
     },
   });
   if (!agreement) throw new Error("Credit agreement not found");
+  if (!agreement.downPaymentMethod) {
+    throw new Error("Down payment method not recorded for this agreement");
+  }
 
   const { penaltyGhs, refundGhs } = computeDefaultSettlement(agreement.downPaymentGhs);
   const paymentCode =

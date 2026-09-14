@@ -45,6 +45,14 @@ type LeaveRequest = {
   reviewedBy: { name: string | null; email: string } | null;
 };
 
+type HrEmployeeRow = {
+  profile: {
+    id: string;
+    jobTitle?: string | null;
+    leaveBalances?: Array<{ entitled: number; used: number }>;
+  } | null;
+  user: { name: string | null; email: string };
+};
 
 const LEAVE_TYPES = [
   { id: "ANNUAL", label: "Annual" },
@@ -143,25 +151,19 @@ export function LeaveManager() {
       if (!leaveResult.ok) throw new Error(leaveResult.error);
       if (!empResult.ok) throw new Error(empResult.error);
       setRequests(leaveResult.data.requests || []);
+      const employeeRows = (empResult.data.employees || []) as HrEmployeeRow[];
       setEmployees(
-        (empResult.data.employees || [])
-          .filter((r: { profile: unknown }) => r.profile)
-          .map(
-            (r: {
-              profile: {
-                id: string;
-                jobTitle?: string | null;
-                leaveBalances?: Array<{ entitled: number; used: number }>;
-              };
-              user: { name: string | null; email: string };
-            }) => ({
-              id: r.profile.id,
-              name: r.user.name || r.user.email,
-              email: r.user.email,
-              jobTitle: r.profile.jobTitle,
-              balance: r.profile.leaveBalances?.[0],
-            })
+        employeeRows
+          .filter((r): r is HrEmployeeRow & { profile: NonNullable<HrEmployeeRow["profile"]> } =>
+            r.profile != null
           )
+          .map((r) => ({
+            id: r.profile.id,
+            name: r.user.name || r.user.email,
+            email: r.user.email,
+            jobTitle: r.profile.jobTitle,
+            balance: r.profile.leaveBalances?.[0],
+          }))
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Load failed");

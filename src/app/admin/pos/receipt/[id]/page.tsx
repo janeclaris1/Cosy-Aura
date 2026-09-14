@@ -47,6 +47,12 @@ export default async function PosReceiptPage({
       },
       fulfillmentBranch: true,
       posUser: { select: { name: true, email: true } },
+      commissionEmployee: {
+        select: {
+          employeeNumber: true,
+          user: { select: { name: true, email: true } },
+        },
+      },
       creditAgreement: true,
     },
   });
@@ -145,6 +151,16 @@ export default async function PosReceiptPage({
             <span className="text-mocha">Cashier</span>{" "}
             {order.posUser?.name || order.posUser?.email || "Staff"}
           </p>
+          {order.commissionEmployee && (
+            <p>
+              <span className="text-mocha">Sales staff</span>{" "}
+              {order.commissionEmployee.user.name ||
+                order.commissionEmployee.user.email}
+              {order.commissionEmployee.employeeNumber
+                ? ` (${order.commissionEmployee.employeeNumber})`
+                : ""}
+            </p>
+          )}
           <p>
             <span className="text-mocha">Payment</span>{" "}
             {paymentLabel(order.posPaymentMethod)}

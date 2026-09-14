@@ -107,6 +107,8 @@ export function StaffManager() {
       email: row.email,
       name: row.name || "",
       phone: row.phone || "",
+      password: "",
+      confirmPassword: "",
       staffRole: row.staffRole || "FULFILMENT",
       staffCountry: row.staffCountry || "GH",
       branchIds: row.staffAssignments.map((a) => a.branchId),

@@ -10,6 +10,7 @@ export default async function AdminHrPage() {
   const access = {
     staff: hasPermission(ctx.permissions, "staff.read"),
     hr: hasPermission(ctx.permissions, "hr.read"),
+    hrWrite: hasPermission(ctx.permissions, "hr.write"),
     payroll: hasPermission(ctx.permissions, "payroll.read"),
     preferredTab:
       ctx.staffRole === "ACCOUNTANT"
@@ -28,7 +29,7 @@ export default async function AdminHrPage() {
       <AdminPageHeader
         eyebrow="People"
         title="HR & payroll"
-        description="Staff access, employee records, leave, and monthly payroll with Ghana PAYE and SSNIT."
+        description="Staff access, employee records, leave, in-store sales commissions, and monthly payroll with Ghana PAYE and SSNIT."
       />
       <HrHub access={access} />
     </div>

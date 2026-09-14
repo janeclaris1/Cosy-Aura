@@ -8,19 +8,15 @@
 import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { catalog } from "../prisma/oil-catalog";
+import { lanvinLattafaLaverneReferences } from "../prisma/oil-catalog-batch-lanvin-lattafa-laverne";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import { syncCountryPoolFromBranches } from "../src/lib/branches";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
 
-/** References for the new batch (see prisma/oil-catalog.ts). */
-const NEW_REFERENCES = new Set([
-  "CA-OIL-HBMM-50",
-  "CA-OIL-IO-OFG-50",
-  "CA-OIL-IO-OFGG-50",
-  "CA-OIL-IO-HF-50",
-  "CA-OIL-IO-MB7-50",
-]);
+/** References for the new batch (see prisma/oil-catalog-batch-lanvin-lattafa-laverne.ts). */
+const NEW_REFERENCES = lanvinLattafaLaverneReferences;
 
 const STOCK_PER_BRANCH_50ML = 10;
 
@@ -178,18 +174,6 @@ async function main() {
         });
       }
 
-      await Promise.all(
-        (["GH", "CM"] as const).map((country) =>
-          prisma.fragranceCountryStock.upsert({
-            where: {
-              fragranceId_country: { fragranceId: fragrance.id, country },
-            },
-            create: { fragranceId: fragrance.id, country, inStock: true },
-            update: { inStock: true },
-          })
-        )
-      );
-
       await ensureBarcodes(prisma, fragrance.id);
 
       for (const branch of branches) {
@@ -209,6 +193,10 @@ async function main() {
           },
           update: { quantity: STOCK_PER_BRANCH_50ML },
         });
+      }
+
+      for (const country of ["GH", "CM"] as const) {
+        await syncCountryPoolFromBranches(fragrance.id, country);
       }
 
       console.log(

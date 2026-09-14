@@ -137,6 +137,12 @@ export function PosTerminal() {
     eligible: boolean;
     message: string;
   } | null>(null);
+  const [salesStaffId, setSalesStaffId] = useState("");
+  const [salesStaffCheck, setSalesStaffCheck] = useState<{
+    loading: boolean;
+    found: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -348,6 +354,49 @@ export function PosTerminal() {
     customerEmail,
   ]);
 
+  useEffect(() => {
+    const trimmed = salesStaffId.trim();
+    if (!trimmed) {
+      setSalesStaffCheck(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        setSalesStaffCheck({
+          loading: true,
+          found: false,
+          message: "Looking up staff ID…",
+        });
+        try {
+          const params = new URLSearchParams({ employeeNumber: trimmed });
+          const res = await fetch(`/api/admin/pos/sales-staff?${params.toString()}`);
+          const data = await res.json();
+          if (cancelled) return;
+          setSalesStaffCheck({
+            loading: false,
+            found: Boolean(data.found),
+            message: String(data.message || data.error || "Staff ID not found"),
+          });
+        } catch {
+          if (!cancelled) {
+            setSalesStaffCheck({
+              loading: false,
+              found: false,
+              message: "Could not verify staff ID",
+            });
+          }
+        }
+      })();
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [salesStaffId]);
+
   const updateQty = (key: string, delta: number) => {
     setCart((prev) =>
       prev
@@ -402,6 +451,7 @@ export function PosTerminal() {
         body: JSON.stringify({
           branchId,
           paymentMethod,
+          salesStaffId: salesStaffId.trim() || undefined,
           customerName: customerName || undefined,
           customerPhone: customerPhone || undefined,
           customerEmail: customerEmail || undefined,
@@ -455,6 +505,8 @@ export function PosTerminal() {
       setCustomerEmail("");
       setNotes("");
       setCustomerIdNumber("");
+      setSalesStaffId("");
+      setSalesStaffCheck(null);
       if (data.legalContractUrl) router.push(data.legalContractUrl);
       else if (data.receiptUrl) router.push(data.receiptUrl);
     } finally {
@@ -857,6 +909,30 @@ export function PosTerminal() {
           )}
 
           <div className="space-y-2 border-t border-stone-100 pt-4">
+            <label className={adminLabelClass}>Sales staff ID (commission)</label>
+            <input
+              value={salesStaffId}
+              onChange={(e) => setSalesStaffId(e.target.value)}
+              placeholder="e.g. CA-001 — who served the customer"
+              className={cn(adminInputClass, "font-mono")}
+            />
+            {salesStaffCheck && (
+              <p
+                className={cn(
+                  "text-xs font-medium",
+                  salesStaffCheck.loading
+                    ? "text-mocha"
+                    : salesStaffCheck.found
+                      ? "text-emerald-800"
+                      : "text-red-700"
+                )}
+              >
+                {salesStaffCheck.message}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t border-stone-100 pt-4">
             <p className={cn(adminLabelClass, "mb-2")}>
               Customer {isCredit ? "(required for credit)" : "(optional)"}
             </p>
@@ -911,6 +987,8 @@ export function PosTerminal() {
               busy ||
               !cart.length ||
               !branchId ||
+              (salesStaffId.trim() !== "" &&
+                (!salesStaffCheck || salesStaffCheck.loading || !salesStaffCheck.found)) ||
               (isCredit &&
                 (!customerName.trim() ||
                   !customerPhone.trim() ||

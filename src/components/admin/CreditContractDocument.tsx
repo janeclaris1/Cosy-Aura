@@ -1,3 +1,4 @@
+import { PosTaxSummary } from "@/components/admin/PosTaxSummary";
 import {
   type CreditContractDocumentProps,
   formatContractDateTime,
@@ -78,8 +79,18 @@ export function CreditContractDocument({ doc }: { doc: CreditContractDocumentPro
             <span>Purchase total</span>
             <span>{formatContractMoney(doc.totalGhs)}</span>
           </div>
+          <PosTaxSummary
+            taxes={doc.taxes}
+            formatAmount={formatContractMoney}
+            showTaxable
+            showTotal={false}
+            className="py-2 border-y border-stone-200/80 text-sm"
+          />
           <div className="credit-contract-doc__summary-row">
-            <span>Down payment (70%) · {doc.downPaymentMethodLabel}</span>
+            <span>
+              Down payment (70%)
+              {doc.downPaymentMethodLabel ? ` · ${doc.downPaymentMethodLabel}` : ""}
+            </span>
             <span>{formatContractMoney(doc.downPaymentGhs)}</span>
           </div>
           {doc.downPaymentReference && (

@@ -79,8 +79,6 @@ const STOPWORDS = new Set([
   "looking",
 ]);
 
-type FragranceRow = Awaited<ReturnType<typeof findCatalogMatches>>[number];
-
 export function extractSearchTerms(text: string): string[] {
   const words = text
     .toLowerCase()
@@ -93,8 +91,10 @@ export function extractSearchTerms(text: string): string[] {
 const fragranceInclude = {
   brand: { select: { name: true, slug: true } },
   images: { orderBy: { sortOrder: "asc" as const }, take: 1 },
-  countryStocks: { select: { country: true, inStock: true } },
+  countryStocks: { select: { country: true, inStock: true, quantity: true } },
 };
+
+type FragranceRow = Prisma.FragranceGetPayload<{ include: typeof fragranceInclude }>;
 
 /** Prisma filter: only buyable for this shopper (global or country stock). */
 function inStockWhere(locale?: SupportShopperLocale): Prisma.FragranceWhereInput {
@@ -104,13 +104,24 @@ function inStockWhere(locale?: SupportShopperLocale): Prisma.FragranceWhereInput
   });
   if (!bucket) return { stock: { gt: 0 } };
   return {
-    OR: [
-      { countryStocks: { some: { country: bucket, inStock: true } } },
+    AND: [
       {
-        AND: [
-          { countryStocks: { none: { country: bucket } } },
-          { stock: { gt: 0 } },
+        OR: [
+          {
+            countryStocks: {
+              some: { country: bucket, inStock: true, quantity: { gt: 0 } },
+            },
+          },
+          {
+            AND: [
+              { countryStocks: { none: { country: bucket } } },
+              { stock: { gt: 0 } },
+            ],
+          },
         ],
+      },
+      {
+        NOT: { countryStocks: { some: { country: bucket, inStock: false } } },
       },
     ],
   };
@@ -121,6 +132,11 @@ function rowInStock(
   locale?: SupportShopperLocale
 ) {
   return isInStockForCountry(f, locale?.country, locale?.currency);
+}
+
+/** Server-side guard: Prisma stock filters can drift from row-level country rules. */
+function filterInStockRows<T extends FragranceRow>(rows: T[], locale?: SupportShopperLocale): T[] {
+  return rows.filter((f) => rowInStock(f, locale));
 }
 
 function occasionFamilies(query: string): string[] | null {
@@ -149,14 +165,15 @@ export async function findCatalogMatches(
 
   try {
     if (families) {
-      return await prisma.fragrance.findMany({
+      const rows = await prisma.fragrance.findMany({
         where: {
           AND: [{ fragranceFamily: { in: families as never[] } }, stockFilter],
         },
         include: fragranceInclude,
-        take: limit,
+        take: limit * 2,
         orderBy: [{ featured: "desc" }, { rating: "desc" }],
       });
+      return filterInStockRows(rows, locale).slice(0, limit);
     }
 
     if (!terms.length) return [];
@@ -168,12 +185,13 @@ export async function findCatalogMatches(
       { brand: { slug: { contains: term, mode: "insensitive" as const } } },
     ]);
 
-    return await prisma.fragrance.findMany({
+    const rows = await prisma.fragrance.findMany({
       where: { AND: [{ OR: or }, stockFilter] },
       include: fragranceInclude,
-      take: limit,
+      take: limit * 2,
       orderBy: [{ featured: "desc" }, { rating: "desc" }],
     });
+    return filterInStockRows(rows, locale).slice(0, limit);
   } catch {
     return [];
   }
@@ -184,14 +202,69 @@ export async function getFeaturedInStock(
   locale?: SupportShopperLocale
 ) {
   try {
-    return await prisma.fragrance.findMany({
+    const rows = await prisma.fragrance.findMany({
       where: { AND: [{ featured: true }, inStockWhere(locale)] },
       include: fragranceInclude,
-      take: limit,
+      take: limit * 2,
       orderBy: { rating: "desc" },
     });
+    return filterInStockRows(rows, locale).slice(0, limit);
   } catch {
     return [];
+  }
+}
+
+/** Names the shopper asked for that exist in catalog but are not buyable in their market. */
+async function findExplicitOutOfStock(
+  query: string,
+  locale?: SupportShopperLocale
+): Promise<FragranceRow[]> {
+  const terms = extractSearchTerms(query);
+  if (!terms.length) return [];
+  try {
+    const or = terms.flatMap((term) => [
+      { model: { contains: term, mode: "insensitive" as const } },
+      { brand: { name: { contains: term, mode: "insensitive" as const } } },
+    ]);
+    const rows = await prisma.fragrance.findMany({
+      where: { OR: or },
+      include: fragranceInclude,
+      take: 12,
+      orderBy: [{ featured: "desc" }, { rating: "desc" }],
+    });
+    return rows.filter((f) => !rowInStock(f, locale));
+  } catch {
+    return [];
+  }
+}
+
+const FRAGRANCE_LINK_RE = /\[([^\]]*)\]\(\/fragrances\/([^)]+)\)/g;
+
+/** Strip catalog links to out-of-stock oils from the final assistant reply. */
+export async function sanitizeReplyRecommendations(
+  text: string,
+  locale?: SupportShopperLocale
+): Promise<string> {
+  const slugs = [...text.matchAll(FRAGRANCE_LINK_RE)].map((m) => m[2].trim());
+  if (!slugs.length) return text;
+
+  try {
+    const rows = await prisma.fragrance.findMany({
+      where: { slug: { in: slugs, mode: "insensitive" } },
+      include: fragranceInclude,
+    });
+    const oos = new Set(
+      rows.filter((r) => !rowInStock(r, locale)).map((r) => r.slug.toLowerCase())
+    );
+    if (!oos.size) return text;
+
+    return text.replace(FRAGRANCE_LINK_RE, (full, label, slug) => {
+      if (!oos.has(String(slug).toLowerCase())) return full;
+      const name = String(label || slug).trim();
+      return name ? name : full;
+    });
+  } catch {
+    return text;
   }
 }
 
@@ -268,10 +341,11 @@ export async function buildStoreContext(
   locale?: SupportShopperLocale,
   cart?: SupportCartSnapshot[]
 ) {
-  const [methods, matches, featured] = await Promise.all([
+  const [methods, matches, featured, requestedOos] = await Promise.all([
     getActiveShippingMethods().catch(() => []),
     findCatalogMatches(userQuestion, 6, locale),
     getFeaturedInStock(4, locale),
+    findExplicitOutOfStock(userQuestion, locale),
   ]);
 
   const shipping =
@@ -295,6 +369,16 @@ export async function buildStoreContext(
     featured.length > 0
       ? featured.map((f) => formatCatalogLine(f, locale)).join("\n")
       : "No featured in-stock list loaded.";
+
+  const outOfStockRequested =
+    requestedOos.length > 0
+      ? requestedOos
+          .map(
+            (f) =>
+              `- ${f.brand.name} ${f.model} | OUT OF STOCK for this shopper — do not recommend or link`
+          )
+          .join("\n")
+      : "- None detected from this message.";
 
   const market = resolveStockCountry({
     country: locale?.country,
@@ -325,13 +409,16 @@ RETURNS (from /returns):
 - 14 days from delivery if unused, original packaging, proof of purchase. Start at /contact.
 - Original shipping non-refundable unless our error. Refunds 5-10 business days after inspection.
 
+REQUESTED SCENTS OUT OF STOCK (shopper may have asked for these — never recommend or link; say "We don't have [Name] in stock" then offer an in-stock alternative):
+${outOfStockRequested}
+
 MATCHING PRODUCTS IN STOCK (for you only - rewrite in natural language; never paste these lines; never recommend anything outside this list or FEATURED):
 ${catalog}
 
 FEATURED / BESTSELLERS IN STOCK (for you only):
 ${bestsellers}`;
 
-  return { text, matches, featured, shipping };
+  return { text, matches, featured, shipping, requestedOos };
 }
 
 export function enowSystemPrompt(language: string = "en"): string {
@@ -364,7 +451,7 @@ Never sound like a database, a ticket system, or a FAQ dump.
 HOW TO ANSWER
 0. CONTACT (email + WhatsApp): The UI shows a contact form after the shopper’s first reply and blocks further help until they submit it. When contact appears in the transcript, confirm briefly if needed and continue helping with their earlier request. Never ask for email/WhatsApp yourself in free text — the form handles that. Never offer to skip contact collection.
 1. Greetings only (“hi”, “hey”): one short line + one question. No policies. No contact dump. Do not mention samples.
-2. Product / occasion questions: pick 1-2 oils from MATCHING PRODUCTS IN STOCK or FEATURED / BESTSELLERS IN STOCK only. Never recommend an out-of-stock oil. Say why it fits *their* moment (date night, gift, daily) in mood language only - warm, fresh, evening, everyday. Mention inspired-by in plain language. Link with the real catalog path, e.g. [Hypnotic Poison](/fragrances/dior-hypnotic-poison-ca-oil-hp-50).
+2. Product / occasion questions: pick 1-2 oils from MATCHING PRODUCTS IN STOCK or FEATURED / BESTSELLERS IN STOCK only. Before naming a specific perfume the shopper asked for, call lookup_product and confirm recommendable is true. Never recommend an out-of-stock oil. Say why it fits *their* moment (date night, gift, daily) in mood language only - warm, fresh, evening, everyday. Mention inspired-by in plain language. Link with the real catalog path, e.g. [Hypnotic Poison](/fragrances/dior-hypnotic-poison-ca-oil-hp-50).
 3. When you recommend a fragrance, quote bottle sizes only: 30ml, 50ml, and 100ml with the live catalog prices.
 4. Samples: mention a ${sampleMl}ml sample (${sampleSale}) only if the customer asks whether you have samples, vials, testers, or wants to try before buying. Never offer a sample unprompted. Never add a sample to cart unless they asked for one.
 5. Shipping / returns: paraphrase the policy pages. Link [Shipping](/shipping) or [Trial & Return](/returns).
@@ -411,8 +498,8 @@ Low stock: mention only if the live line says LOW STOCK. Missing or out of stock
 7% off is already in the bottle prices you are given. Bottle sizes: 30 / 50 / 100ml. Sample (${sampleMl}ml, ${sampleSale}) is available but only discuss it when asked.
 
 TOOLS
-lookup_product - when MATCHING PRODUCTS isn’t enough.
-add_to_cart(slug, quantity, size_ml ${sampleMl}|30|50|100) - only after they agree, and only if in stock. Use ${sampleMl} only when they asked for a sample.
+lookup_product - REQUIRED before recommending or confirming any specific scent by name. If recommendable is false or stockLabel is OUT OF STOCK, do not link or recommend it — use the in-stock alternatives returned by the tool or MATCHING / FEATURED lists.
+add_to_cart(slug, quantity, size_ml ${sampleMl}|30|50|100) - only after they agree, and only if lookup_product shows recommendable true (or the slug is in MATCHING / FEATURED). Use ${sampleMl} only when they asked for a sample.
 remove_from_cart(slug, size_ml ${sampleMl}|30|50|100) - when they ask to remove, drop, or delete something from cart. Check SHOPPER CART for slug and size; confirm what you removed.
 Then confirm and share [Checkout](${checkout}) and [Cart](${cart}).
 Never ask for card numbers. Payment link = ${checkout}.
@@ -425,7 +512,7 @@ export const SUPPORT_TOOLS = [
   {
     name: "lookup_product",
     description:
-      "Read a live Cosy Aura product page by slug or scent/brand name. Use before confirming details.",
+      "Check live stock and product details by slug or scent/brand name. REQUIRED before recommending any specific perfume. Only recommend when recommendable is true.",
     input_schema: {
       type: "object",
       properties: {
@@ -492,6 +579,23 @@ export async function runSupportTool(
     }
     const house = isHouseOriginal(row.brand.slug);
     const available = rowInStock(row, locale);
+    const alts = available
+      ? []
+      : await prisma.fragrance.findMany({
+          where: {
+            AND: [
+              inStockWhere(locale),
+              {
+                OR: [{ fragranceFamily: row.fragranceFamily }, { brandId: row.brandId }],
+              },
+              { NOT: { id: row.id } },
+            ],
+          },
+          include: fragranceInclude,
+          take: 3,
+          orderBy: [{ featured: "desc" }, { rating: "desc" }],
+        });
+    const inStockAlts = filterInStockRows(alts, locale);
     return {
       result: JSON.stringify({
         found: true,
@@ -524,6 +628,13 @@ export async function runSupportTool(
         url: `/fragrances/${row.slug}`,
         image: row.images[0]?.url || "",
         recommendable: available,
+        ...(available
+          ? {}
+          : {
+              doNotRecommend: true,
+              message: `${row.brand.name} ${row.model} is out of stock for this shopper. Do not link or add to cart.`,
+              inStockAlternatives: inStockAlts.map((f) => formatCatalogLine(f, locale)),
+            }),
       }),
     };
   }

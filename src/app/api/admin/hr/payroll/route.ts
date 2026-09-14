@@ -315,6 +315,13 @@ export async function PATCH(req: Request) {
     return run;
   });
 
+  if (updates.status === "PAID") {
+    const { markCommissionsPaidForPayRun } = await import("@/lib/staff-commission");
+    await markCommissionsPaidForPayRun(id).catch((err) => {
+      console.error("mark commissions paid failed", id, err);
+    });
+  }
+
   const updated = await enrichPayRunLines(payRunUpdated);
 
   await writeAuditLog({

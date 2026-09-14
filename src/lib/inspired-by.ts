@@ -47,6 +47,9 @@ const BRAND_ALIASES: Record<string, string> = {
   shay: "amouage",
   asq: "amouage",
   immortals: "amouage",
+  lanvin: "chanel",
+  lattafa: "amouage",
+  laverne: "amouage",
 };
 
 const FALLBACK = "/images/inspired/fallback.png";

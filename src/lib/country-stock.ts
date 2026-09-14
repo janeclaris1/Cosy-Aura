@@ -63,7 +63,8 @@ export function isInStockForCountry(
     if (row) {
       if (!row.inStock) return false;
       if (typeof row.quantity === "number") return row.quantity > 0;
-      return true;
+      // Managed country row without quantity in the payload — do not trust inStock alone.
+      return false;
     }
   }
   return Number(fragrance.stock) > 0;

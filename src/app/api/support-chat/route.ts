@@ -4,6 +4,7 @@ import {
   enowSystemPrompt,
   fallbackAnswer,
   runSupportTool,
+  sanitizeReplyRecommendations,
   SUPPORT_TOOLS,
   type ChatTurn,
   type SupportCartLine,
@@ -214,8 +215,9 @@ export async function POST(req: Request) {
     const enow = await replyWithEnow(history, store.text, locale);
 
     if (enow) {
+      const reply = await sanitizeReplyRecommendations(enow.text, locale);
       return NextResponse.json({
-        reply: enow.text,
+        reply,
         cartLines: enow.cartLines,
         cartRemovals: enow.cartRemovals,
         source: "anthropic",
