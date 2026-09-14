@@ -11,7 +11,15 @@
 import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
-import { downloadSunglassesImagesFromUrls } from "./lib/catalog-image-import";
+import {
+  descriptionSection,
+  joinDescriptionSections,
+  sanitizeDescriptionText,
+} from "./lib/catalog-product-description";
+import {
+  discoverSequentialImageUrls,
+  downloadSunglassesImagesFromUrls,
+} from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
@@ -197,7 +205,7 @@ const SUNGLASSES: SunglassesConfig[] = [
     longevity: "100% UVA/UVB protection",
     imageKey: "luspl02568",
     descriptionLead:
-      "Sharp cat-eye proportions in glossy black acetate with gold accents — dressy, feminine, and unmistakably Ralph.",
+      "Sharp cat-eye proportions in glossy black acetate with gold accents — dressy, feminine, and unmistakably refined.",
   },
   {
     key: "ra5203-ivory-tortoise-gold",
@@ -347,7 +355,7 @@ const SUNGLASSES: SunglassesConfig[] = [
     longevity: "100% UVA/UVB protection",
     imageKey: "lupl03094",
     descriptionLead:
-      "Classic round lenses in warm tortoise acetate — a heritage shape updated with Ralph's contemporary finishing.",
+      "Classic round lenses in warm tortoise acetate — a heritage shape updated with contemporary finishing.",
   },
   {
     key: "ra5302u-nude-tortoise",
@@ -522,7 +530,7 @@ const SUNGLASSES: SunglassesConfig[] = [
     longevity: "100% UVA/UVB protection",
     imageKey: "lusmt03100",
     descriptionLead:
-      "Fresh green acetate in a rounded full-rim profile — a colour-forward pair that still feels classic Ralph.",
+      "Fresh green acetate in a rounded full-rim profile — a colour-forward pair with timeless appeal.",
   },
 ];
 
@@ -538,21 +546,27 @@ function productSlug(config: SunglassesConfig): string {
 }
 
 function buildDescription(config: SunglassesConfig): string {
-  return `${config.descriptionLead}
+  return sanitizeDescriptionText(
+    joinDescriptionSections(
+      config.descriptionLead,
+      `Reference ${config.reference}. Lightweight, full-rim ${config.shape.toLowerCase()} sunglasses designed for everyday wear with a polished finish.`,
+      descriptionSection("Frame", [
+        `Colour: ${config.frameColor}`,
+        `Material: ${config.bottleMaterial === "METAL" ? "Metal" : "Acetate"}`,
+        `Measurements: ${config.bottleSize}-${config.bridge}-${config.temple} mm`,
+        config.bottleDetail,
+      ]),
+      descriptionSection("Lenses", [config.liquidColor, config.longevity]),
+      "Includes branded case. Condition: New, unworn."
+    )
+  );
+}
 
-The ${config.model} (${config.reference}) brings Ralph Lauren's polished American style to COSY AURA — lightweight, full-rim ${config.shape.toLowerCase()} sunglasses designed for women who want designer presence without fuss.
-
-**Frame**
-- Colour: ${config.frameColor}
-- Material: ${config.bottleMaterial === "METAL" ? "Metal" : "Acetate"}
-- Measurements: ${config.bottleSize}-${config.bridge}-${config.temple} mm
-- ${config.bottleDetail}
-
-**Lenses**
-- ${config.liquidColor}
-- ${config.longevity}
-
-Includes branded case. Condition: New, unworn.`;
+async function resolveSourceImages(imageKey: string): Promise<string[]> {
+  return discoverSequentialImageUrls(
+    (index) => EBD_CDN(imageKey, index),
+    8
+  );
 }
 
 function ean13CheckDigit(base12: string): string {
@@ -750,11 +764,17 @@ async function main() {
 
   for (const config of targets) {
     const slug = productSlug(config);
-    const images = [EBD_CDN(config.imageKey, 0), EBD_CDN(config.imageKey, 1)];
+    const images = await resolveSourceImages(config.imageKey);
     console.log(`\n── ${config.brand} ${config.model} (${config.key})`);
     console.log(`   Price: ${config.priceGhs} GHS · Category: ${config.category}`);
     console.log(`   Slug: ${slug}`);
-    console.log(`   Images: ${images.join(", ")}`);
+    console.log(`   Images: ${images.length} angle(s)`);
+    for (const url of images) {
+      console.log(`     · ${url}`);
+    }
+    if (!images.length) {
+      console.warn(`   ⚠ No images found — skipping ${config.key}`);
+    }
   }
 
   if (!apply) {
@@ -765,9 +785,14 @@ async function main() {
   const { prisma, disconnect } = createScriptPrisma();
 
   try {
+    let imported = 0;
     for (const config of targets) {
       const slug = productSlug(config);
-      const sourceImages = [EBD_CDN(config.imageKey, 0), EBD_CDN(config.imageKey, 1)];
+      const sourceImages = await resolveSourceImages(config.imageKey);
+      if (!sourceImages.length) {
+        console.warn(`⚠ Skipping ${config.key} — no images`);
+        continue;
+      }
 
       const cloudUrls = await downloadSunglassesImagesFromUrls(
         sourceImages,
@@ -776,10 +801,13 @@ async function main() {
       );
 
       await importSunglasses(config, cloudUrls.filter(Boolean), prisma);
-      console.log(`✓ ${config.brand} ${config.model} → /sunglasses/${slug}`);
+      console.log(
+        `✓ ${config.brand} ${config.model} → /sunglasses/${slug} (${cloudUrls.length} image(s))`
+      );
+      imported++;
     }
 
-    console.log(`\nDone — ${targets.length} sunglasses imported.`);
+    console.log(`\nDone — ${imported} sunglasses imported.`);
   } finally {
     await disconnect();
   }

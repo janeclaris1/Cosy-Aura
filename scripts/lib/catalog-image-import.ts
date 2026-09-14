@@ -109,6 +109,31 @@ export async function downloadSneakerImagesFromUrls(
   return downloadCatalogImagesFromUrls(urls, "sneakers", productSlug, apply);
 }
 
+/** Probe sequential CDN paths (e.g. frame_0.jpg, frame_1.jpg) until one 404s. */
+export async function discoverSequentialImageUrls(
+  urlForIndex: (index: number) => string,
+  maxImages = 8
+): Promise<string[]> {
+  const results: string[] = [];
+  for (let i = 0; i < maxImages; i++) {
+    const url = urlForIndex(i).split("?")[0];
+    let ok = false;
+    try {
+      const head = await fetch(url, { method: "HEAD", headers: FETCH_HEADERS });
+      ok = head.ok;
+      if (!ok) {
+        const get = await fetch(url, { method: "GET", headers: FETCH_HEADERS });
+        ok = get.ok;
+      }
+    } catch {
+      ok = false;
+    }
+    if (!ok) break;
+    results.push(url);
+  }
+  return results;
+}
+
 export async function downloadSunglassesImagesFromUrls(
   urls: string[],
   productSlug: string,

@@ -11,6 +11,11 @@
 import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import {
+  descriptionSection,
+  joinDescriptionSections,
+  sanitizeDescriptionText,
+} from "./lib/catalog-product-description";
 import { downloadSneakerImagesFromUrls } from "./lib/catalog-image-import";
 import { resolveSneakerImages } from "./lib/sneaker-image-sources";
 import { createScriptPrisma } from "./lib/script-prisma";
@@ -400,15 +405,17 @@ async function syncCountryPool(
 }
 
 function buildDescription(config: SneakerConfig): string {
-  return `${config.brand} ${config.model} (${config.styleCode}).
-
-Colourway: ${config.colorway}. Sourced from ${config.sourceUrl}.
-
-**Details**
-- Style code: ${config.styleCode}
-- Category: ${config.category}
-- ${config.bottleDetail}
-- Condition: New, unworn`;
+  return sanitizeDescriptionText(
+    joinDescriptionSections(
+      `${config.model} (${config.styleCode}). Colourway: ${config.colorway}.`,
+      descriptionSection("Details", [
+        `Style code: ${config.styleCode}`,
+        `Category: ${config.category}`,
+        config.bottleDetail,
+        "Condition: New, unworn",
+      ])
+    )
+  );
 }
 
 async function importSneaker(
