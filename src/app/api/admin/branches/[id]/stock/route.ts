@@ -57,6 +57,7 @@ export async function GET(_req: Request, { params }: Params) {
       model: true,
       slug: true,
       reference: true,
+      productType: true,
       brand: { select: { name: true } },
       branchStocks: {
         where: { branchId },
@@ -79,6 +80,7 @@ export async function GET(_req: Request, { params }: Params) {
         model: f.model,
         slug: f.slug,
         reference: f.reference,
+        productType: f.productType,
         brand: f.brand.name,
         quantities,
         countryPool: f.countryStocks[0]?.quantity ?? 0,

@@ -91,11 +91,22 @@ export function parseFragranceListFilters(
   const sustainability = get("sustainability")?.split(",").filter(Boolean);
 
   const productTypeRaw = overrides.productType ?? get("productType");
+  const validTypes = [
+    "PERFUME",
+    "WATCH",
+    "SNEAKER",
+    "SHIRT",
+    "SUNGLASSES",
+    "RING",
+    "BRACELET",
+    "NECKLACE",
+    "BELT",
+    "WALLET",
+    "BAG",
+  ] as const;
   const productType =
     productTypeRaw &&
-    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
-      productTypeRaw.toUpperCase()
-    )
+    validTypes.includes(productTypeRaw.toUpperCase() as (typeof validTypes)[number])
       ? (productTypeRaw.toUpperCase() as ProductType)
       : overrides.productType;
 

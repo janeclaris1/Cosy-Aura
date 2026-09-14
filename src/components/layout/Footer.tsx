@@ -9,6 +9,7 @@ import { SocialLinks } from "@/components/layout/SocialLinks";
 import { FooterRegions } from "@/components/layout/FooterRegions";
 import { InstallAppLink } from "@/components/pwa/InstallAppLink";
 import { useT } from "@/lib/locale-store";
+import { CATALOGS, FASHION_CATALOGS } from "@/lib/product-catalog";
 import type { StorePin } from "@/components/layout/StoreLocationsMap";
 
 const StoreLocationsMap = dynamic(
@@ -24,12 +25,16 @@ const StoreLocationsMap = dynamic(
   }
 );
 
-const SHOP_LINKS = [
+const SHOP_CATALOG_LINKS = [
   { key: "footer.allFragrances", href: "/fragrances" },
-  { key: "Watches", href: "/watches" },
-  { key: "Sneakers", href: "/sneakers" },
-  { key: "Shirts", href: "/shirts" },
-  { key: "Sunglasses", href: "/sunglasses" },
+  ...FASHION_CATALOGS.map((slug) => ({
+    key: CATALOGS[slug].label,
+    href: CATALOGS[slug].path,
+  })),
+];
+
+const SHOP_LINKS = [
+  ...SHOP_CATALOG_LINKS,
   { key: "footer.finder", href: "/fragrance-finder" },
   { key: "footer.atelier", href: "/atelier" },
   { key: "footer.giftFinder", href: "/gift-finder" },

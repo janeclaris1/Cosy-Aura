@@ -8,22 +8,36 @@ import {
   Building2,
   Fingerprint,
   Briefcase,
+  Footprints,
+  Gem,
+  Glasses,
+  GripHorizontal,
   LayoutDashboard,
+  Link2,
+  Sparkles,
   Mail,
   MessageSquare,
   ScrollText,
   Settings,
   ShoppingBag,
   Droplets,
+  Shirt,
   Store,
   Tag,
   Truck,
   UserCircle,
   Wallet,
   Warehouse,
+  Watch,
   Calculator,
   FileSignature,
 } from "lucide-react";
+import {
+  ADMIN_CATALOG_SLUGS,
+  CATALOGS,
+  adminCatalogPath,
+  type CatalogSlug,
+} from "@/lib/product-catalog";
 import type { Permission } from "@/lib/rbac";
 
 export type AdminNavItem = {
@@ -42,6 +56,27 @@ export type AdminNavGroup = {
   label: string;
   items: AdminNavItem[];
 };
+
+const CATALOG_NAV_ICONS: Record<CatalogSlug, LucideIcon> = {
+  fragrances: Droplets,
+  watches: Watch,
+  sneakers: Footprints,
+  shirts: Shirt,
+  sunglasses: Glasses,
+  rings: Gem,
+  bracelets: Link2,
+  necklaces: Sparkles,
+  belts: GripHorizontal,
+  wallets: Wallet,
+  bags: ShoppingBag,
+};
+
+const CATALOG_NAV_ITEMS: AdminNavItem[] = ADMIN_CATALOG_SLUGS.map((slug) => ({
+  href: adminCatalogPath(slug),
+  label: CATALOGS[slug].adminLabel,
+  icon: CATALOG_NAV_ICONS[slug],
+  permission: "catalog.read" as const,
+}));
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
@@ -66,7 +101,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     label: "Catalogue",
     items: [
-      { href: "/admin/fragrances", label: "Fragrances", icon: Droplets, permission: "catalog.read" },
+      ...CATALOG_NAV_ITEMS,
       { href: "/admin/labels", label: "Barcode labels", icon: Barcode, permission: "catalog.read" },
       { href: "/admin/brands", label: "Brands", icon: Tag, permission: "catalog.read" },
     ],

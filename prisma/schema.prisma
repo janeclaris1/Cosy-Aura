@@ -86,6 +86,12 @@ enum ProductType {
   SNEAKER
   SHIRT
   SUNGLASSES
+  RING
+  BRACELET
+  NECKLACE
+  BELT
+  WALLET
+  BAG
 }
 
 enum OrderStatus {

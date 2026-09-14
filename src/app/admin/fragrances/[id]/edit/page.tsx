@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { FragranceForm } from "@/components/admin/FragranceForm";
 import { getAllBrands } from "@/lib/fragrances";
 import { AdminButton, AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
+import {
+  PRODUCT_TYPE_OPTIONS,
+  adminCatalogPath,
+  catalogForProductType,
+} from "@/lib/product-catalog";
 
 interface PageProps {
   params: { id: string };
@@ -27,11 +32,16 @@ export default async function EditFragrancePage({ params }: PageProps) {
 
   if (!fragrance) notFound();
 
+  const catalog = catalogForProductType(fragrance.productType);
+  const typeLabel =
+    PRODUCT_TYPE_OPTIONS.find((o) => o.value === fragrance.productType)?.label ??
+    "Product";
+
   return (
     <div className={adminPageWrap}>
       <AdminPageHeader
         eyebrow="Catalogue"
-        title="Edit fragrance"
+        title={`Edit ${typeLabel.toLowerCase()}`}
         description={`${fragrance.brand.name} · ${fragrance.model}`}
         actions={
           <>
@@ -44,7 +54,11 @@ export default async function EditFragrancePage({ params }: PageProps) {
           </>
         }
       />
-      <FragranceForm brands={brands} fragrance={fragrance} />
+      <FragranceForm
+        brands={brands}
+        fragrance={fragrance}
+        returnPath={adminCatalogPath(catalog.slug)}
+      />
     </div>
   );
 }

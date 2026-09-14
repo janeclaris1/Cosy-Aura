@@ -13,6 +13,13 @@ import {
   Warehouse,
 } from "lucide-react";
 import { BOTTLE_SIZES, type BottleSize } from "@/lib/bottle-sizes";
+import {
+  ADMIN_CATALOG_SLUGS,
+  CATALOGS,
+  catalogForProductType,
+  isPerfumeProduct,
+} from "@/lib/product-catalog";
+import type { ProductType } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { readAdminBranchCookie, writeAdminBranchCookie } from "@/lib/admin-context";
 import { AdminBranchSelect } from "@/components/admin/AdminBranchSelect";
@@ -34,10 +41,25 @@ type Row = {
   brand: string;
   model: string;
   reference: string;
+  productType: ProductType;
   quantities: Quantities;
   countryPool: number;
   countryInStock: boolean;
 };
+
+type StockFilter = "ALL" | ProductType;
+
+const STOCK_FILTER_TABS: { id: StockFilter; label: string }[] = [
+  { id: "ALL", label: "All" },
+  ...ADMIN_CATALOG_SLUGS.map((slug) => ({
+    id: CATALOGS[slug].productType,
+    label: CATALOGS[slug].adminLabel,
+  })),
+];
+
+function sizesForRow(row: Row): BottleSize[] {
+  return isPerfumeProduct(row.productType) ? [...BOTTLE_SIZES] : [50];
+}
 
 type DraftMap = Record<string, Record<BottleSize, string>>;
 
@@ -93,6 +115,7 @@ export function BranchStockManager() {
   const [adjustReason, setAdjustReason] = useState("");
   const [adjusting, setAdjusting] = useState(false);
   const [q, setQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState<StockFilter>("ALL");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(true);
@@ -156,6 +179,10 @@ export function BranchStockManager() {
     if (branchId) writeAdminBranchCookie(branchId);
   }, [branchId]);
 
+  useEffect(() => {
+    if (catalogOnlyFilter) setAdjustSize(50);
+  }, [catalogOnlyFilter]);
+
   const loadStock = useCallback(async (id: string) => {
     setLoadingStock(true);
     setError(null);
@@ -198,20 +225,30 @@ export function BranchStockManager() {
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter(
-      (r) =>
+    return rows.filter((r) => {
+      if (typeFilter !== "ALL" && r.productType !== typeFilter) return false;
+      if (!term) return true;
+      return (
         r.model.toLowerCase().includes(term) ||
         r.brand.toLowerCase().includes(term) ||
         r.reference.toLowerCase().includes(term)
-    );
-  }, [rows, q]);
+      );
+    });
+  }, [rows, q, typeFilter]);
+
+  const catalogOnlyFilter = typeFilter !== "ALL" && typeFilter !== "PERFUME";
+
+  function columnLabel(size: BottleSize): string {
+    if (catalogOnlyFilter) return "Units";
+    if (size === 50 && typeFilter === "ALL") return "Units / 50 ml";
+    return `${size} ml`;
+  }
 
   const stats = useMemo(() => {
     let lowLines = 0;
     let totalUnits = 0;
     for (const row of rows) {
-      for (const size of BOTTLE_SIZES) {
+      for (const size of sizesForRow(row)) {
         const qty = Math.max(
           0,
           Math.floor(Number(draft[row.fragranceId]?.[size] ?? row.quantities[size] ?? 0) || 0)
@@ -230,7 +267,7 @@ export function BranchStockManager() {
   const dirtyCount = useMemo(() => {
     let n = 0;
     for (const row of rows) {
-      for (const size of BOTTLE_SIZES) {
+      for (const size of sizesForRow(row)) {
         const current = Math.max(
           0,
           Math.floor(Number(draft[row.fragranceId]?.[size] ?? row.quantities[size] ?? 0) || 0)
@@ -265,9 +302,13 @@ export function BranchStockManager() {
       setMessage(null);
       return;
     }
-    const sizes = BOTTLE_SIZES.filter((s) => bulkSizes[s]);
+    const sizes = catalogOnlyFilter
+      ? ([50] as BottleSize[])
+      : BOTTLE_SIZES.filter((s) => bulkSizes[s]);
     if (!sizes.length) {
-      setError("Choose at least one bottle size for bulk set.");
+      setError(
+        catalogOnlyFilter ? "Bulk set unavailable." : "Choose at least one bottle size for bulk set."
+      );
       setMessage(null);
       return;
     }
@@ -282,7 +323,9 @@ export function BranchStockManager() {
       return next;
     });
     setMessage(
-      `Draft: ${sizes.map((s) => `${s}ml`).join(", ")} → ${qty} on ${ids.length} product${ids.length === 1 ? "" : "s"}. Click Save changes.`
+      catalogOnlyFilter
+        ? `Draft: ${qty} unit(s) on ${ids.length} product${ids.length === 1 ? "" : "s"}. Click Save changes.`
+        : `Draft: ${sizes.map((s) => `${s}ml`).join(", ")} → ${qty} on ${ids.length} product${ids.length === 1 ? "" : "s"}. Click Save changes.`
     );
   }
 
@@ -298,7 +341,7 @@ export function BranchStockManager() {
         quantity: number;
       }> = [];
       for (const row of rows) {
-        for (const size of BOTTLE_SIZES) {
+        for (const size of sizesForRow(row)) {
           const quantity = Math.max(
             0,
             Math.floor(Number(draft[row.fragranceId]?.[size] ?? row.quantities[size] ?? 0) || 0)
@@ -440,6 +483,15 @@ export function BranchStockManager() {
             Managing stock at <strong>{branch.name}</strong> · POS deducts from this branch
           </p>
         )}
+        <div className="mt-4">
+          <p className={labelClass}>Catalog</p>
+          <AdminTabBar
+            size="sm"
+            tabs={STOCK_FILTER_TABS}
+            value={typeFilter}
+            onChange={setTypeFilter}
+          />
+        </div>
       </section>
 
       {/* Stats */}
@@ -464,11 +516,12 @@ export function BranchStockManager() {
       <section className="bg-white shadow-sm ring-1 ring-black/[0.04] p-4 sm:p-5 space-y-3">
         <h2 className="font-playfair text-lg text-[#03045e]">Bulk set</h2>
         <p className="text-xs text-mocha">
-          Tick products in the table, choose sizes, enter quantity, then Apply. Save when ready.
+          Tick products in the table, {catalogOnlyFilter ? "enter units," : "choose sizes,"} then
+          Apply. Save when ready.
         </p>
         <div className="flex flex-wrap items-end gap-4">
           <div className="w-24">
-            <label className={labelClass}>Quantity</label>
+            <label className={labelClass}>{catalogOnlyFilter ? "Units" : "Quantity"}</label>
             <input
               type="number"
               min={0}
@@ -477,21 +530,23 @@ export function BranchStockManager() {
               className={inputClass}
             />
           </div>
-          <div className="flex gap-4 items-center pt-5">
-            {BOTTLE_SIZES.map((size) => (
-              <label key={size} className="inline-flex items-center gap-2 text-sm text-espresso">
-                <input
-                  type="checkbox"
-                  checked={bulkSizes[size]}
-                  onChange={(e) =>
-                    setBulkSizes((prev) => ({ ...prev, [size]: e.target.checked }))
-                  }
-                  className="rounded border-stone-300"
-                />
-                {size} ml
-              </label>
-            ))}
-          </div>
+          {!catalogOnlyFilter && (
+            <div className="flex gap-4 items-center pt-5">
+              {BOTTLE_SIZES.map((size) => (
+                <label key={size} className="inline-flex items-center gap-2 text-sm text-espresso">
+                  <input
+                    type="checkbox"
+                    checked={bulkSizes[size]}
+                    onChange={(e) =>
+                      setBulkSizes((prev) => ({ ...prev, [size]: e.target.checked }))
+                    }
+                    className="rounded border-stone-300"
+                  />
+                  {size} ml
+                </label>
+              ))}
+            </div>
+          )}
           <button
             type="button"
             onClick={applyBulk}
@@ -533,7 +588,7 @@ export function BranchStockManager() {
                 onChange={(e) => setAdjustFragranceId(e.target.value)}
                 className={cn(adminSelectClass, "appearance-none cursor-pointer")}
               >
-                <option value="">Select a fragrance…</option>
+                <option value="">Select a product…</option>
                 {filtered.map((r) => (
                   <option key={r.fragranceId} value={r.fragranceId}>
                     {r.brand} · {r.model}
@@ -542,26 +597,31 @@ export function BranchStockManager() {
               </select>
             </div>
 
-            <div>
-              <p className={adminLabelClass}>Bottle size</p>
-              <div className="flex flex-wrap gap-2">
-                {BOTTLE_SIZES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setAdjustSize(s)}
-                    className={cn(
-                      "min-w-[4.5rem] px-3 py-2.5 text-sm font-medium ring-1 transition-colors tabular-nums",
-                      adjustSize === s
-                        ? "bg-[#03045e] text-white ring-[#03045e]"
-                        : "bg-white text-mocha ring-stone-200/80 hover:ring-[#03045e]/30"
-                    )}
-                  >
-                    {s} ml
-                  </button>
-                ))}
+            {!catalogOnlyFilter && (
+              <div>
+                <p className={adminLabelClass}>Bottle size</p>
+                <div className="flex flex-wrap gap-2">
+                  {BOTTLE_SIZES.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setAdjustSize(s)}
+                      className={cn(
+                        "min-w-[4.5rem] px-3 py-2.5 text-sm font-medium ring-1 transition-colors tabular-nums",
+                        adjustSize === s
+                          ? "bg-[#03045e] text-white ring-[#03045e]"
+                          : "bg-white text-mocha ring-stone-200/80 hover:ring-[#03045e]/30"
+                      )}
+                    >
+                      {s} ml
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+            {catalogOnlyFilter && (
+              <input type="hidden" name="bottleSize" value={50} />
+            )}
 
             <div>
               <label className={adminLabelClass}>
@@ -638,10 +698,13 @@ export function BranchStockManager() {
                       aria-label="Select all filtered"
                     />
                   </th>
-                  <th className="p-3 font-medium">Fragrance</th>
-                  {BOTTLE_SIZES.map((size) => (
+                  <th className="p-3 font-medium">Product</th>
+                  {typeFilter === "ALL" && (
+                    <th className="p-3 font-medium w-24">Type</th>
+                  )}
+                  {(catalogOnlyFilter ? ([50] as BottleSize[]) : [...BOTTLE_SIZES]).map((size) => (
                     <th key={size} className="p-3 font-medium w-28">
-                      {size} ml
+                      {columnLabel(size)}
                     </th>
                   ))}
                   <th className="p-3 font-medium w-28">Country pool</th>
@@ -672,30 +735,45 @@ export function BranchStockManager() {
                       </Link>
                       <p className="text-xs text-mocha mt-0.5">{row.reference}</p>
                     </td>
-                    {BOTTLE_SIZES.map((size) => {
-                      const val = draft[row.fragranceId]?.[size] ?? "0";
-                      const qty = Math.max(0, Math.floor(Number(val) || 0));
-                      return (
-                        <td key={size} className="p-3">
-                          <input
-                            type="number"
-                            min={0}
-                            value={val}
-                            onChange={(e) =>
-                              setDraft((prev) => ({
-                                ...prev,
-                                [row.fragranceId]: {
-                                  ...(prev[row.fragranceId] || emptyDraftSizes()),
-                                  [size]: e.target.value,
-                                },
-                              }))
-                            }
-                            className={cn(qtyInputClass, qtyTone(qty))}
-                            aria-label={`${row.model} ${size}ml`}
-                          />
-                        </td>
-                      );
-                    })}
+                    {typeFilter === "ALL" && (
+                      <td className="p-3 text-xs text-mocha">
+                        {catalogForProductType(row.productType).adminLabel}
+                      </td>
+                    )}
+                    {(catalogOnlyFilter ? ([50] as BottleSize[]) : [...BOTTLE_SIZES]).map(
+                      (size) => {
+                        const perfumeRow = isPerfumeProduct(row.productType);
+                        if (!perfumeRow && size !== 50) {
+                          return (
+                            <td key={size} className="p-3 text-center text-mocha">
+                              —
+                            </td>
+                          );
+                        }
+                        const val = draft[row.fragranceId]?.[size] ?? "0";
+                        const qty = Math.max(0, Math.floor(Number(val) || 0));
+                        return (
+                          <td key={size} className="p-3">
+                            <input
+                              type="number"
+                              min={0}
+                              value={val}
+                              onChange={(e) =>
+                                setDraft((prev) => ({
+                                  ...prev,
+                                  [row.fragranceId]: {
+                                    ...(prev[row.fragranceId] || emptyDraftSizes()),
+                                    [size]: e.target.value,
+                                  },
+                                }))
+                              }
+                              className={cn(qtyInputClass, qtyTone(qty))}
+                              aria-label={`${row.model} ${perfumeRow ? `${size}ml` : "units"}`}
+                            />
+                          </td>
+                        );
+                      }
+                    )}
                     <td className="p-3 tabular-nums text-mocha">
                       {row.countryPool}
                       {!row.countryInStock && (
@@ -706,7 +784,14 @@ export function BranchStockManager() {
                 ))}
                 {!filtered.length && (
                   <tr>
-                    <td colSpan={6} className="p-12 text-center text-mocha">
+                    <td
+                      colSpan={
+                        3 +
+                        (typeFilter === "ALL" ? 1 : 0) +
+                        (catalogOnlyFilter ? 1 : BOTTLE_SIZES.length)
+                      }
+                      className="p-12 text-center text-mocha"
+                    >
                       {!branchId
                         ? "Select a branch to view stock."
                         : q.trim()

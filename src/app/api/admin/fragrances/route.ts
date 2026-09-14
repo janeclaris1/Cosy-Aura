@@ -9,6 +9,7 @@ import {
 } from "@/lib/sync-country-stock";
 import { initialEngagementCounts } from "@/lib/product-engagement";
 import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
+import { CATALOG_PRODUCT_TYPES } from "@/lib/product-catalog";
 
 export async function POST(req: Request) {
   const { ctx, error } = await requireAdminApi("catalog.write", { req });
@@ -25,13 +26,10 @@ export async function POST(req: Request) {
   const stock = body.stock ?? 0;
   const engagement = initialEngagementCounts();
 
-  const productType =
-    body.productType &&
-    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
-      String(body.productType).toUpperCase()
-    )
-      ? String(body.productType).toUpperCase()
-      : "PERFUME";
+  const productTypeRaw = String(body.productType ?? "").toUpperCase();
+  const productType = CATALOG_PRODUCT_TYPES.includes(productTypeRaw as never)
+    ? productTypeRaw
+    : "PERFUME";
 
   const fragrance = await prisma.fragrance.create({
     data: {

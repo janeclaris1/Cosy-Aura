@@ -11,8 +11,15 @@ import {
 } from "@/components/admin/admin-ui";
 import { MANAGED_STOCK_COUNTRIES } from "@/lib/country-stock";
 import { salePriceForSize } from "@/lib/pricing";
-import { formatPrice } from "@/lib/utils";
-import { PRODUCT_TYPE_OPTIONS } from "@/lib/product-catalog";
+import { cn, formatPrice } from "@/lib/utils";
+import {
+  PRODUCT_TYPE_OPTIONS,
+  adminCatalogPath,
+  catalogForProductType,
+  isPerfumeProduct,
+} from "@/lib/product-catalog";
+import { ProductBranchStockPanel } from "@/components/admin/ProductBranchStockPanel";
+import type { ProductType } from "@prisma/client";
 
 interface Brand {
   id: string;
@@ -22,6 +29,8 @@ interface Brand {
 
 interface FragranceFormProps {
   brands: Brand[];
+  defaultProductType?: ProductType;
+  returnPath?: string;
   fragrance?: {
     id: string;
     brandId: string;
@@ -65,7 +74,27 @@ interface FragranceFormProps {
   };
 }
 
-const CATEGORIES = ["Floral", "Oriental", "Woody", "Fresh", "Niche"];
+const PERFUME_CATEGORIES = ["Floral", "Oriental", "Woody", "Fresh", "Niche"];
+
+const CATALOG_CATEGORIES: Partial<Record<ProductType, string[]>> = {
+  WATCH: ["Dress watch", "Fashion watch", "Chronograph", "Tool watch", "Sport watch"],
+  SNEAKER: ["Lifestyle", "Running", "Basketball", "Limited edition"],
+  SHIRT: ["Casual", "Formal", "Polo", "Oxford"],
+  SUNGLASSES: ["Aviator", "Wayfarer", "Sport", "Designer"],
+  RING: ["Engagement", "Wedding band", "Signet", "Fashion", "Stackable"],
+  BRACELET: ["Chain", "Bangle", "Cuff", "Tennis", "Charm"],
+  NECKLACE: ["Pendant", "Chain", "Choker", "Layered", "Pearl"],
+  BELT: ["Leather", "Chain", "Dress", "Casual", "Reversible"],
+  WALLET: ["Bifold", "Card holder", "Zip around", "Travel", "Coin purse"],
+  BAG: ["Tote", "Crossbody", "Shoulder bag", "Clutch", "Backpack"],
+};
+
+function productTypeLabel(productType: string): string {
+  return (
+    PRODUCT_TYPE_OPTIONS.find((o) => o.value === productType)?.label.toLowerCase() ??
+    "product"
+  );
+}
 
 function notesToString(notes?: string[]) {
   return (notes || []).join(", ");
@@ -78,8 +107,19 @@ function parseNotes(value: string) {
     .filter(Boolean);
 }
 
-export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
+export function FragranceForm({
+  brands,
+  fragrance,
+  defaultProductType = "PERFUME",
+  returnPath,
+}: FragranceFormProps) {
   const router = useRouter();
+
+  const listPathForType = (productType: string) => {
+    if (returnPath) return returnPath;
+    const catalog = catalogForProductType(productType as ProductType);
+    return adminCatalogPath(catalog.slug);
+  };
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const initialGlobalInStock = (fragrance?.stock ?? 0) > 0;
@@ -101,7 +141,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     return map;
   });
   const [form, setForm] = useState({
-    productType: fragrance?.productType || "PERFUME",
+    productType: fragrance?.productType || defaultProductType,
     brandId: fragrance?.brandId || brands[0]?.id || "",
     model: fragrance?.model || "",
     reference: fragrance?.reference || "",
@@ -133,10 +173,17 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     stock: fragrance?.stock ?? 0,
     rating: fragrance?.rating ?? "",
     featured: fragrance?.featured || false,
-    category: fragrance?.category || "Floral",
+    category:
+      fragrance?.category ||
+      (defaultProductType === "PERFUME" ? "Floral" : ""),
     imageUrl: fragrance?.images[0]?.url || "",
     explainerVideoUrl: fragrance?.explainerVideoUrl || "",
   });
+
+  const isPerfume = isPerfumeProduct(form.productType as ProductType);
+  const typeLabel = productTypeLabel(form.productType);
+  const catalogCategories =
+    CATALOG_CATEGORIES[form.productType as ProductType] ?? [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -178,24 +225,24 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     });
 
     if (res.ok) {
-      router.push("/admin/fragrances");
+      router.push(listPathForType(form.productType));
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(data.error || "Failed to save fragrance");
+      alert(data.error || `Failed to save ${typeLabel}`);
       setLoading(false);
     }
   }
 
   async function handleDelete() {
     if (!fragrance) return;
-    if (!confirm("Delete this fragrance permanently?")) return;
+    if (!confirm(`Delete this ${typeLabel} permanently?`)) return;
     setDeleting(true);
     const res = await fetch(`/api/admin/fragrances/${fragrance.id}`, {
       method: "DELETE",
     });
     if (res.ok) {
-      router.push("/admin/fragrances");
+      router.push(listPathForType(form.productType));
       router.refresh();
     } else {
       const data = await res.json().catch(() => ({}));
@@ -252,7 +299,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={cn("grid gap-4", isPerfume ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")}>
         <div>
           <label className={adminLabelClass}>Reference</label>
           <input
@@ -262,33 +309,53 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             required
           />
         </div>
-        <div>
-          <label className={adminLabelClass}>Storefront prices (GHS)</label>
-          <div className="rounded-xl bg-[#fafafa] ring-1 ring-stone-200/80 px-3 py-2.5 text-sm tabular-nums space-y-1">
-            <p>
-              30ml ·{" "}
-              <span className="font-semibold text-[#03045e]">
-                {formatPrice(salePriceForSize(30, fragrance?.slug || form.model))}
-              </span>
+
+        {isPerfume ? (
+          <div>
+            <label className={adminLabelClass}>Storefront prices (GHS)</label>
+            <div className="rounded-xl bg-[#fafafa] ring-1 ring-stone-200/80 px-3 py-2.5 text-sm tabular-nums space-y-1">
+              <p>
+                30ml ·{" "}
+                <span className="font-semibold text-[#03045e]">
+                  {formatPrice(salePriceForSize(30, fragrance?.slug || form.model))}
+                </span>
+              </p>
+              <p>
+                50ml ·{" "}
+                <span className="font-semibold text-[#03045e]">
+                  {formatPrice(salePriceForSize(50, fragrance?.slug || form.model))}
+                </span>
+              </p>
+              <p>
+                100ml ·{" "}
+                <span className="font-semibold text-[#03045e]">
+                  {formatPrice(salePriceForSize(100, fragrance?.slug || form.model))}
+                </span>
+              </p>
+            </div>
+            <p className="text-[11px] text-mocha mt-1">
+              Calculated from list tiers and the 7% store discount — same as the website and POS.
             </p>
-            <p>
-              50ml ·{" "}
-              <span className="font-semibold text-[#03045e]">
-                {formatPrice(salePriceForSize(50, fragrance?.slug || form.model))}
-              </span>
-            </p>
-            <p>
-              100ml ·{" "}
-              <span className="font-semibold text-[#03045e]">
-                {formatPrice(salePriceForSize(100, fragrance?.slug || form.model))}
-              </span>
+            <input type="hidden" name="price" value={form.price} />
+          </div>
+        ) : (
+          <div>
+            <label className={adminLabelClass}>Retail price (GHS)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+              className={adminInputClass}
+              required
+            />
+            <p className="text-[11px] text-mocha mt-1">
+              Shown on the storefront and used at POS for this item.
             </p>
           </div>
-          <p className="text-[11px] text-mocha mt-1">
-            Calculated from list tiers and the 7% store discount — same as the website and POS.
-          </p>
-          <input type="hidden" name="price" value={form.price} />
-        </div>
+        )}
+
         <div>
           <label className={adminLabelClass}>Unit cost (GHS)</label>
           <input
@@ -302,7 +369,9 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             className={adminInputClass}
           />
           <p className="text-[11px] text-mocha mt-1">
-            For catalog bottle size; COGS scales for 30ml / 50ml / 100ml sales.
+            {isPerfume
+              ? "For catalog bottle size; COGS scales for 30ml / 50ml / 100ml sales."
+              : "Used for COGS and margin reporting."}
           </p>
         </div>
       </div>
@@ -310,17 +379,42 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={adminLabelClass}>Category</label>
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={adminInputClass}
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          {isPerfume ? (
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={adminSelectClass}
+            >
+              {PERFUME_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          ) : catalogCategories.length > 0 ? (
+            <select
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={adminSelectClass}
+            >
+              <option value="">Select category</option>
+              {catalogCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+              {form.category && !catalogCategories.includes(form.category) ? (
+                <option value={form.category}>{form.category}</option>
+              ) : null}
+            </select>
+          ) : (
+            <input
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className={adminInputClass}
+              placeholder="e.g. Dress watch"
+            />
+          )}
         </div>
         <div>
           <label className={adminLabelClass}>Gender</label>
@@ -357,94 +451,179 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className={adminLabelClass}>Condition</label>
-          <select
-            value={form.condition}
-            onChange={(e) => setForm({ ...form, condition: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="UNWORN">New</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Family</label>
-          <select
-            value={form.fragranceFamily}
-            onChange={(e) => setForm({ ...form, fragranceFamily: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="FLORAL">Floral</option>
-            <option value="ORIENTAL">Oriental</option>
-            <option value="WOODY">Woody</option>
-            <option value="FRESH">Fresh</option>
-            <option value="CITRUS">Citrus</option>
-            <option value="SPICY">Spicy</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Year</label>
-          <input
-            type="number"
-            value={form.year}
-            onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
-            className={adminInputClass}
-          />
-        </div>
-      </div>
+      {isPerfume ? (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className={adminLabelClass}>Condition</label>
+              <select
+                value={form.condition}
+                onChange={(e) => setForm({ ...form, condition: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="UNWORN">New</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Family</label>
+              <select
+                value={form.fragranceFamily}
+                onChange={(e) => setForm({ ...form, fragranceFamily: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="FLORAL">Floral</option>
+                <option value="ORIENTAL">Oriental</option>
+                <option value="WOODY">Woody</option>
+                <option value="FRESH">Fresh</option>
+                <option value="CITRUS">Citrus</option>
+                <option value="SPICY">Spicy</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Year</label>
+              <input
+                type="number"
+                value={form.year}
+                onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+                className={adminInputClass}
+              />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className={adminLabelClass}>Bottle Material</label>
-          <select
-            value={form.bottleMaterial}
-            onChange={(e) => setForm({ ...form, bottleMaterial: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="GLASS">Glass</option>
-            <option value="CRYSTAL">Crystal</option>
-            <option value="METAL">Metal</option>
-            <option value="CERAMIC">Ceramic</option>
-            <option value="ACRYLIC">Acrylic</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Size (ml)</label>
-          <select
-            value={form.bottleSize}
-            onChange={(e) => setForm({ ...form, bottleSize: Number(e.target.value) })}
-            className={adminInputClass}
-          >
-            <option value={30}>30</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Cap</label>
-          <select
-            value={form.capType}
-            onChange={(e) => setForm({ ...form, capType: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="MAGNETIC">Magnetic</option>
-            <option value="SPRAY">Spray</option>
-            <option value="DAB_ON">Dab-on</option>
-            <option value="SCREW">Screw</option>
-          </select>
-        </div>
-      </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className={adminLabelClass}>Bottle Material</label>
+              <select
+                value={form.bottleMaterial}
+                onChange={(e) => setForm({ ...form, bottleMaterial: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="GLASS">Glass</option>
+                <option value="CRYSTAL">Crystal</option>
+                <option value="METAL">Metal</option>
+                <option value="CERAMIC">Ceramic</option>
+                <option value="ACRYLIC">Acrylic</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Size (ml)</label>
+              <select
+                value={form.bottleSize}
+                onChange={(e) => setForm({ ...form, bottleSize: Number(e.target.value) })}
+                className={adminSelectClass}
+              >
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Cap</label>
+              <select
+                value={form.capType}
+                onChange={(e) => setForm({ ...form, capType: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="MAGNETIC">Magnetic</option>
+                <option value="SPRAY">Spray</option>
+                <option value="DAB_ON">Dab-on</option>
+                <option value="SCREW">Screw</option>
+              </select>
+            </div>
+          </div>
 
-      <div>
-        <label className={adminLabelClass}>Bottle detail (display)</label>
-        <input
-          value={form.bottleDetail}
-          onChange={(e) => setForm({ ...form, bottleDetail: e.target.value })}
-          className={adminInputClass}
-          placeholder="Handcrafted German Glass"
-        />
-      </div>
+          <div>
+            <label className={adminLabelClass}>Bottle detail (display)</label>
+            <input
+              value={form.bottleDetail}
+              onChange={(e) => setForm({ ...form, bottleDetail: e.target.value })}
+              className={adminInputClass}
+              placeholder="Handcrafted German Glass"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className={adminLabelClass}>Condition</label>
+              <select
+                value={form.condition}
+                onChange={(e) => setForm({ ...form, condition: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="UNWORN">New</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Year</label>
+              <input
+                type="number"
+                value={form.year}
+                onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+                className={adminInputClass}
+              />
+            </div>
+            <div>
+              <label className={adminLabelClass}>Case size (mm)</label>
+              <input
+                type="number"
+                min="1"
+                value={form.bottleSize}
+                onChange={(e) => setForm({ ...form, bottleSize: Number(e.target.value) })}
+                className={adminInputClass}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={adminLabelClass}>Case / specs (display)</label>
+              <input
+                value={form.bottleDetail}
+                onChange={(e) => setForm({ ...form, bottleDetail: e.target.value })}
+                className={adminInputClass}
+                placeholder="Steel case · sapphire crystal · 3 ATM"
+              />
+            </div>
+            <div>
+              <label className={adminLabelClass}>Movement</label>
+              <input
+                value={form.longevity}
+                onChange={(e) => setForm({ ...form, longevity: e.target.value })}
+                className={adminInputClass}
+                placeholder="Japanese Miyota quartz"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={adminLabelClass}>Dial / colour (display)</label>
+              <input
+                value={form.liquidColor}
+                onChange={(e) => setForm({ ...form, liquidColor: e.target.value })}
+                className={adminInputClass}
+                placeholder="White dial · gold hands"
+              />
+            </div>
+            <div>
+              <label className={adminLabelClass}>Case material</label>
+              <select
+                value={form.bottleMaterial}
+                onChange={(e) => setForm({ ...form, bottleMaterial: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="METAL">Metal / steel</option>
+                <option value="GLASS">Glass</option>
+                <option value="CRYSTAL">Crystal</option>
+                <option value="CERAMIC">Ceramic</option>
+                <option value="ACRYLIC">Acrylic / polymer</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -483,11 +662,19 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
         </div>
       </div>
 
+      {fragrance?.id && (
+        <ProductBranchStockPanel
+          fragranceId={fragrance.id}
+          productType={(form.productType as ProductType) || "PERFUME"}
+        />
+      )}
+
       <div className="ring-1 ring-black/[0.04] bg-[#fafafa] p-4 space-y-3">
         <div>
-          <p className="text-sm font-medium text-espresso">Stock by shop / country</p>
+          <p className="text-sm font-medium text-espresso">Online availability by country</p>
           <p className="text-xs text-mocha mt-0.5">
-            Shoppers in Ghana or Cameroon see availability for their location.
+            When off, the product shows as out of stock online for that country (branch quantities
+            above still apply at POS).
           </p>
         </div>
         <div className="flex flex-wrap gap-6">
@@ -509,87 +696,91 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className={adminLabelClass}>Concentration</label>
-          <select
-            value={form.concentration}
-            onChange={(e) => setForm({ ...form, concentration: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="EDT">Light Perfume Oil</option>
-            <option value="EDP">EDP</option>
-            <option value="PARFUM">Intense Perfume Oil</option>
-            <option value="EXTRAIT">Pure Perfume Oil</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Sillage</label>
-          <select
-            value={form.sillage}
-            onChange={(e) => setForm({ ...form, sillage: e.target.value })}
-            className={adminInputClass}
-          >
-            <option value="SUBTLE">Subtle</option>
-            <option value="MODERATE">Moderate</option>
-            <option value="INTENSE">Intense</option>
-            <option value="POWERFUL">Powerful</option>
-          </select>
-        </div>
-        <div>
-          <label className={adminLabelClass}>Longevity</label>
-          <input
-            value={form.longevity}
-            onChange={(e) => setForm({ ...form, longevity: e.target.value })}
-            className={adminInputClass}
-            placeholder="8-10 hours"
-          />
-        </div>
-      </div>
+      {isPerfume && (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className={adminLabelClass}>Concentration</label>
+              <select
+                value={form.concentration}
+                onChange={(e) => setForm({ ...form, concentration: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="EDT">Light Perfume Oil</option>
+                <option value="EDP">EDP</option>
+                <option value="PARFUM">Intense Perfume Oil</option>
+                <option value="EXTRAIT">Pure Perfume Oil</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Sillage</label>
+              <select
+                value={form.sillage}
+                onChange={(e) => setForm({ ...form, sillage: e.target.value })}
+                className={adminSelectClass}
+              >
+                <option value="SUBTLE">Subtle</option>
+                <option value="MODERATE">Moderate</option>
+                <option value="INTENSE">Intense</option>
+                <option value="POWERFUL">Powerful</option>
+              </select>
+            </div>
+            <div>
+              <label className={adminLabelClass}>Longevity</label>
+              <input
+                value={form.longevity}
+                onChange={(e) => setForm({ ...form, longevity: e.target.value })}
+                className={adminInputClass}
+                placeholder="8-10 hours"
+              />
+            </div>
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={adminLabelClass}>Liquid Color</label>
-          <input
-            value={form.liquidColor}
-            onChange={(e) => setForm({ ...form, liquidColor: e.target.value })}
-            className={adminInputClass}
-          />
-        </div>
-        <div>
-          <label className={adminLabelClass}>Bottle Shape</label>
-          <input
-            value={form.bottleShape}
-            onChange={(e) => setForm({ ...form, bottleShape: e.target.value })}
-            className={adminInputClass}
-          />
-        </div>
-      </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={adminLabelClass}>Liquid Color</label>
+              <input
+                value={form.liquidColor}
+                onChange={(e) => setForm({ ...form, liquidColor: e.target.value })}
+                className={adminInputClass}
+              />
+            </div>
+            <div>
+              <label className={adminLabelClass}>Bottle Shape</label>
+              <input
+                value={form.bottleShape}
+                onChange={(e) => setForm({ ...form, bottleShape: e.target.value })}
+                className={adminInputClass}
+              />
+            </div>
+          </div>
 
-      <div>
-        <label className={adminLabelClass}>Top Notes (comma-separated)</label>
-        <input
-          value={form.topNotes}
-          onChange={(e) => setForm({ ...form, topNotes: e.target.value })}
-          className={adminInputClass}
-        />
-      </div>
-      <div>
-        <label className={adminLabelClass}>Heart Notes (comma-separated)</label>
-        <input
-          value={form.heartNotes}
-          onChange={(e) => setForm({ ...form, heartNotes: e.target.value })}
-          className={adminInputClass}
-        />
-      </div>
-      <div>
-        <label className={adminLabelClass}>Base Notes (comma-separated)</label>
-        <input
-          value={form.baseNotes}
-          onChange={(e) => setForm({ ...form, baseNotes: e.target.value })}
-          className={adminInputClass}
-        />
-      </div>
+          <div>
+            <label className={adminLabelClass}>Top Notes (comma-separated)</label>
+            <input
+              value={form.topNotes}
+              onChange={(e) => setForm({ ...form, topNotes: e.target.value })}
+              className={adminInputClass}
+            />
+          </div>
+          <div>
+            <label className={adminLabelClass}>Heart Notes (comma-separated)</label>
+            <input
+              value={form.heartNotes}
+              onChange={(e) => setForm({ ...form, heartNotes: e.target.value })}
+              className={adminInputClass}
+            />
+          </div>
+          <div>
+            <label className={adminLabelClass}>Base Notes (comma-separated)</label>
+            <input
+              value={form.baseNotes}
+              onChange={(e) => setForm({ ...form, baseNotes: e.target.value })}
+              className={adminInputClass}
+            />
+          </div>
+        </>
+      )}
 
       <div>
         <label className={adminLabelClass}>Image URL</label>
@@ -597,29 +788,34 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
           value={form.imageUrl}
           onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
           className={adminInputClass}
-          placeholder="/images/fragrances/..."
+          placeholder={
+            isPerfume ? "/images/fragrances/..." : "/images/watches/..."
+          }
         />
       </div>
 
-      <div>
-        <label className={adminLabelClass}>Explainer video URL (optional)</label>
-        <input
-          value={form.explainerVideoUrl}
-          onChange={(e) => setForm({ ...form, explainerVideoUrl: e.target.value })}
-          className={adminInputClass}
-          placeholder="YouTube link or /videos/product-explainer.mp4"
-        />
-        <p className="mt-1 text-xs text-mocha">
-          Shows as a play-button thumbnail in the product gallery. Supports YouTube and direct MP4/WebM URLs.
-        </p>
-      </div>
+      {isPerfume && (
+        <div>
+          <label className={adminLabelClass}>Explainer video URL (optional)</label>
+          <input
+            value={form.explainerVideoUrl}
+            onChange={(e) => setForm({ ...form, explainerVideoUrl: e.target.value })}
+            className={adminInputClass}
+            placeholder="YouTube link or /videos/product-explainer.mp4"
+          />
+          <p className="mt-1 text-xs text-mocha">
+            Shows as a play-button thumbnail in the product gallery. Supports YouTube and direct MP4/WebM URLs.
+          </p>
+        </div>
+      )}
 
       <div className="ring-1 ring-black/[0.04] p-4 space-y-3 bg-[#fafafa]">
         <div>
           <p className="text-sm font-medium">POS barcodes</p>
           <p className="text-xs text-mocha mt-0.5">
-            Auto-generated on save: 30 ml → starts with 3, 50 ml → 5, 100 ml → 1.
-            Custom codes must follow the same first digit for that size.
+            {isPerfume
+              ? "Auto-generated on save: 30 ml → starts with 3, 50 ml → 5, 100 ml → 1. Custom codes must follow the same first digit for that size."
+              : "Unit barcode for POS checkout (stored on the 50 ml slot). Auto-generated on save if left blank."}
           </p>
         </div>
         {fragrance && (
@@ -634,52 +830,71 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             </a>
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[30, 50, 100].map((size) => (
-            <div key={size}>
-              <label className={adminLabelClass}>{size} ml barcode</label>
-              <input
-                value={barcodes[String(size)]}
-                onChange={(e) =>
-                  setBarcodes((prev) => ({ ...prev, [String(size)]: e.target.value }))
-                }
-                className={`${adminInputClass} font-mono`}
-                placeholder={size === 30 ? "3…" : size === 50 ? "5…" : "1…"}
-                inputMode="numeric"
-              />
-            </div>
-          ))}
-        </div>
+        {isPerfume ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[30, 50, 100].map((size) => (
+              <div key={size}>
+                <label className={adminLabelClass}>{size} ml barcode</label>
+                <input
+                  value={barcodes[String(size)]}
+                  onChange={(e) =>
+                    setBarcodes((prev) => ({ ...prev, [String(size)]: e.target.value }))
+                  }
+                  className={`${adminInputClass} font-mono`}
+                  placeholder={size === 30 ? "3…" : size === 50 ? "5…" : "1…"}
+                  inputMode="numeric"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <label className={adminLabelClass}>Unit barcode</label>
+            <input
+              value={barcodes["50"]}
+              onChange={(e) =>
+                setBarcodes((prev) => ({ ...prev, "50": e.target.value }))
+              }
+              className={`${adminInputClass} font-mono max-w-xs`}
+              placeholder="5…"
+              inputMode="numeric"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.sampleAvailable}
-            onChange={(e) => setForm({ ...form, sampleAvailable: e.target.checked })}
-            className="rounded text-[#03045e]"
-          />
-          Sample available
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.isVegan}
-            onChange={(e) => setForm({ ...form, isVegan: e.target.checked })}
-            className="rounded text-[#03045e]"
-          />
-          Vegan
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.isCrueltyFree}
-            onChange={(e) => setForm({ ...form, isCrueltyFree: e.target.checked })}
-            className="rounded text-[#03045e]"
-          />
-          Cruelty-free
-        </label>
+        {isPerfume && (
+          <>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.sampleAvailable}
+                onChange={(e) => setForm({ ...form, sampleAvailable: e.target.checked })}
+                className="rounded text-[#03045e]"
+              />
+              Sample available
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.isVegan}
+                onChange={(e) => setForm({ ...form, isVegan: e.target.checked })}
+                className="rounded text-[#03045e]"
+              />
+              Vegan
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.isCrueltyFree}
+                onChange={(e) => setForm({ ...form, isCrueltyFree: e.target.checked })}
+                className="rounded text-[#03045e]"
+              />
+              Cruelty-free
+            </label>
+          </>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -693,7 +908,11 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
 
       <div className="flex flex-wrap gap-3 pt-2">
         <AdminButton type="submit" disabled={loading}>
-          {loading ? "Saving..." : fragrance ? "Update Fragrance" : "Create Fragrance"}
+          {loading
+            ? "Saving..."
+            : fragrance
+              ? `Update ${typeLabel}`
+              : `Create ${typeLabel}`}
         </AdminButton>
         {fragrance && (
           <AdminButton
@@ -703,7 +922,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
             disabled={deleting}
             className="text-red-600 border-red-200 hover:border-red-500 hover:text-red-700 hover:bg-red-50"
           >
-            {deleting ? "Deleting..." : "Delete Fragrance"}
+            {deleting ? "Deleting..." : `Delete ${typeLabel}`}
           </AdminButton>
         )}
       </div>

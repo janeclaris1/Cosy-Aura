@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
 import { syncFragranceCountryStocks } from "@/lib/sync-country-stock";
 import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
+import { CATALOG_PRODUCT_TYPES } from "@/lib/product-catalog";
 
 export async function PUT(
   req: Request,
@@ -15,13 +16,10 @@ export async function PUT(
 
   const body = await req.json();
 
-  const productType =
-    body.productType &&
-    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
-      String(body.productType).toUpperCase()
-    )
-      ? String(body.productType).toUpperCase()
-      : undefined;
+  const productTypeRaw = String(body.productType ?? "").toUpperCase();
+  const productType = CATALOG_PRODUCT_TYPES.includes(productTypeRaw as never)
+    ? productTypeRaw
+    : undefined;
 
   const fragrance = await prisma.fragrance.update({
     where: { id: params.id },

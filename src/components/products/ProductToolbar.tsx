@@ -253,7 +253,6 @@ export function ProductToolbar({
       id: "gender",
       label: t("plp.gender"),
       active: activeValues("gender").length > 0,
-      hidden: !perfumeFilters,
     },
   ];
 

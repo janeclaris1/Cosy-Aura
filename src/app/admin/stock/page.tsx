@@ -10,7 +10,7 @@ export default async function AdminStockPage() {
       <AdminPageHeader
         eyebrow="Inventory"
         title="Branch stock"
-        description="Set 30 / 50 / 100 ml quantities per shop. Bulk-set counts, record adjustments, and keep POS inventory in sync."
+        description="Set branch quantities for perfumes (30 / 50 / 100 ml) and catalog items (units). Bulk-set counts, record adjustments, and keep POS inventory in sync."
       />
       <BranchStockManager />
     </div>
