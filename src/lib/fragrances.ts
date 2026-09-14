@@ -35,6 +35,17 @@ function longevityOrClauses(tokens: string[]): Prisma.FragranceWhereInput[] {
   return clauses;
 }
 
+export const getCatalogProductCount = cache(
+  async (productType: NonNullable<FragranceListFilters["productType"]>) => {
+    try {
+      return await prisma.fragrance.count({ where: { productType } });
+    } catch (error) {
+      console.error("[getCatalogProductCount] database error:", error);
+      return 0;
+    }
+  }
+);
+
 export async function getFragrances(filters: FragranceListFilters = {}) {
   try {
     const page = filters.page || 1;
@@ -163,6 +174,36 @@ export async function getFeaturedFragrances(limit = 8) {
       take: limit,
     });
   } catch {
+    return [];
+  }
+}
+
+/** Featured watches for the catalog hero; falls back to latest in stock. */
+export async function getWatchCatalogHeroItems(limit = 3) {
+  try {
+    const featured = await prisma.fragrance.findMany({
+      where: { productType: "WATCH", featured: true },
+      include: fragranceListInclude,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    if (featured.length >= limit) return featured.slice(0, limit);
+
+    const excludeIds = featured.map((f) => f.id);
+    const rest = await prisma.fragrance.findMany({
+      where: {
+        productType: "WATCH",
+        ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
+      },
+      include: fragranceListInclude,
+      orderBy: { createdAt: "desc" },
+      take: limit - featured.length,
+    });
+
+    return [...featured, ...rest];
+  } catch (error) {
+    console.error("[getWatchCatalogHeroItems] database error:", error);
     return [];
   }
 }
