@@ -7,10 +7,9 @@
  *   npx tsx scripts/import-watches-batch-bonia-breda.ts --only=breda-sync-gold-evergreen --apply
  */
 import { createHash } from "crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import { downloadWatchImagesFromEntries } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
@@ -175,42 +174,6 @@ function shopifyImages(
     .filter(filter)
     .sort((a, b) => a.position - b.position)
     .map((img, i) => ({ src: img.src.split("?")[0], sort: i }));
-}
-
-async function downloadImages(
-  entries: { src: string; sort: number }[],
-  imageSlug: string,
-  label: string
-): Promise<string[]> {
-  const dir = path.join(process.cwd(), "public/images/watches", imageSlug);
-  await mkdir(dir, { recursive: true });
-
-  const sorted = [...entries].sort((a, b) => a.sort - b.sort);
-  const localPaths: string[] = [];
-
-  for (let i = 0; i < sorted.length; i++) {
-    const src = sorted[i].src;
-    const ext = path.extname(new URL(src).pathname) || ".jpg";
-    const filename = `${String(i + 1).padStart(2, "0")}${ext}`;
-    const filePath = path.join(dir, filename);
-    const publicPath = `/images/watches/${imageSlug}/${filename}`;
-
-    if (apply) {
-      const imgRes = await fetch(src, {
-        headers: { "User-Agent": "CosyAuraCatalogImport/1.0" },
-      });
-      if (!imgRes.ok) throw new Error(`Image download failed (${label}): ${src}`);
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      await writeFile(filePath, buf);
-      console.log(`  ↓ ${publicPath}`);
-    } else {
-      console.log(`  would download → ${publicPath}`);
-    }
-
-    localPaths.push(publicPath);
-  }
-
-  return localPaths;
 }
 
 const SIENA_GREEN_VARIANT = 44807336034490;
@@ -775,7 +738,7 @@ async function main() {
     console.log(`   Price: ${config.priceGhs} GHS · Slug: ${config.slug}`);
     const entries = await config.getImages();
     console.log(`   Images: ${entries.length}`);
-    const paths = await downloadImages(entries, config.imageSlug, config.key);
+    const paths = await downloadWatchImagesFromEntries(entries, config.slug, apply);
     imageResults.push({ config, paths });
   }
 

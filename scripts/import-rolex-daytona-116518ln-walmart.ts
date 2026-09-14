@@ -6,10 +6,9 @@
  *   npx tsx scripts/import-rolex-daytona-116518ln-walmart.ts --apply
  */
 import { createHash } from "crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import { downloadWatchImagesFromUrls } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
@@ -154,44 +153,12 @@ async function fetchWalmartImageUrls(url: string): Promise<string[]> {
   return urls;
 }
 
-async function downloadImages(imageUrls: string[], slug: string): Promise<string[]> {
-  const dir = path.join(process.cwd(), "public/images/watches", slug);
-  await mkdir(dir, { recursive: true });
-
-  const localPaths: string[] = [];
-
-  for (let i = 0; i < imageUrls.length; i++) {
-    const src = imageUrls[i];
-    const ext = path.extname(new URL(src).pathname) || ".jpg";
-    const filename = `${String(i + 1).padStart(2, "0")}${ext}`;
-    const filePath = path.join(dir, filename);
-    const publicPath = `/images/watches/${slug}/${filename}`;
-
-    if (apply) {
-      const imgRes = await fetch(src, {
-        headers: { "User-Agent": "CosyAuraCatalogImport/1.0" },
-      });
-      if (!imgRes.ok) throw new Error(`Image download failed: ${src}`);
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      await writeFile(filePath, buf);
-      console.log(`  ↓ ${publicPath}`);
-    } else {
-      console.log(`  would download → ${publicPath}`);
-    }
-
-    localPaths.push(publicPath);
-  }
-
-  return localPaths;
-}
-
 async function main() {
   console.log(apply ? "Importing watch…" : "Dry run — pass --apply to write");
   console.log(`Source: ${PRODUCT_URL}\n`);
 
   const brandSlug = slugify(BRAND);
   const slug = slugify(`${brandSlug}-${MODEL}-${REFERENCE}`);
-  const imageSlug = slugify(`${brandSlug}-daytona-116518ln-champagne`);
 
   console.log(`Brand: ${BRAND}`);
   console.log(`Model: ${MODEL}`);
@@ -202,7 +169,7 @@ async function main() {
   const imageUrls = await fetchWalmartImageUrls(PRODUCT_URL);
   console.log(`Found ${imageUrls.length} images on Walmart\n`);
 
-  const localPaths = await downloadImages(imageUrls, imageSlug);
+  const localPaths = await downloadWatchImagesFromUrls(imageUrls, slug, apply);
 
   if (!apply) {
     console.log("\nDry run complete. Re-run with --apply to persist.");

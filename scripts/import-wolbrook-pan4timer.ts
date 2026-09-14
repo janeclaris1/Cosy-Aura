@@ -6,10 +6,9 @@
  *   npx tsx scripts/import-wolbrook-pan4timer.ts --apply
  */
 import { createHash } from "crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
+import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
 
 const apply = process.argv.includes("--apply");
@@ -208,43 +207,6 @@ async function fetchShopifyProduct(url: string): Promise<ShopifyProduct> {
   return data.product;
 }
 
-async function downloadImages(
-  images: ShopifyImage[],
-  slug: string
-): Promise<string[]> {
-  const dir = path.join(process.cwd(), "public/images/watches", slug);
-  await mkdir(dir, { recursive: true });
-
-  const sorted = [...images]
-    .filter(isProductPhoto)
-    .sort((a, b) => a.position - b.position);
-  const localPaths: string[] = [];
-
-  for (let i = 0; i < sorted.length; i++) {
-    const src = sorted[i].src.split("?")[0];
-    const ext = path.extname(new URL(src).pathname) || ".jpg";
-    const filename = `${String(i + 1).padStart(2, "0")}${ext}`;
-    const filePath = path.join(dir, filename);
-    const publicPath = `/images/watches/${slug}/${filename}`;
-
-    if (apply) {
-      const imgRes = await fetch(src, {
-        headers: { "User-Agent": "CosyAuraCatalogImport/1.0" },
-      });
-      if (!imgRes.ok) throw new Error(`Image download failed: ${src}`);
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      await writeFile(filePath, buf);
-      console.log(`  ↓ ${publicPath}`);
-    } else {
-      console.log(`  would download → ${publicPath}`);
-    }
-
-    localPaths.push(publicPath);
-  }
-
-  return localPaths;
-}
-
 async function main() {
   console.log(apply ? "Importing Wolbrook watch…" : "Dry run — pass --apply to write");
   console.log(`Source: ${PRODUCT_URL}\n`);
@@ -255,7 +217,6 @@ async function main() {
   const model = "Pan4Timer Automatic";
   const reference = "25-PAN-001";
   const slug = slugify(`${brandSlug}-pan4timer-automatic-${reference}`);
-  const imageSlug = slugify(`${brandSlug}-pan4timer-automatic`);
   const productImages = product.images.filter(isProductPhoto);
 
   console.log(`Brand: ${brandName}`);
@@ -269,7 +230,7 @@ async function main() {
   }
   console.log(`Images: ${productImages.length} watch photos (${product.images.length} total)\n`);
 
-  const imageUrls = await downloadImages(product.images, imageSlug);
+  const imageUrls = await downloadWatchImagesFromShopify(productImages, slug, apply);
 
   if (!apply) {
     console.log("\nDry run complete. Re-run with --apply to persist.");
