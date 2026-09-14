@@ -116,6 +116,7 @@ export function BranchStockManager() {
   const [adjusting, setAdjusting] = useState(false);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState<StockFilter>("ALL");
+  const catalogOnlyFilter = typeFilter !== "ALL" && typeFilter !== "PERFUME";
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(true);
@@ -235,8 +236,6 @@ export function BranchStockManager() {
       );
     });
   }, [rows, q, typeFilter]);
-
-  const catalogOnlyFilter = typeFilter !== "ALL" && typeFilter !== "PERFUME";
 
   function columnLabel(size: BottleSize): string {
     if (catalogOnlyFilter) return "Units";

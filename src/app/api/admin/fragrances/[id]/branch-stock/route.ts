@@ -55,7 +55,7 @@ export async function GET(_req: Request, { params }: Params) {
       id: true,
       name: true,
       country: true,
-      branchStocks: {
+      stocks: {
         where: { fragranceId },
         select: { bottleSize: true, quantity: true },
       },
@@ -70,7 +70,7 @@ export async function GET(_req: Request, { params }: Params) {
       id: b.id,
       name: b.name,
       country: b.country,
-      quantities: qtyBySize(b.branchStocks),
+      quantities: qtyBySize(b.stocks),
     })),
   });
 }
