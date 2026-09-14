@@ -69,6 +69,9 @@ const en: Messages = {
   "product.likeRemove": "Unlike this product",
   "product.addToCart": "Add to Cart",
   "product.signInForPricing": "Sign in for pricing",
+  "product.signInForPricingDetail":
+    "Create an account or sign in to view prices and add items to your bag.",
+  "product.pricingMembersOnly": "Account pricing",
   "product.priceHiddenGuest": "Sign in to view price",
   "product.wishlistAdd": "Add to wishlist",
   "product.wishlistRemove": "Remove from wishlist",
@@ -185,6 +188,9 @@ const fr: Messages = {
   "product.likeRemove": "Retirer votre j'aime",
   "product.addToCart": "Ajouter au panier",
   "product.signInForPricing": "Connectez-vous pour voir les prix",
+  "product.signInForPricingDetail":
+    "Créez un compte ou connectez-vous pour voir les prix et ajouter des articles à votre panier.",
+  "product.pricingMembersOnly": "Tarifs réservés aux comptes",
   "product.priceHiddenGuest": "Connectez-vous pour voir le prix",
   "product.wishlistAdd": "Ajouter à la liste d'envies",
   "product.wishlistRemove": "Retirer de la liste d'envies",
@@ -301,6 +307,9 @@ const es: Messages = {
   "product.likeRemove": "Quitar me gusta",
   "product.addToCart": "Añadir al carrito",
   "product.signInForPricing": "Inicia sesión para ver precios",
+  "product.signInForPricingDetail":
+    "Crea una cuenta o inicia sesión para ver precios y añadir artículos a tu bolsa.",
+  "product.pricingMembersOnly": "Precios con cuenta",
   "product.priceHiddenGuest": "Inicia sesión para ver el precio",
   "product.wishlistAdd": "Añadir a favoritos",
   "product.wishlistRemove": "Quitar de favoritos",
@@ -417,6 +426,9 @@ const pt: Messages = {
   "product.likeRemove": "Remover curtida",
   "product.addToCart": "Adicionar ao carrinho",
   "product.signInForPricing": "Inicie sessão para ver preços",
+  "product.signInForPricingDetail":
+    "Crie uma conta ou inicie sessão para ver preços e adicionar itens ao carrinho.",
+  "product.pricingMembersOnly": "Preços para contas",
   "product.priceHiddenGuest": "Inicie sessão para ver o preço",
   "product.wishlistAdd": "Adicionar aos favoritos",
   "product.wishlistRemove": "Remover dos favoritos",
@@ -533,6 +545,9 @@ const de: Messages = {
   "product.likeRemove": "Like entfernen",
   "product.addToCart": "In den Warenkorb",
   "product.signInForPricing": "Anmelden für Preise",
+  "product.signInForPricingDetail":
+    "Erstellen Sie ein Konto oder melden Sie sich an, um Preise zu sehen und Artikel in den Warenkorb zu legen.",
+  "product.pricingMembersOnly": "Preise für Kontoinhaber",
   "product.priceHiddenGuest": "Anmelden, um den Preis zu sehen",
   "product.wishlistAdd": "Auf die Wunschliste",
   "product.wishlistRemove": "Von der Wunschliste entfernen",

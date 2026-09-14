@@ -181,7 +181,7 @@ export function CatalogProductCard({
           ) : null}
 
           {priceHidden ? (
-            <SignInForPricingLink className="mt-2.5 inline-block text-sm font-medium text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2 hover:decoration-[#03045e]" />
+            <SignInForPricingLink variant="card" />
           ) : (
             <p className="mt-2.5 font-playfair text-lg leading-none text-[#03045e] sm:text-xl">
               {formatPrice(displayPrice, currency, rates)}

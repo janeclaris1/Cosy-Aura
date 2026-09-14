@@ -76,9 +76,9 @@ export default function CartPage() {
                   <p className="text-xs text-wf-gray mt-0.5">{item.bottleSize} ml</p>
                 ) : null}
                 {isPriceHidden(item.productType) ? (
-                  <p className="mt-1 text-sm text-[#03045e]">
-                    {t("product.priceHiddenGuest")}
-                  </p>
+                  <div className="mt-1">
+                    <SignInForPricingLink variant="compact" />
+                  </div>
                 ) : (
                   <p className="font-playfair text-gold mt-1">
                     {formatPrice(priceFor(item), currency)}
@@ -120,7 +120,7 @@ export default function CartPage() {
             <div className="flex justify-between gap-3">
               <span className="text-wf-gray">{t("cart.subtotal")}</span>
               {hasHiddenPrices ? (
-                <SignInForPricingLink className="text-sm text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+                <SignInForPricingLink variant="inline" />
               ) : (
                 <span>{formatPrice(subtotal, currency)}</span>
               )}
@@ -133,13 +133,13 @@ export default function CartPage() {
           <div className="flex justify-between gap-3 font-playfair text-xl text-gold border-t border-wf-border pt-4 mb-6">
             <span>{t("cart.total")}</span>
             {hasHiddenPrices ? (
-              <SignInForPricingLink className="text-base text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+              <SignInForPricingLink variant="inline" />
             ) : (
               <span>{formatPrice(subtotal, currency)}</span>
             )}
           </div>
           {hasHiddenPrices ? (
-            <SignInForPricingLink className="btn-gold w-full text-center block" />
+            <SignInForPricingLink variant="button" className="w-full" />
           ) : (
             <Link href="/checkout" className="btn-gold w-full text-center block">
               {t("cart.proceed")}

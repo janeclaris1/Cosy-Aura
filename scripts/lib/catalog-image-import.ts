@@ -7,7 +7,7 @@ import {
 
 const FETCH_HEADERS = { "User-Agent": "CosyAuraCatalogImport/1.0" };
 
-export type CatalogImageKind = "watches" | "sneakers";
+export type CatalogImageKind = "watches" | "sneakers" | "sunglasses";
 
 export function catalogImageFolder(
   kind: CatalogImageKind,
@@ -22,6 +22,10 @@ export function watchImageFolder(productSlug: string): string {
 
 export function sneakerImageFolder(productSlug: string): string {
   return catalogImageFolder("sneakers", productSlug);
+}
+
+export function sunglassesImageFolder(productSlug: string): string {
+  return catalogImageFolder("sunglasses", productSlug);
 }
 
 export function watchImagePublicId(index: number, source: string): string {
@@ -103,6 +107,14 @@ export async function downloadSneakerImagesFromUrls(
   apply: boolean
 ): Promise<string[]> {
   return downloadCatalogImagesFromUrls(urls, "sneakers", productSlug, apply);
+}
+
+export async function downloadSunglassesImagesFromUrls(
+  urls: string[],
+  productSlug: string,
+  apply: boolean
+): Promise<string[]> {
+  return downloadCatalogImagesFromUrls(urls, "sunglasses", productSlug, apply);
 }
 
 export async function downloadWatchImagesFromShopify(

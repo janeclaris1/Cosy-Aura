@@ -419,9 +419,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       />
 
       {priceHidden ? (
-        <div className="mb-6">
-          <SignInForPricingLink className="font-playfair text-xl text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2 hover:decoration-[#03045e]" />
-        </div>
+        <SignInForPricingLink variant="detail" />
       ) : (
         <>
           <p className="font-playfair text-3xl text-[#c8102e] leading-none mb-1">
@@ -447,7 +445,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
 
       <div className="flex flex-wrap gap-3 mb-6">
         {priceHidden ? (
-          <SignInForPricingLink className="btn-primary flex-1 min-w-[160px] text-center" />
+          <SignInForPricingLink variant="button" className="flex-1 min-w-[160px]" />
         ) : (
           <button
             onClick={handleAddToCart}
@@ -486,7 +484,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-mocha truncate">{fragrance.model}</p>
           {priceHidden ? (
-            <SignInForPricingLink className="text-sm text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+            <SignInForPricingLink variant="compact" />
           ) : (
             <p className="font-playfair text-lg text-[#c8102e] leading-none">
               {formatPrice(displayPrice, currency)}
@@ -494,7 +492,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
           )}
         </div>
         {priceHidden ? (
-          <SignInForPricingLink className="btn-primary shrink-0 px-5 text-center" />
+          <SignInForPricingLink variant="button" className="shrink-0 px-5" />
         ) : (
           <button
             type="button"

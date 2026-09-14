@@ -123,9 +123,9 @@ export function CartDrawer() {
                       <p className="text-xs text-wf-gray">{item.bottleSize} ml</p>
                     ) : null}
                     {isPriceHidden(item.productType) ? (
-                      <p className="mt-1 text-sm text-[#03045e]">
-                        {t("product.priceHiddenGuest")}
-                      </p>
+                      <div className="mt-1">
+                        <SignInForPricingLink variant="compact" />
+                      </div>
                     ) : (
                       <p className="font-playfair text-gold mt-1">
                         {formatPrice(priceFor(item), currency)}
@@ -179,7 +179,7 @@ export function CartDrawer() {
               <div className="flex justify-between items-center gap-3">
                 <span className="text-sm text-wf-gray">{t("cart.subtotal")}</span>
                 {hasHiddenPrices ? (
-                  <SignInForPricingLink className="text-sm font-medium text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+                  <SignInForPricingLink variant="inline" />
                 ) : (
                   <span className="font-playfair text-xl text-gold">
                     {formatPrice(subtotal, currency)}
@@ -187,7 +187,7 @@ export function CartDrawer() {
                 )}
               </div>
               {hasHiddenPrices ? (
-                <SignInForPricingLink className="btn-gold w-full text-center block" />
+                <SignInForPricingLink variant="button" className="w-full" />
               ) : (
                 <Link
                   href="/checkout"
