@@ -7,6 +7,7 @@ import { ChevronDown, Leaf, X } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
+import { useCatalogPathPriceHidden } from "@/lib/use-catalog-price-visibility";
 import {
   BOTTLE_SIZE_OPTIONS,
   COLLECTION_OPTIONS,
@@ -61,6 +62,7 @@ export function ProductToolbar({
   perfumeFilters = true,
 }: ProductToolbarProps) {
   const t = useT();
+  const hideGuestPrices = useCatalogPathPriceHidden(catalogPath);
   const mounted = useIsClientMounted();
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
@@ -236,7 +238,12 @@ export function ProductToolbar({
       active: activeBottleSizes.length > 0,
       hidden: !perfumeFilters,
     },
-    { id: "price", label: t("nav.price"), active: hasPrice },
+    {
+      id: "price",
+      label: t("nav.price"),
+      active: hasPrice,
+      hidden: hideGuestPrices,
+    },
     {
       id: "fragranceFamily",
       label: t("pdp.family"),
@@ -436,8 +443,12 @@ export function ProductToolbar({
             className="text-sm border-0 bg-transparent focus:outline-none cursor-pointer"
           >
             <option value="newest">{t("plp.sortNewest")}</option>
-            <option value="price-asc">{t("plp.sortPriceAsc")}</option>
-            <option value="price-desc">{t("plp.sortPriceDesc")}</option>
+            {!hideGuestPrices ? (
+              <>
+                <option value="price-asc">{t("plp.sortPriceAsc")}</option>
+                <option value="price-desc">{t("plp.sortPriceDesc")}</option>
+              </>
+            ) : null}
             <option value="reference">{t("plp.sortName")}</option>
           </select>
         </div>

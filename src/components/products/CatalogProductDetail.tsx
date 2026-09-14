@@ -1,10 +1,14 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import type { Metadata } from "next";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
 import { ProductPurchase } from "@/components/products/ProductPurchase";
+import { authOptions } from "@/lib/auth";
+import { isGuestPriceHidden } from "@/lib/catalog-price-visibility";
 import { getFragranceBySlug, getRelatedFragrances } from "@/lib/fragrances";
 import { getCatalog, productDetailPath, type CatalogSlug } from "@/lib/product-catalog";
+import { getStoreConfig } from "@/lib/store-config";
 import { absoluteUrl, defaultOgImage, SEO } from "@/lib/seo";
-import type { Metadata } from "next";
 
 export async function buildCatalogProductMetadata(
   catalog: CatalogSlug,
@@ -69,6 +73,16 @@ export async function CatalogProductDetail({
     fragrance.productType
   );
 
+  const [session, storeConfig] = await Promise.all([
+    getServerSession(authOptions),
+    getStoreConfig(),
+  ]);
+  const hideGuestPrice = isGuestPriceHidden(
+    fragrance.productType,
+    storeConfig.guestHiddenPriceCatalogs,
+    Boolean(session?.user?.id)
+  );
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -77,16 +91,20 @@ export async function CatalogProductDetail({
     sku: fragrance.reference,
     brand: { "@type": "Brand", name: fragrance.brand.name },
     image: fragrance.images.map((img) => img.url),
-    offers: {
-      "@type": "Offer",
-      price: fragrance.price,
-      priceCurrency: "GHS",
-      availability:
-        (fragrance.stock ?? 0) > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-      url: absoluteUrl(productDetailPath(fragrance.productType, fragrance.slug)),
-    },
+    ...(hideGuestPrice
+      ? {}
+      : {
+          offers: {
+            "@type": "Offer",
+            price: fragrance.price,
+            priceCurrency: "GHS",
+            availability:
+              (fragrance.stock ?? 0) > 0
+                ? "https://schema.org/InStock"
+                : "https://schema.org/OutOfStock",
+            url: absoluteUrl(productDetailPath(fragrance.productType, fragrance.slug)),
+          },
+        }),
   };
 
   return (

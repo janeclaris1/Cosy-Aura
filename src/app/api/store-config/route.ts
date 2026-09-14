@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
-import { getStorePricingConfig } from "@/lib/store-config";
+import { getStoreConfig } from "@/lib/store-config";
 
 export const dynamic = "force-dynamic";
 
-/** Public storefront pricing config (no secrets). */
+/** Public storefront config (no secrets). */
 export async function GET() {
-  const config = await getStorePricingConfig();
-  return NextResponse.json(config, {
-    headers: { "Cache-Control": "public, max-age=60" },
-  });
+  const config = await getStoreConfig();
+  return NextResponse.json(
+    {
+      nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
+      nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
+      guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs,
+    },
+    {
+      headers: { "Cache-Control": "public, max-age=60" },
+    }
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext } from "react";
+import type { ProductType } from "@prisma/client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -29,6 +30,7 @@ type LocaleState = {
   rates: Record<string, number>;
   nonAfricaMarkupEnabled: boolean;
   nonAfricaMarkupUsd: number;
+  guestHiddenPriceCatalogs: ProductType[];
   userOverrideLang: boolean;
   userOverrideCurrency: boolean;
   ready: boolean;
@@ -42,6 +44,7 @@ type LocaleState = {
   setStorePricing: (config: {
     nonAfricaMarkupEnabled: boolean;
     nonAfricaMarkupUsd: number;
+    guestHiddenPriceCatalogs?: ProductType[];
   }) => void;
   setLanguage: (language: UiLang) => void;
   setCurrency: (currency: string) => void;
@@ -101,6 +104,7 @@ export const useLocaleStore = create<LocaleState>()(
       rates: boot.rates ?? { GHS: 1 },
       nonAfricaMarkupEnabled: false,
       nonAfricaMarkupUsd: 10,
+      guestHiddenPriceCatalogs: [],
       userOverrideLang: false,
       userOverrideCurrency: false,
       ready: boot.ready ?? false,
@@ -133,6 +137,9 @@ export const useLocaleStore = create<LocaleState>()(
         set({
           nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
           nonAfricaMarkupUsd: Number(config.nonAfricaMarkupUsd) || 10,
+          ...(config.guestHiddenPriceCatalogs !== undefined
+            ? { guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs }
+            : {}),
         });
       },
 
@@ -178,6 +185,7 @@ export const useLocaleStore = create<LocaleState>()(
         rates: state.rates,
         nonAfricaMarkupEnabled: state.nonAfricaMarkupEnabled,
         nonAfricaMarkupUsd: state.nonAfricaMarkupUsd,
+        guestHiddenPriceCatalogs: state.guestHiddenPriceCatalogs,
         userOverrideLang: state.userOverrideLang,
         userOverrideCurrency: state.userOverrideCurrency,
       }),
@@ -241,6 +249,13 @@ export function useShopperStorePricing(): {
     return { nonAfricaMarkupEnabled: false, nonAfricaMarkupUsd: 10 };
   }
   return { nonAfricaMarkupEnabled: enabled, nonAfricaMarkupUsd: markupUsd };
+}
+
+export function useGuestHiddenPriceCatalogs(): ProductType[] {
+  const hydrated = useContext(LocaleHydratedContext);
+  const hidden = useLocaleStore((s) => s.guestHiddenPriceCatalogs);
+  if (!hydrated) return [];
+  return hidden;
 }
 
 export function useT() {

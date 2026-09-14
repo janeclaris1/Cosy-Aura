@@ -7,8 +7,21 @@ import {
 
 const FETCH_HEADERS = { "User-Agent": "CosyAuraCatalogImport/1.0" };
 
+export type CatalogImageKind = "watches" | "sneakers";
+
+export function catalogImageFolder(
+  kind: CatalogImageKind,
+  productSlug: string
+): string {
+  return `cosyaura/catalog/${kind}/${productSlug}`;
+}
+
 export function watchImageFolder(productSlug: string): string {
-  return `cosyaura/catalog/watches/${productSlug}`;
+  return catalogImageFolder("watches", productSlug);
+}
+
+export function sneakerImageFolder(productSlug: string): string {
+  return catalogImageFolder("sneakers", productSlug);
 }
 
 export function watchImagePublicId(index: number, source: string): string {
@@ -20,16 +33,17 @@ export function watchImagePublicId(index: number, source: string): string {
  * Download a remote image and store on Cloudinary (production-safe).
  * Dry-run returns a placeholder local path for logging only.
  */
-export async function downloadAndStoreWatchImage(
+export async function downloadAndStoreCatalogImage(
   remoteSrc: string,
+  kind: CatalogImageKind,
   productSlug: string,
   index: number,
   apply: boolean
 ): Promise<string> {
-  const folder = watchImageFolder(productSlug);
+  const folder = catalogImageFolder(kind, productSlug);
   const publicId = watchImagePublicId(index, remoteSrc);
   const ext = path.extname(new URL(remoteSrc).pathname) || ".jpg";
-  const placeholder = `/images/watches/${productSlug}/${String(index + 1).padStart(2, "0")}${ext}`;
+  const placeholder = `/images/${kind}/${productSlug}/${String(index + 1).padStart(2, "0")}${ext}`;
 
   if (!apply) {
     console.log(`  would upload → cloudinary:${folder}/${publicId}`);
@@ -50,17 +64,45 @@ export async function downloadAndStoreWatchImage(
   return url;
 }
 
-export async function downloadWatchImagesFromUrls(
+export async function downloadAndStoreWatchImage(
+  remoteSrc: string,
+  productSlug: string,
+  index: number,
+  apply: boolean
+): Promise<string> {
+  return downloadAndStoreCatalogImage(remoteSrc, "watches", productSlug, index, apply);
+}
+
+export async function downloadCatalogImagesFromUrls(
   urls: string[],
+  kind: CatalogImageKind,
   productSlug: string,
   apply: boolean
 ): Promise<string[]> {
   const results: string[] = [];
   for (let i = 0; i < urls.length; i++) {
     const src = urls[i].split("?")[0];
-    results.push(await downloadAndStoreWatchImage(src, productSlug, i, apply));
+    results.push(
+      await downloadAndStoreCatalogImage(src, kind, productSlug, i, apply)
+    );
   }
   return results;
+}
+
+export async function downloadWatchImagesFromUrls(
+  urls: string[],
+  productSlug: string,
+  apply: boolean
+): Promise<string[]> {
+  return downloadCatalogImagesFromUrls(urls, "watches", productSlug, apply);
+}
+
+export async function downloadSneakerImagesFromUrls(
+  urls: string[],
+  productSlug: string,
+  apply: boolean
+): Promise<string[]> {
+  return downloadCatalogImagesFromUrls(urls, "sneakers", productSlug, apply);
 }
 
 export async function downloadWatchImagesFromShopify(

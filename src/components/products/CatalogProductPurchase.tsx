@@ -15,6 +15,8 @@ import { ProductEngagementStats } from "@/components/products/ProductEngagementS
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { useRegionalPrice } from "@/lib/use-regional-price";
 import { useMemberDiscount } from "@/lib/use-member-discount";
+import { SignInForPricingLink } from "@/components/products/SignInForPricingLink";
+import { useIsCatalogPriceHidden } from "@/lib/use-catalog-price-visibility";
 import { parseProductVideoUrl } from "@/lib/product-video";
 import {
   CATALOG_PRODUCT_PROMISES,
@@ -341,9 +343,10 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
     country,
     currency
   );
+  const priceHidden = useIsCatalogPriceHidden(fragrance.productType);
 
   function handleAddToCart() {
-    if (!inStock) return;
+    if (!inStock || priceHidden) return;
     addItem({
       fragranceId: fragrance.id,
       slug: fragrance.slug,
@@ -351,6 +354,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       model: fragrance.model,
       price: regionalPrice,
       image: primaryImage,
+      productType: fragrance.productType,
     });
   }
 
@@ -360,14 +364,16 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       data-brand={fragrance.brand.name}
       data-model={fragrance.model}
       data-reference={fragrance.reference}
-      data-price={displayPrice}
+      data-price={priceHidden ? undefined : displayPrice}
     >
-      <MetaViewContent
-        contentId={fragrance.id}
-        contentName={`${fragrance.brand.name} ${fragrance.model}`}
-        value={displayPrice}
-        currency={currency}
-      />
+      {!priceHidden ? (
+        <MetaViewContent
+          contentId={fragrance.id}
+          contentName={`${fragrance.brand.name} ${fragrance.model}`}
+          value={displayPrice}
+          currency={currency}
+        />
+      ) : null}
 
       <nav className="text-[11px] uppercase tracking-[0.14em] text-mocha mb-6">
         <a href="/" className="hover:text-espresso">
@@ -412,17 +418,25 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
         items={CATALOG_PRODUCT_PROMISES}
       />
 
-      <p className="font-playfair text-3xl text-[#c8102e] leading-none mb-1">
-        {formatPrice(displayPrice, currency)}
-      </p>
-      {member.active ? (
-        <p className="text-sm text-mocha mb-6">
-          <span className="text-[11px] uppercase tracking-wide text-gold">
-            +{member.percent}% member discount applied
-          </span>
-        </p>
+      {priceHidden ? (
+        <div className="mb-6">
+          <SignInForPricingLink className="font-playfair text-xl text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2 hover:decoration-[#03045e]" />
+        </div>
       ) : (
-        <div className="mb-6" />
+        <>
+          <p className="font-playfair text-3xl text-[#c8102e] leading-none mb-1">
+            {formatPrice(displayPrice, currency)}
+          </p>
+          {member.active ? (
+            <p className="text-sm text-mocha mb-6">
+              <span className="text-[11px] uppercase tracking-wide text-gold">
+                +{member.percent}% member discount applied
+              </span>
+            </p>
+          ) : (
+            <div className="mb-6" />
+          )}
+        </>
       )}
 
       {fragrance.condition ? (
@@ -432,13 +446,17 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       ) : null}
 
       <div className="flex flex-wrap gap-3 mb-6">
-        <button
-          onClick={handleAddToCart}
-          disabled={!inStock}
-          className="btn-primary flex-1 min-w-[160px] disabled:opacity-50"
-        >
-          {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
-        </button>
+        {priceHidden ? (
+          <SignInForPricingLink className="btn-primary flex-1 min-w-[160px] text-center" />
+        ) : (
+          <button
+            onClick={handleAddToCart}
+            disabled={!inStock}
+            className="btn-primary flex-1 min-w-[160px] disabled:opacity-50"
+          >
+            {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
+          </button>
+        )}
         <button
           onClick={() => toggleItem(fragrance.id)}
           className="w-12 h-12 border border-espresso flex items-center justify-center hover:bg-espresso hover:text-ivory transition-colors"
@@ -448,14 +466,14 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
         </button>
       </div>
 
-      {inStock ? (
+      {inStock && !priceHidden ? (
         <div className="mb-6">
           <WhatsAppToCheckoutButton
             label={t("product.orderWhatsApp")}
             onPrepareCart={handleAddToCart}
           />
         </div>
-      ) : (
+      ) : inStock ? null : (
         <p className="mb-6 text-sm text-mocha">{t("product.outOfStockLocation")}</p>
       )}
 
@@ -467,18 +485,26 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       >
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-mocha truncate">{fragrance.model}</p>
-          <p className="font-playfair text-lg text-[#c8102e] leading-none">
-            {formatPrice(displayPrice, currency)}
-          </p>
+          {priceHidden ? (
+            <SignInForPricingLink className="text-sm text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+          ) : (
+            <p className="font-playfair text-lg text-[#c8102e] leading-none">
+              {formatPrice(displayPrice, currency)}
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={!inStock}
-          className="btn-primary shrink-0 px-5 disabled:opacity-50"
-        >
-          {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
-        </button>
+        {priceHidden ? (
+          <SignInForPricingLink className="btn-primary shrink-0 px-5 text-center" />
+        ) : (
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={!inStock}
+            className="btn-primary shrink-0 px-5 disabled:opacity-50"
+          >
+            {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => toggleItem(fragrance.id)}

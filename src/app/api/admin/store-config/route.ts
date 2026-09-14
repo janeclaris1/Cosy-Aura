@@ -1,6 +1,8 @@
+import type { ProductType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
+import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import {
   getStoreConfig,
   upsertStoreConfig,
@@ -27,6 +29,7 @@ export async function PATCH(req: Request) {
     whatsappCheckoutEnabled?: boolean;
     whatsappCheckoutNumbers?: WhatsAppCheckoutNumbers;
     maintenanceMode?: boolean;
+    guestHiddenPriceCatalogs?: ProductType[];
   };
 
   const markupUsd = Number(body.nonAfricaMarkupUsd);
@@ -49,12 +52,26 @@ export async function PATCH(req: Request) {
     );
   }
 
+  if (
+    body.guestHiddenPriceCatalogs !== undefined &&
+    !Array.isArray(body.guestHiddenPriceCatalogs)
+  ) {
+    return NextResponse.json(
+      { error: "Guest hidden price catalogs must be an array" },
+      { status: 400 }
+    );
+  }
+
   const config = await upsertStoreConfig({
     nonAfricaMarkupEnabled: body.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: body.nonAfricaMarkupUsd,
     whatsappCheckoutEnabled: body.whatsappCheckoutEnabled,
     whatsappCheckoutNumbers: body.whatsappCheckoutNumbers,
     maintenanceMode: body.maintenanceMode,
+    guestHiddenPriceCatalogs:
+      body.guestHiddenPriceCatalogs !== undefined
+        ? parseGuestHiddenPriceCatalogs(body.guestHiddenPriceCatalogs)
+        : undefined,
   });
 
   await writeAuditLog({
@@ -69,10 +86,14 @@ export async function PATCH(req: Request) {
       nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
       whatsappCheckoutEnabled: config.whatsappCheckoutEnabled,
       maintenanceMode: config.maintenanceMode,
+      guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs,
     },
   });
 
-  if (body.maintenanceMode !== undefined) {
+  if (
+    body.maintenanceMode !== undefined ||
+    body.guestHiddenPriceCatalogs !== undefined
+  ) {
     revalidatePath("/", "layout");
     revalidatePath("/maintenance");
   }

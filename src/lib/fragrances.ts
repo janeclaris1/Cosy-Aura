@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, ProductType } from "@prisma/client";
 import { LONGEVITY_MATCHERS } from "./filter-options";
 import {
   FRAGRANCE_PAGE_SIZE,
@@ -178,11 +178,11 @@ export async function getFeaturedFragrances(limit = 8) {
   }
 }
 
-/** Featured watches for the catalog hero; falls back to latest in stock. */
-export async function getWatchCatalogHeroItems(limit = 3) {
+/** Featured products for a catalog showroom hero; falls back to latest in stock. */
+export async function getCatalogHeroItems(productType: ProductType, limit = 1) {
   try {
     const featured = await prisma.fragrance.findMany({
-      where: { productType: "WATCH", featured: true },
+      where: { productType, featured: true },
       include: fragranceListInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -193,7 +193,7 @@ export async function getWatchCatalogHeroItems(limit = 3) {
     const excludeIds = featured.map((f) => f.id);
     const rest = await prisma.fragrance.findMany({
       where: {
-        productType: "WATCH",
+        productType,
         ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
       },
       include: fragranceListInclude,
@@ -203,7 +203,7 @@ export async function getWatchCatalogHeroItems(limit = 3) {
 
     return [...featured, ...rest];
   } catch (error) {
-    console.error("[getWatchCatalogHeroItems] database error:", error);
+    console.error("[getCatalogHeroItems] database error:", error);
     return [];
   }
 }

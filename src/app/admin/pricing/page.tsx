@@ -1,6 +1,7 @@
 import { requireAdminPage } from "@/lib/admin";
 import { PricingSettings } from "@/components/admin/PricingSettings";
 import { WhatsAppCheckoutSettings } from "@/components/admin/WhatsAppCheckoutSettings";
+import { GuestPriceVisibilitySettings } from "@/components/admin/GuestPriceVisibilitySettings";
 import { MaintenanceModeSettings } from "@/components/admin/MaintenanceModeSettings";
 import { ensureDefaultStoreConfig, getStoreConfig } from "@/lib/store-config";
 import { isMaintenanceEnvForced } from "@/lib/maintenance";
@@ -21,8 +22,16 @@ export default async function AdminPricingPage() {
       <AdminPageHeader
         eyebrow="Store"
         title="Store settings"
-        description="Regional pricing, WhatsApp checkout, and storefront maintenance."
+        description="Regional pricing, guest price visibility, WhatsApp checkout, and storefront maintenance."
       />
+
+      <section>
+        <AdminSectionTitle
+          title="Guest price visibility"
+          description="Hide non-perfume catalog prices from visitors who are not signed in."
+        />
+        <GuestPriceVisibilitySettings initialHidden={config.guestHiddenPriceCatalogs} />
+      </section>
 
       <section>
         <AdminSectionTitle

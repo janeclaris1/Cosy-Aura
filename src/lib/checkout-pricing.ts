@@ -10,7 +10,9 @@ import {
   sampleSalePrice,
   salePriceForSize,
 } from "@/lib/pricing";
-import { getStorePricingConfig } from "@/lib/store-config";
+import { isGuestPriceHidden } from "@/lib/catalog-price-visibility";
+import { isPerfumeProduct } from "@/lib/product-catalog";
+import { getStoreConfig, getStorePricingConfig } from "@/lib/store-config";
 import { applyDiscoveryBundleDiscount } from "@/lib/discovery-bundle";
 
 export type CartLineInput = {
@@ -69,6 +71,30 @@ export async function getCheckoutMemberContext(): Promise<CheckoutMemberContext>
   };
 }
 
+/** Guests cannot checkout catalog items whose prices are hidden until they sign in. */
+export async function assertGuestCanCheckoutItems(
+  items: CartLineInput[],
+  userId: string | null
+): Promise<void> {
+  if (userId || !items.length) return;
+
+  const config = await getStoreConfig();
+  if (!config.guestHiddenPriceCatalogs.length) return;
+
+  const rows = await prisma.fragrance.findMany({
+    where: { id: { in: [...new Set(items.map((item) => item.fragranceId))] } },
+    select: { productType: true },
+  });
+
+  for (const row of rows) {
+    if (
+      isGuestPriceHidden(row.productType, config.guestHiddenPriceCatalogs, false)
+    ) {
+      throw new Error("SIGN_IN_REQUIRED_FOR_PRICING");
+    }
+  }
+}
+
 /** Server-side cart pricing — ignores client-submitted prices. */
 export async function priceCartLines(
   items: CartLineInput[],
@@ -85,9 +111,10 @@ export async function priceCartLines(
   const fragranceIds = [...new Set(items.map((item) => item.fragranceId))];
   const fragrances = await prisma.fragrance.findMany({
     where: { id: { in: fragranceIds } },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, productType: true, price: true },
   });
   const slugById = new Map(fragrances.map((row) => [row.id, row.slug]));
+  const catalogById = new Map(fragrances.map((row) => [row.id, row]));
   const withMember = Boolean(options?.applyMemberDiscount);
 
   const priced = items.map((item) => {
@@ -96,7 +123,10 @@ export async function priceCartLines(
       throw new Error("One or more products in your cart are no longer available.");
     }
 
-    let baseGhs = lineBaseGhs(slug, item.bottleSize, item.model);
+    const product = catalogById.get(item.fragranceId);
+    let baseGhs = isPerfumeProduct(product?.productType)
+      ? lineBaseGhs(slug, item.bottleSize, item.model)
+      : Number(product?.price ?? 0);
     if (withMember) {
       baseGhs = applyMemberDiscount(baseGhs);
     }

@@ -1,3 +1,4 @@
+import type { ProductType } from "@prisma/client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BottleSize } from "@/lib/bottle-sizes";
@@ -11,6 +12,7 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  productType?: ProductType;
   /** Retail bottle size in ml (30 / 50 / 100). Omitted for samples/subscriptions. */
   bottleSize?: BottleSize | number;
 }

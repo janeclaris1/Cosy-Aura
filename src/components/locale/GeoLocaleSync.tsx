@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import type { ProductType } from "@prisma/client";
+import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import { isUiLang } from "@/lib/geo-locale";
 import { useLocaleStore } from "@/lib/locale-store";
 
@@ -35,6 +37,7 @@ export function GeoLocaleSync() {
         const config = (await configRes.json()) as {
           nonAfricaMarkupEnabled?: boolean;
           nonAfricaMarkupUsd?: number;
+          guestHiddenPriceCatalogs?: ProductType[];
         };
         if (cancelled) return;
         if (fx.rates) setRates(fx.rates);
@@ -42,6 +45,9 @@ export function GeoLocaleSync() {
           setStorePricing({
             nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
             nonAfricaMarkupUsd: Number(config.nonAfricaMarkupUsd) || 10,
+            guestHiddenPriceCatalogs: parseGuestHiddenPriceCatalogs(
+              config.guestHiddenPriceCatalogs
+            ),
           });
         }
         const language = isUiLang(geo.language) ? geo.language : "en";

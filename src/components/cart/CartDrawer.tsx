@@ -6,7 +6,9 @@ import { X, Minus, Plus, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, cn, inspiredByBrandLine } from "@/lib/utils";
+import { SignInForPricingLink } from "@/components/products/SignInForPricingLink";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
+import { useGuestPriceHiddenChecker } from "@/lib/use-catalog-price-visibility";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import { CartCrossSell } from "@/components/cart/CartCrossSell";
 import Image from "next/image";
@@ -22,6 +24,8 @@ export function CartDrawer() {
   const t = useT();
   const { member, subtotal, bundleActive, bundlePercent, priceFor } =
     useCartDisplayPricing(items);
+  const isPriceHidden = useGuestPriceHiddenChecker();
+  const hasHiddenPrices = items.some((item) => isPriceHidden(item.productType));
   const drawerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,9 +122,15 @@ export function CartDrawer() {
                     {item.bottleSize ? (
                       <p className="text-xs text-wf-gray">{item.bottleSize} ml</p>
                     ) : null}
-                    <p className="font-playfair text-gold mt-1">
-                      {formatPrice(priceFor(item), currency)}
-                    </p>
+                    {isPriceHidden(item.productType) ? (
+                      <p className="mt-1 text-sm text-[#03045e]">
+                        {t("product.priceHiddenGuest")}
+                      </p>
+                    ) : (
+                      <p className="font-playfair text-gold mt-1">
+                        {formatPrice(priceFor(item), currency)}
+                      </p>
+                    )}
                     <div className="flex items-center gap-3 mt-2">
                       <button
                         onClick={() =>
@@ -166,19 +176,27 @@ export function CartDrawer() {
             </div>
 
             <div className="border-t border-wf-border p-6 space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-3">
                 <span className="text-sm text-wf-gray">{t("cart.subtotal")}</span>
-                <span className="font-playfair text-xl text-gold">
-                  {formatPrice(subtotal, currency)}
-                </span>
+                {hasHiddenPrices ? (
+                  <SignInForPricingLink className="text-sm font-medium text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+                ) : (
+                  <span className="font-playfair text-xl text-gold">
+                    {formatPrice(subtotal, currency)}
+                  </span>
+                )}
               </div>
-              <Link
-                href="/checkout"
-                onClick={closeCart}
-                className="btn-gold w-full text-center block"
-              >
-                {t("cart.checkout")}
-              </Link>
+              {hasHiddenPrices ? (
+                <SignInForPricingLink className="btn-gold w-full text-center block" />
+              ) : (
+                <Link
+                  href="/checkout"
+                  onClick={closeCart}
+                  className="btn-gold w-full text-center block"
+                >
+                  {t("cart.checkout")}
+                </Link>
+              )}
               <Link
                 href="/cart"
                 onClick={closeCart}

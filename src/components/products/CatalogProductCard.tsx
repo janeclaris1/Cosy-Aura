@@ -16,6 +16,8 @@ import { useRegionalPrice } from "@/lib/use-regional-price";
 import { useMemberDiscount } from "@/lib/use-member-discount";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import { WhatsAppToCheckoutButton } from "@/components/checkout/WhatsAppOrderButton";
+import { SignInForPricingLink } from "@/components/products/SignInForPricingLink";
+import { useIsCatalogPriceHidden } from "@/lib/use-catalog-price-visibility";
 import { isInStockForCountry } from "@/lib/country-stock";
 import { ProductEngagementStats } from "@/components/products/ProductEngagementStats";
 import {
@@ -75,6 +77,7 @@ export function CatalogProductCard({
     country,
     currency
   );
+  const priceHidden = useIsCatalogPriceHidden(productType);
   const detailHref = productDetailPath(productType, fragrance.slug);
 
   useEffect(() => {
@@ -177,9 +180,13 @@ export function CatalogProductCard({
             </p>
           ) : null}
 
-          <p className="mt-2.5 font-playfair text-lg leading-none text-[#03045e] sm:text-xl">
-            {formatPrice(displayPrice, currency, rates)}
-          </p>
+          {priceHidden ? (
+            <SignInForPricingLink className="mt-2.5 inline-block text-sm font-medium text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2 hover:decoration-[#03045e]" />
+          ) : (
+            <p className="mt-2.5 font-playfair text-lg leading-none text-[#03045e] sm:text-xl">
+              {formatPrice(displayPrice, currency, rates)}
+            </p>
+          )}
         </div>
       </Link>
 
@@ -192,7 +199,7 @@ export function CatalogProductCard({
           className="text-stone-500"
         />
 
-        {inStock ? (
+        {inStock && !priceHidden ? (
           <div className="mt-2.5" onClick={(e) => e.stopPropagation()}>
             <WhatsAppToCheckoutButton
               compact
@@ -205,6 +212,7 @@ export function CatalogProductCard({
                   model: fragrance.model,
                   price: displayPrice,
                   image: primaryImage,
+                  productType,
                 })
               }
             />

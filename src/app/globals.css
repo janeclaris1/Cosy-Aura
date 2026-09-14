@@ -277,55 +277,14 @@ html.preload-skip .preloader {
   }
 }
 
-/* Watch catalog hero — dark diagonal banner */
-.watch-catalog-hero__slash {
-  position: absolute;
-  top: -10%;
-  bottom: -10%;
-  width: 3px;
-  background: linear-gradient(
+/* Watch showroom hero — split boutique layout */
+.watch-showroom-hero__visual {
+  background-image: linear-gradient(
     180deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.15) 20%,
-    rgba(255, 255, 255, 0.85) 50%,
-    rgba(255, 255, 255, 0.15) 80%,
-    transparent 100%
+    #0a0a12 0%,
+    #080810 40%,
+    #050508 100%
   );
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
-  transform: rotate(-28deg);
-  pointer-events: none;
-}
-
-.watch-catalog-hero__slash--a {
-  left: 32%;
-}
-
-.watch-catalog-hero__slash--b {
-  left: 66%;
-}
-
-.watch-catalog-hero__label {
-  font-family: var(--font-roboto), system-ui, sans-serif;
-  font-size: clamp(1.25rem, 3vw, 2rem);
-  font-weight: 900;
-  line-height: 0.95;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.watch-catalog-hero__headline {
-  font-family: var(--font-roboto), system-ui, sans-serif;
-  font-size: clamp(1.75rem, 4.5vw, 3rem);
-  font-weight: 900;
-  line-height: 0.92;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-@media (max-width: 767px) {
-  .watch-catalog-hero__slash {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

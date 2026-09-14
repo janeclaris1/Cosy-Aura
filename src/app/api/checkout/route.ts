@@ -11,7 +11,12 @@ import {
   formatDeliveryDateLabel,
   parseDeliveryDate,
 } from "@/lib/delivery-dates";
-import { cartLinesTotal, getCheckoutMemberContext, priceCartLines } from "@/lib/checkout-pricing";
+import {
+  assertGuestCanCheckoutItems,
+  cartLinesTotal,
+  getCheckoutMemberContext,
+  priceCartLines,
+} from "@/lib/checkout-pricing";
 import { fetchRatesFromGhs, rateFromGhs } from "@/lib/fx";
 
 function toAbsoluteImageUrl(url: string | undefined | null): string | null {
@@ -83,6 +88,17 @@ export async function POST(req: Request) {
     }
 
     const member = await getCheckoutMemberContext();
+    try {
+      await assertGuestCanCheckoutItems(items, member.userId);
+    } catch (err) {
+      if (err instanceof Error && err.message === "SIGN_IN_REQUIRED_FOR_PRICING") {
+        return NextResponse.json(
+          { error: "Sign in to your account to purchase these items." },
+          { status: 401 }
+        );
+      }
+      throw err;
+    }
     const [pricedItems, fx] = await Promise.all([
       priceCartLines(items, shopperCountry ?? null, {
         applyMemberDiscount: member.applyMemberDiscount,

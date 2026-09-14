@@ -5,7 +5,9 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice, inspiredByBrandLine } from "@/lib/utils";
+import { SignInForPricingLink } from "@/components/products/SignInForPricingLink";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
+import { useGuestPriceHiddenChecker } from "@/lib/use-catalog-price-visibility";
 import Image from "next/image";
 
 export default function CartPage() {
@@ -15,6 +17,8 @@ export default function CartPage() {
   const t = useT();
   const { member, subtotal, bundleActive, bundlePercent, priceFor } =
     useCartDisplayPricing(items);
+  const isPriceHidden = useGuestPriceHiddenChecker();
+  const hasHiddenPrices = items.some((item) => isPriceHidden(item.productType));
 
   if (items.length === 0) {
     return (
@@ -71,9 +75,15 @@ export default function CartPage() {
                 {item.bottleSize ? (
                   <p className="text-xs text-wf-gray mt-0.5">{item.bottleSize} ml</p>
                 ) : null}
-                <p className="font-playfair text-gold mt-1">
-                  {formatPrice(priceFor(item), currency)}
-                </p>
+                {isPriceHidden(item.productType) ? (
+                  <p className="mt-1 text-sm text-[#03045e]">
+                    {t("product.priceHiddenGuest")}
+                  </p>
+                ) : (
+                  <p className="font-playfair text-gold mt-1">
+                    {formatPrice(priceFor(item), currency)}
+                  </p>
+                )}
                 <div className="flex items-center gap-3 mt-3">
                   <button
                     onClick={() =>
@@ -107,22 +117,34 @@ export default function CartPage() {
         <div className="border border-wf-border rounded-lg p-6 h-fit">
           <h2 className="font-playfair text-xl mb-6">{t("cart.summary")}</h2>
           <div className="space-y-3 text-sm mb-6">
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span className="text-wf-gray">{t("cart.subtotal")}</span>
-              <span>{formatPrice(subtotal, currency)}</span>
+              {hasHiddenPrices ? (
+                <SignInForPricingLink className="text-sm text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+              ) : (
+                <span>{formatPrice(subtotal, currency)}</span>
+              )}
             </div>
             <div className="flex justify-between">
               <span className="text-wf-gray">{t("cart.shipping")}</span>
               <span className="text-wf-gray">{t("cart.shippingCalc")}</span>
             </div>
           </div>
-          <div className="flex justify-between font-playfair text-xl text-gold border-t border-wf-border pt-4 mb-6">
+          <div className="flex justify-between gap-3 font-playfair text-xl text-gold border-t border-wf-border pt-4 mb-6">
             <span>{t("cart.total")}</span>
-            <span>{formatPrice(subtotal, currency)}</span>
+            {hasHiddenPrices ? (
+              <SignInForPricingLink className="text-base text-[#03045e] underline decoration-[#03045e]/40 underline-offset-2" />
+            ) : (
+              <span>{formatPrice(subtotal, currency)}</span>
+            )}
           </div>
-          <Link href="/checkout" className="btn-gold w-full text-center block">
-            {t("cart.proceed")}
-          </Link>
+          {hasHiddenPrices ? (
+            <SignInForPricingLink className="btn-gold w-full text-center block" />
+          ) : (
+            <Link href="/checkout" className="btn-gold w-full text-center block">
+              {t("cart.proceed")}
+            </Link>
+          )}
         </div>
       </div>
     </div>

@@ -1,3 +1,5 @@
+import type { ProductType } from "@prisma/client";
+import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import { prisma } from "@/lib/prisma";
 
 export type StorePricingConfig = {
@@ -16,9 +18,14 @@ export type StoreMaintenanceConfig = {
   maintenanceMode: boolean;
 };
 
+export type StoreGuestPriceConfig = {
+  guestHiddenPriceCatalogs: ProductType[];
+};
+
 export type StoreConfigPayload = StorePricingConfig &
   StoreWhatsAppCheckoutConfig &
-  StoreMaintenanceConfig;
+  StoreMaintenanceConfig &
+  StoreGuestPriceConfig;
 
 const DEFAULT_MARKUP_USD = Number(process.env.NON_AFRICA_MARKUP_USD) || 10;
 
@@ -36,6 +43,7 @@ export const DEFAULT_STORE_CONFIG: StoreConfigPayload = {
   ...DEFAULT_STORE_PRICING,
   ...DEFAULT_WHATSAPP_CHECKOUT,
   maintenanceMode: false,
+  guestHiddenPriceCatalogs: [],
 };
 
 let cache: { at: number; value: StoreConfigPayload } | null = null;
@@ -70,6 +78,7 @@ function rowToConfig(row: {
   whatsappCheckoutEnabled?: boolean;
   whatsappCheckoutNumbers?: unknown;
   maintenanceMode?: boolean;
+  guestHiddenPriceCatalogs?: unknown;
 }): StoreConfigPayload {
   return {
     nonAfricaMarkupEnabled: row.nonAfricaMarkupEnabled,
@@ -77,6 +86,7 @@ function rowToConfig(row: {
     whatsappCheckoutEnabled: Boolean(row.whatsappCheckoutEnabled),
     whatsappCheckoutNumbers: parseWhatsAppCheckoutNumbers(row.whatsappCheckoutNumbers),
     maintenanceMode: Boolean(row.maintenanceMode),
+    guestHiddenPriceCatalogs: parseGuestHiddenPriceCatalogs(row.guestHiddenPriceCatalogs),
   };
 }
 
@@ -140,6 +150,10 @@ export async function upsertStoreConfig(
     input.whatsappCheckoutNumbers !== undefined
       ? parseWhatsAppCheckoutNumbers(input.whatsappCheckoutNumbers)
       : undefined;
+  const guestHidden =
+    input.guestHiddenPriceCatalogs !== undefined
+      ? parseGuestHiddenPriceCatalogs(input.guestHiddenPriceCatalogs)
+      : undefined;
 
   const row = await prisma.storeConfig.upsert({
     where: { id: "default" },
@@ -151,6 +165,7 @@ export async function upsertStoreConfig(
       whatsappCheckoutEnabled: Boolean(input.whatsappCheckoutEnabled),
       whatsappCheckoutNumbers: numbers ?? {},
       maintenanceMode: Boolean(input.maintenanceMode),
+      guestHiddenPriceCatalogs: guestHidden ?? [],
     },
     update: {
       ...(input.nonAfricaMarkupEnabled !== undefined
@@ -166,6 +181,7 @@ export async function upsertStoreConfig(
       ...(input.maintenanceMode !== undefined
         ? { maintenanceMode: Boolean(input.maintenanceMode) }
         : {}),
+      ...(guestHidden !== undefined ? { guestHiddenPriceCatalogs: guestHidden } : {}),
     },
   });
 
@@ -196,6 +212,7 @@ export async function ensureDefaultStoreConfig() {
       whatsappCheckoutEnabled: DEFAULT_STORE_CONFIG.whatsappCheckoutEnabled,
       whatsappCheckoutNumbers: {},
       maintenanceMode: DEFAULT_STORE_CONFIG.maintenanceMode,
+      guestHiddenPriceCatalogs: [],
     },
     update: {},
   });
