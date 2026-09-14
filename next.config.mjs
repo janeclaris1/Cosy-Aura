@@ -10,20 +10,7 @@ const nextConfig = {
       "",
   },
   async redirects() {
-    return [
-      { source: "/watches", destination: "/fragrances", permanent: true },
-      {
-        source: "/watches/:path*",
-        destination: "/fragrances/:path*",
-        permanent: true,
-      },
-      { source: "/admin/watches", destination: "/admin/fragrances", permanent: true },
-      {
-        source: "/admin/watches/:path*",
-        destination: "/admin/fragrances/:path*",
-        permanent: true,
-      },
-    ];
+    return [];
   },
   images: {
     remotePatterns: [

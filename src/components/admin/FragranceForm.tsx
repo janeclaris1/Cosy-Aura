@@ -12,6 +12,7 @@ import {
 import { MANAGED_STOCK_COUNTRIES } from "@/lib/country-stock";
 import { salePriceForSize } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
+import { PRODUCT_TYPE_OPTIONS } from "@/lib/product-catalog";
 
 interface Brand {
   id: string;
@@ -56,6 +57,7 @@ interface FragranceFormProps {
     rating: number | null;
     featured: boolean;
     category: string | null;
+    productType?: string;
     explainerVideoUrl?: string | null;
     images: { url: string }[];
     countryStocks?: { country: string; inStock: boolean }[];
@@ -99,6 +101,7 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
     return map;
   });
   const [form, setForm] = useState({
+    productType: fragrance?.productType || "PERFUME",
     brandId: fragrance?.brandId || brands[0]?.id || "",
     model: fragrance?.model || "",
     reference: fragrance?.reference || "",
@@ -207,6 +210,21 @@ export function FragranceForm({ brands, fragrance }: FragranceFormProps) {
       onSubmit={handleSubmit}
       className="space-y-5"
     >
+      <div>
+        <label className={adminLabelClass}>Product type</label>
+        <select
+          value={form.productType}
+          onChange={(e) => setForm({ ...form, productType: e.target.value })}
+          className={adminSelectClass}
+        >
+          {PRODUCT_TYPE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={adminLabelClass}>Brand</label>

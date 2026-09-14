@@ -25,8 +25,17 @@ export async function POST(req: Request) {
   const stock = body.stock ?? 0;
   const engagement = initialEngagementCounts();
 
+  const productType =
+    body.productType &&
+    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
+      String(body.productType).toUpperCase()
+    )
+      ? String(body.productType).toUpperCase()
+      : "PERFUME";
+
   const fragrance = await prisma.fragrance.create({
     data: {
+      productType: productType as never,
       brandId: body.brandId,
       model: body.model,
       reference: body.reference,

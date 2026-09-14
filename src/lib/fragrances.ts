@@ -44,6 +44,10 @@ export async function getFragrances(filters: FragranceListFilters = {}) {
     const where: Prisma.FragranceWhereInput = {};
     const and: Prisma.FragranceWhereInput[] = [];
 
+    if (filters.productType) {
+      where.productType = filters.productType;
+    }
+
     if (filters.brandSlug) {
       where.brand = { slug: filters.brandSlug };
     }
@@ -153,7 +157,7 @@ export async function getFragrances(filters: FragranceListFilters = {}) {
 export async function getFeaturedFragrances(limit = 8) {
   try {
     return await prisma.fragrance.findMany({
-      where: { featured: true },
+      where: { featured: true, productType: "PERFUME" },
       include: fragranceListInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -289,14 +293,25 @@ export async function getAllBrands() {
   }
 }
 
-export async function getFilterOptions(brandSlug?: string) {
+export async function getFilterOptions(
+  brandSlug?: string,
+  productType?: FragranceListFilters["productType"]
+) {
   try {
     const brand = brandSlug
       ? await prisma.brand.findUnique({ where: { slug: brandSlug } })
       : null;
 
+    const productWhere: Prisma.FragranceWhereInput = {
+      ...(productType ? { productType } : {}),
+      ...(brand ? { brandId: brand.id } : {}),
+    };
+
     const [brands, series, bottleSizes] = await Promise.all([
       prisma.brand.findMany({
+        where: productType
+          ? { fragrances: { some: { productType } } }
+          : undefined,
         orderBy: { name: "asc" },
         select: { id: true, name: true, slug: true },
       }),
@@ -311,7 +326,7 @@ export async function getFilterOptions(brandSlug?: string) {
         },
       }),
       prisma.fragrance.findMany({
-        where: brand ? { brandId: brand.id } : undefined,
+        where: productWhere,
         distinct: ["bottleSize"],
         select: { bottleSize: true },
         orderBy: { bottleSize: "asc" },
@@ -343,10 +358,15 @@ export const getBrandBySlug = cache(async (slug: string) => {
 export async function getRelatedFragrances(
   fragranceId: string,
   brandId: string,
-  limit = 18
+  limit = 18,
+  productType?: FragranceListFilters["productType"]
 ) {
   return prisma.fragrance.findMany({
-    where: { brandId, NOT: { id: fragranceId } },
+    where: {
+      brandId,
+      NOT: { id: fragranceId },
+      ...(productType ? { productType } : {}),
+    },
     include: fragranceListInclude,
     take: limit,
   });

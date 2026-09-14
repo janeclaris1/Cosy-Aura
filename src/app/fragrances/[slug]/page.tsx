@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { productDetailPath } from "@/lib/product-catalog";
 import { Suspense } from "react";
 import { ProductCarousel } from "@/components/products/ProductCarousel";
 import { ActiveFilters } from "@/components/products/FilterSidebar";
@@ -139,11 +140,12 @@ async function BrandListing({
     brandSlug,
     page: 1,
     limit: FRAGRANCE_PAGE_SIZE,
+    productType: "PERFUME",
   });
 
   const [{ fragrances, total }, options] = await Promise.all([
     getFragrances(filters),
-    getFilterOptions(brandSlug),
+    getFilterOptions(brandSlug, "PERFUME"),
   ]);
 
   return (
@@ -258,6 +260,9 @@ async function FragranceDetailExtras({
 async function FragranceDetail({ slug }: { slug: string }) {
   const fragrance = await getFragranceBySlug(slug);
   if (!fragrance) notFound();
+  if (fragrance.productType !== "PERFUME") {
+    redirect(productDetailPath(fragrance.productType, fragrance.slug));
+  }
 
   const jsonLd = buildFragranceProductJsonLd({
     name: `${fragrance.brand.name} ${fragrance.model}`,

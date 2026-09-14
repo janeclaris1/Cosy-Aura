@@ -254,14 +254,28 @@ export function FilterSidebar({ brandSlug }: FilterSidebarProps) {
   );
 }
 
-export function ActiveFilters({ brandSlug }: { brandSlug?: string }) {
+export function ActiveFilters({
+  brandSlug,
+  catalogPath = "/fragrances",
+}: {
+  brandSlug?: string;
+  catalogPath?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const filters: { key: string; label: string; value: string }[] = [];
 
   searchParams.forEach((value, key) => {
-    if (key === "sort" || key === "page" || key === "view" || key === "limit") return;
+    if (
+      key === "sort" ||
+      key === "page" ||
+      key === "view" ||
+      key === "limit" ||
+      key === "productType"
+    ) {
+      return;
+    }
     filters.push({
       key,
       label: FILTER_CHIP_LABELS[key] || key,
@@ -277,7 +291,7 @@ export function ActiveFilters({ brandSlug }: { brandSlug?: string }) {
     if (key === "minPrice") params.delete("maxPrice");
     if (key === "maxPrice") params.delete("minPrice");
     params.delete("page");
-    const base = brandSlug ? `/fragrances/${brandSlug}` : "/fragrances";
+    const base = brandSlug ? `${catalogPath}/${brandSlug}` : catalogPath;
     const qs = params.toString();
     router.push(qs ? `${base}?${qs}` : base);
   }

@@ -15,9 +15,18 @@ export async function PUT(
 
   const body = await req.json();
 
+  const productType =
+    body.productType &&
+    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
+      String(body.productType).toUpperCase()
+    )
+      ? String(body.productType).toUpperCase()
+      : undefined;
+
   const fragrance = await prisma.fragrance.update({
     where: { id: params.id },
     data: {
+      ...(productType ? { productType: productType as never } : {}),
       brandId: body.brandId,
       model: body.model,
       reference: body.reference,

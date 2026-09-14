@@ -80,6 +80,14 @@ enum Gender {
   UNISEX
 }
 
+enum ProductType {
+  PERFUME
+  WATCH
+  SNEAKER
+  SHIRT
+  SUNGLASSES
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -264,6 +272,7 @@ model Series {
 model Fragrance {
   id                  String           @id @default(cuid())
   slug                String           @unique
+  productType         ProductType      @default(PERFUME)
   brandId             String
   seriesId            String?
   model               String
@@ -324,6 +333,7 @@ model Fragrance {
   @@index([featured])
   @@index([fragranceFamily])
   @@index([concentration])
+  @@index([productType])
 }
 
 /** Per-country online sellability + country pool qty (hybrid with BranchStock). */

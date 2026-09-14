@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bookmark,
   ShoppingBag,
@@ -9,6 +10,8 @@ import {
   Menu,
   X,
   ChevronDown,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
 import { SearchBar } from "@/components/search/SearchBar";
@@ -18,6 +21,15 @@ import { LocaleSwitcher } from "@/components/locale/LocaleSwitcher";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { cn, formatPrice } from "@/lib/utils";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
+import { CATALOGS, FASHION_CATALOGS } from "@/lib/product-catalog";
+
+const SHOP_CATEGORIES = [
+  { label: CATALOGS.fragrances.label, href: CATALOGS.fragrances.path },
+  ...FASHION_CATALOGS.map((slug) => ({
+    label: CATALOGS[slug].label,
+    href: CATALOGS[slug].path,
+  })),
+];
 
 const BRANDS = [
   { name: "Chanel", slug: "chanel" },
@@ -61,44 +73,75 @@ const CONCENTRATIONS = [
   { label: "Extrait", href: "/fragrances?concentration=EXTRAIT" },
 ];
 
-function NavDropdown({
-  label,
+function FilterSection({
+  title,
   children,
-  horizontal = false,
+  columns = false,
 }: {
-  label: string;
+  title: string;
   children: React.ReactNode;
-  horizontal?: boolean;
+  columns?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <button className="flex items-center gap-1 px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors">
-        {label}
-        <ChevronDown className="w-3.5 h-3.5" />
+    <div className="border-b border-wf-border last:border-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="text-sm font-semibold text-[#03045e]">{title}</span>
+        <ChevronDown
+          className={cn("w-4 h-4 text-wf-gray transition-transform", open && "rotate-180")}
+        />
       </button>
       {open && (
-        <div
-          className={cn(
-            "absolute top-full left-0 bg-white border border-wf-border shadow-lg rounded-b-lg min-w-[200px] z-50 py-2",
-            horizontal &&
-              "flex flex-wrap items-center w-[50vw] max-w-[50vw] px-2"
-          )}
-        >
-          {children}
-        </div>
+        <div className={cn("px-2 pb-3", columns && "flex flex-wrap gap-1")}>{children}</div>
       )}
     </div>
   );
 }
 
+function FilterLink({
+  href,
+  children,
+  onClick,
+  compact = false,
+}: {
+  href: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={cn(
+        "block text-sm text-[#03045e] hover:bg-wf-light rounded-lg transition-colors",
+        compact ? "shrink-0 whitespace-nowrap px-3 py-1.5" : "px-3 py-2"
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function isCatalogActive(path: string, pathname: string) {
+  if (path === "/fragrances") {
+    return pathname === "/fragrances" || pathname.startsWith("/fragrances/");
+  }
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+const CATALOG_CHIPS = SHOP_CATEGORIES;
+
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const pathname = usePathname();
+  const searchAnchorRef = useRef<HTMLDivElement>(null);
   const mounted = useIsClientMounted();
   const { items, toggleCart } = useCartStore();
   const currency = useLocaleStore((s) => s.currency);
@@ -148,6 +191,27 @@ export function Header() {
     { key: "nav.behindBottle", href: "/behind-the-bottle" },
   ];
 
+  const closeFilter = useCallback(() => setFilterOpen(false), []);
+
+  const focusSearch = useCallback(() => {
+    const input = searchAnchorRef.current?.querySelector("input");
+    if (input) {
+      input.focus();
+      input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setFilterOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [filterOpen]);
+
+  const chipActive = (href: string) => isCatalogActive(href, pathname);
+
   return (
     <header className="site-header sticky top-0 z-40 bg-primary">
       <TopUtilityBar />
@@ -158,7 +222,7 @@ export function Header() {
             <BrandLogo variant="dark" size="md" />
           </Link>
 
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
+          <div ref={searchAnchorRef} className="hidden md:flex flex-1 max-w-xl mx-8">
             <SearchBar onDark />
           </div>
 
@@ -212,101 +276,130 @@ export function Header() {
       </div>
 
       <nav className="site-nav hidden md:block bg-primary border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 flex items-center text-white">
-          <NavDropdown label={t("nav.brands")} horizontal>
-            {BRANDS.map((brand) => (
-              <Link
-                key={brand.slug}
-                href={`/fragrances/${brand.slug}`}
-                className="block shrink-0 whitespace-nowrap px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {brand.name}
-              </Link>
-            ))}
-          </NavDropdown>
-
-          <Link
-            href="/fragrances"
-            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
+        <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={focusSearch}
+            className="site-nav-icon-btn"
+            aria-label="Search"
           >
-            {t("nav.shopAll")}
-          </Link>
+            <Search className="w-4 h-4" />
+          </button>
 
-          <NavDropdown label={t("nav.price")}>
-            {priceRanges.map((range) => (
-              <Link
-                key={range.href}
-                href={range.href}
-                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {range.label}
-              </Link>
-            ))}
-          </NavDropdown>
+          <div className="flex flex-1 items-center gap-2 overflow-x-auto scrollbar-thin py-0.5">
+            {CATALOG_CHIPS.map((chip) => {
+              const active = chipActive(chip.href);
+              return (
+                <Link
+                  key={`${chip.href}-${chip.label}`}
+                  href={chip.href}
+                  className={cn(
+                    "site-nav-chip",
+                    active ? "site-nav-chip--active" : "site-nav-chip--idle"
+                  )}
+                >
+                  {chip.label}
+                </Link>
+              );
+            })}
+          </div>
 
-          <NavDropdown label={t("nav.family")}>
-            {FRAGRANCE_FAMILIES.map((f) => (
-              <Link
-                key={f.href}
-                href={f.href}
-                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {t(f.key)}
-              </Link>
-            ))}
-          </NavDropdown>
-
-          <NavDropdown label={t("nav.gender")}>
-            {GENDERS.map((g) => (
-              <Link
-                key={g.href}
-                href={g.href}
-                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {t(g.key)}
-              </Link>
-            ))}
-          </NavDropdown>
-
-          <NavDropdown label={t("nav.concentration")}>
-            {CONCENTRATIONS.map((c) => (
-              <Link
-                key={c.label}
-                href={c.href}
-                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {c.label}
-              </Link>
-            ))}
-          </NavDropdown>
-
-          <Link
-            href="/fragrance-finder"
-            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
+          <button
+            type="button"
+            onClick={() => setFilterOpen(true)}
+            className={cn("site-nav-icon-btn", filterOpen && "bg-[#FFD200] text-[#03045e]")}
+            aria-label="Browse filters"
           >
-            {t("nav.finder")}
-          </Link>
-
-          <NavDropdown label={t("nav.atelier")}>
-            {atelierLinks.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block px-4 py-2 text-sm text-[#03045e] hover:bg-wf-light hover:text-primary transition-colors"
-              >
-                {t(item.key)}
-              </Link>
-            ))}
-          </NavDropdown>
-
-          <Link
-            href="/blog"
-            className="px-4 py-3 text-sm font-bold text-white hover:text-[#FFD200] transition-colors"
-          >
-            {t("nav.journal")}
-          </Link>
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
         </div>
       </nav>
+
+      {filterOpen && (
+        <div className="fixed inset-0 z-[70] hidden md:block">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label={t("common.close")}
+            onClick={closeFilter}
+          />
+          <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl overflow-y-auto">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-wf-border bg-white px-4 py-4">
+              <h2 className="font-playfair text-lg text-[#03045e]">{t("nav.shopBy")}</h2>
+              <button
+                type="button"
+                onClick={closeFilter}
+                className="p-1 text-wf-gray hover:text-[#03045e]"
+                aria-label={t("common.close")}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <FilterSection title={t("nav.brands")} columns>
+              {BRANDS.map((brand) => (
+                <FilterLink
+                  key={brand.slug}
+                  href={`/fragrances/${brand.slug}`}
+                  onClick={closeFilter}
+                  compact
+                >
+                  {brand.name}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <FilterSection title={t("nav.price")}>
+              {priceRanges.map((range) => (
+                <FilterLink key={range.href} href={range.href} onClick={closeFilter}>
+                  {range.label}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <FilterSection title={t("nav.family")}>
+              {FRAGRANCE_FAMILIES.map((f) => (
+                <FilterLink key={f.href} href={f.href} onClick={closeFilter}>
+                  {t(f.key)}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <FilterSection title={t("nav.gender")}>
+              {GENDERS.map((g) => (
+                <FilterLink key={g.href} href={g.href} onClick={closeFilter}>
+                  {t(g.key)}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <FilterSection title={t("nav.concentration")}>
+              {CONCENTRATIONS.map((c) => (
+                <FilterLink key={c.label} href={c.href} onClick={closeFilter}>
+                  {c.label}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <FilterSection title={t("nav.atelier")}>
+              {atelierLinks.map((item) => (
+                <FilterLink key={item.href} href={item.href} onClick={closeFilter}>
+                  {t(item.key)}
+                </FilterLink>
+              ))}
+            </FilterSection>
+
+            <div className="px-4 py-3 space-y-1 border-b border-wf-border">
+              <FilterLink href="/fragrance-finder" onClick={closeFilter}>
+                {t("nav.finder")}
+              </FilterLink>
+              <FilterLink href="/blog" onClick={closeFilter}>
+                {t("nav.journal")}
+              </FilterLink>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         className={cn(
@@ -316,6 +409,26 @@ export function Header() {
       >
         <div className="px-4 py-4 space-y-4">
           <LocaleSwitcher compact onDark />
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {CATALOG_CHIPS.map((chip) => {
+              const active = chipActive(chip.href);
+              return (
+                <Link
+                  key={`mobile-${chip.href}-${chip.label}`}
+                  href={chip.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "site-nav-chip text-[11px] px-3 py-1.5",
+                    active ? "site-nav-chip--active" : "site-nav-chip--idle"
+                  )}
+                >
+                  {chip.label}
+                </Link>
+              );
+            })}
+          </div>
+
           <div>
             <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.brands")}</p>
             <div className="flex w-full flex-wrap items-center gap-1 pb-1">
@@ -331,13 +444,21 @@ export function Header() {
               ))}
             </div>
           </div>
-          <Link
-            href="/fragrances"
-            className="block text-sm py-1.5 font-bold text-white hover:text-[#FFD200]"
-            onClick={() => setMobileOpen(false)}
-          >
-            {t("nav.shopAll")}
-          </Link>
+          <div>
+            <p className="text-xs uppercase tracking-wider text-white/60 mb-2">Shop</p>
+            <div className="space-y-1">
+              {SHOP_CATEGORIES.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="block text-sm py-1.5 text-white hover:text-[#FFD200]"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-white/60 mb-2">{t("nav.shopBy")}</p>
             <div className="space-y-1">

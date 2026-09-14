@@ -25,11 +25,15 @@ import {
 import { WhatsAppToCheckoutButton } from "@/components/checkout/WhatsAppOrderButton";
 import { isInStockForCountry } from "@/lib/country-stock";
 import { ProductEngagementStats } from "@/components/products/ProductEngagementStats";
+import { CatalogProductCard } from "@/components/products/CatalogProductCard";
+import { isPerfumeProduct, productDetailPath } from "@/lib/product-catalog";
+import type { ProductType } from "@prisma/client";
 
 interface ProductCardProps {
   fragrance: {
     id: string;
     slug: string;
+    productType?: ProductType;
     model: string;
     reference?: string;
     price: number;
@@ -52,7 +56,14 @@ interface ProductCardProps {
   animate?: boolean;
 }
 
-export function ProductCard({
+export function ProductCard(props: ProductCardProps) {
+  if (!isPerfumeProduct(props.fragrance.productType)) {
+    return <CatalogProductCard {...props} />;
+  }
+  return <PerfumeProductCard {...props} />;
+}
+
+function PerfumeProductCard({
   fragrance,
   currency: currencyProp,
   animate = true,
@@ -84,6 +95,7 @@ export function ProductCard({
     country,
     currency
   );
+  const detailHref = productDetailPath(fragrance.productType ?? "PERFUME", fragrance.slug);
 
   useEffect(() => {
     if (!animate) return;
@@ -115,7 +127,7 @@ export function ProductCard({
       )}
     >
       <Link
-        href={`/fragrances/${fragrance.slug}`}
+        href={detailHref}
         className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#03045e]"
       >
         <div className="relative bg-gradient-to-b from-[#f7f6f3] via-white to-white px-2.5 pt-3 pb-1 sm:px-3 sm:pt-4">

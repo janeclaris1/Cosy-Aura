@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/products/ProductCard";
+import type { ProductType } from "@prisma/client";
 import type { FragranceWithRelations } from "@/lib/fragrances-shared";
 import { FRAGRANCE_PAGE_SIZE } from "@/lib/fragrances-shared";
 
@@ -11,6 +12,8 @@ interface InfiniteFragranceGridProps {
   total: number;
   pageSize?: number;
   brandSlug?: string;
+  productType?: ProductType;
+  catalogPath?: string;
   emptyMessage?: string;
 }
 
@@ -19,6 +22,8 @@ export function InfiniteFragranceGrid({
   total,
   pageSize = FRAGRANCE_PAGE_SIZE,
   brandSlug,
+  productType,
+  catalogPath = "/fragrances",
   emptyMessage = "No fragrances found matching your criteria.",
 }: InfiniteFragranceGridProps) {
   const searchParams = useSearchParams();
@@ -45,6 +50,7 @@ export function InfiniteFragranceGrid({
       params.set("page", String(nextPage));
       params.set("limit", String(pageSize));
       if (brandSlug) params.set("brandSlug", brandSlug);
+      if (productType) params.set("productType", productType);
 
       const response = await fetch(`/api/fragrances?${params.toString()}`);
       if (!response.ok) return;
@@ -59,7 +65,7 @@ export function InfiniteFragranceGrid({
     } finally {
       setLoading(false);
     }
-  }, [brandSlug, hasMore, loading, page, pageSize, searchParams]);
+  }, [brandSlug, hasMore, loading, page, pageSize, productType, searchParams]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;

@@ -26,6 +26,10 @@ const StoreLocationsMap = dynamic(
 
 const SHOP_LINKS = [
   { key: "footer.allFragrances", href: "/fragrances" },
+  { key: "Watches", href: "/watches" },
+  { key: "Sneakers", href: "/sneakers" },
+  { key: "Shirts", href: "/shirts" },
+  { key: "Sunglasses", href: "/sunglasses" },
   { key: "footer.finder", href: "/fragrance-finder" },
   { key: "footer.atelier", href: "/atelier" },
   { key: "footer.giftFinder", href: "/gift-finder" },

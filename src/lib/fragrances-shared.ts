@@ -1,4 +1,10 @@
-import type { Brand, Fragrance, FragranceCountryStock, FragranceImage } from "@prisma/client";
+import type {
+  Brand,
+  Fragrance,
+  FragranceCountryStock,
+  FragranceImage,
+  ProductType,
+} from "@prisma/client";
 
 export type FragranceWithRelations = Fragrance & {
   brand: Brand;
@@ -15,6 +21,7 @@ export const fragranceListInclude = {
 export const FRAGRANCE_PAGE_SIZE = 18;
 
 export interface FragranceListFilters {
+  productType?: ProductType;
   brandSlug?: string;
   seriesSlug?: string;
   bottleSize?: number;
@@ -83,7 +90,17 @@ export function parseFragranceListFilters(
   const genders = get("gender")?.split(",").filter(Boolean);
   const sustainability = get("sustainability")?.split(",").filter(Boolean);
 
+  const productTypeRaw = overrides.productType ?? get("productType");
+  const productType =
+    productTypeRaw &&
+    ["PERFUME", "WATCH", "SNEAKER", "SHIRT", "SUNGLASSES"].includes(
+      productTypeRaw.toUpperCase()
+    )
+      ? (productTypeRaw.toUpperCase() as ProductType)
+      : overrides.productType;
+
   return {
+    productType,
     brandSlug: overrides.brandSlug ?? get("brandSlug") ?? get("brand"),
     seriesSlug: get("series"),
     bottleSize: bottleSizes?.length === 1 ? bottleSizes[0] : undefined,

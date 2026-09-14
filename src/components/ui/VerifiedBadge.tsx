@@ -1,17 +1,25 @@
 import { cn } from "@/lib/utils";
 
-const PRODUCT_PROMISES = ["Undiluted", "Online Store", "Next day delivery"] as const;
+const DEFAULT_PRODUCT_PROMISES = [
+  "Undiluted",
+  "Online Store",
+  "Next day delivery",
+] as const;
 
 export function ProductPromises({
   className,
   badgeClassName = "w-3.5 h-3.5 text-black shrink-0",
+  items,
 }: {
   className?: string;
   badgeClassName?: string;
+  items?: readonly string[];
 }) {
+  const promises = items ?? DEFAULT_PRODUCT_PROMISES;
+
   return (
     <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1", className)}>
-      {PRODUCT_PROMISES.map((label) => (
+      {promises.map((label) => (
         <span key={label} className="inline-flex items-center gap-1.5 font-medium">
           {label}
           <VerifiedBadge className={badgeClassName} />

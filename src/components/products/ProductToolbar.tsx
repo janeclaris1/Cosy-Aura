@@ -34,6 +34,8 @@ interface ProductToolbarProps {
   brands?: BrandOption[];
   series?: SeriesOption[];
   bottleSizes?: number[];
+  catalogPath?: string;
+  perfumeFilters?: boolean;
 }
 
 const MORE_FILTER_KEYS = [
@@ -55,6 +57,8 @@ export function ProductToolbar({
   brandSlug,
   brands = [],
   bottleSizes: _bottleSizes = [],
+  catalogPath = "/fragrances",
+  perfumeFilters = true,
 }: ProductToolbarProps) {
   const t = useT();
   const mounted = useIsClientMounted();
@@ -75,7 +79,8 @@ export function ProductToolbar({
   const menuRef = useRef<HTMLDivElement>(null);
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const base = brandSlug ? `/fragrances/${brandSlug}` : "/fragrances";
+  const base =
+    brandSlug && perfumeFilters ? `${catalogPath}/${brandSlug}` : catalogPath;
 
   const pushParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -193,7 +198,8 @@ export function ProductToolbar({
     };
   }, [moreOpen]);
 
-  const activeBrand = brandSlug || searchParams.get("brand") || "";
+  const activeBrand =
+    brandSlug || searchParams.get("brand") || searchParams.get("brandSlug") || "";
   const activeBottleSizes = activeValues("bottleSize");
   const hasPrice = Boolean(searchParams.get("minPrice") || searchParams.get("maxPrice"));
   const moreCount = MORE_FILTER_KEYS.filter((key) => searchParams.get(key)).length;
@@ -203,11 +209,18 @@ export function ProductToolbar({
   function selectBrand(slug: string | null) {
     setOpen(null);
     setMenuPos(null);
-    if (!slug) {
-      router.push("/fragrances");
+    if (perfumeFilters) {
+      if (!slug) {
+        router.push(catalogPath);
+        return;
+      }
+      router.push(`${catalogPath}/${slug}`);
       return;
     }
-    router.push(`/fragrances/${slug}`);
+    pushParams((params) => {
+      if (slug) params.set("brandSlug", slug);
+      else params.delete("brandSlug");
+    });
   }
 
   const pills: {
@@ -217,19 +230,31 @@ export function ProductToolbar({
     hidden?: boolean;
   }[] = [
     { id: "brands", label: t("plp.brands"), active: Boolean(activeBrand), hidden: Boolean(brandSlug) },
-    { id: "bottleSize", label: t("plp.bottleSize"), active: activeBottleSizes.length > 0 },
+    {
+      id: "bottleSize",
+      label: t("plp.bottleSize"),
+      active: activeBottleSizes.length > 0,
+      hidden: !perfumeFilters,
+    },
     { id: "price", label: t("nav.price"), active: hasPrice },
     {
       id: "fragranceFamily",
       label: t("pdp.family"),
       active: activeValues("fragranceFamily").length > 0,
+      hidden: !perfumeFilters,
     },
     {
       id: "concentration",
       label: t("pdp.concentration"),
       active: activeValues("concentration").length > 0,
+      hidden: !perfumeFilters,
     },
-    { id: "gender", label: t("plp.gender"), active: activeValues("gender").length > 0 },
+    {
+      id: "gender",
+      label: t("plp.gender"),
+      active: activeValues("gender").length > 0,
+      hidden: !perfumeFilters,
+    },
   ];
 
   const dropdown =
@@ -448,26 +473,28 @@ export function ProductToolbar({
             </div>
           ))}
 
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(null);
-            setMenuPos(null);
-            setMoreOpen(true);
-          }}
-          className={cn(
-            "shrink-0 inline-flex items-center gap-2 rounded-full text-sm px-3.5 sm:px-4 py-2 transition-colors whitespace-nowrap",
-            moreCount > 0
-              ? "bg-wf-black text-white"
-              : "bg-[#f1f1f1] hover:bg-[#e8e8e8] text-wf-black"
-          )}
-        >
-          <span>
-            {t("plp.moreFilters")}
-            {moreCount > 0 ? ` (${moreCount})` : ""}
-          </span>
-          <Leaf className="w-3.5 h-3.5" />
-        </button>
+        {perfumeFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(null);
+              setMenuPos(null);
+              setMoreOpen(true);
+            }}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-2 rounded-full text-sm px-3.5 sm:px-4 py-2 transition-colors whitespace-nowrap",
+              moreCount > 0
+                ? "bg-wf-black text-white"
+                : "bg-[#f1f1f1] hover:bg-[#e8e8e8] text-wf-black"
+            )}
+          >
+            <span>
+              {t("plp.moreFilters")}
+              {moreCount > 0 ? ` (${moreCount})` : ""}
+            </span>
+            <Leaf className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {dropdown}

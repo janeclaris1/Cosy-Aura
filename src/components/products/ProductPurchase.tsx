@@ -7,12 +7,30 @@ import {
   ProductLeftExperience,
   ProductSpecsAccordion,
 } from "@/components/products/ProductDetail";
+import { CatalogProductPurchase } from "@/components/products/CatalogProductPurchase";
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { isBottleSize, type BottleSize } from "@/lib/bottle-sizes";
+import { isPerfumeProduct } from "@/lib/product-catalog";
 
-type Fragrance = Parameters<typeof ProductInfo>[0]["fragrance"];
+type Fragrance = Parameters<typeof ProductInfo>[0]["fragrance"] & {
+  productType?: import("@prisma/client").ProductType;
+};
 
 export function ProductPurchase({ fragrance }: { fragrance: Fragrance }) {
+  if (!isPerfumeProduct(fragrance.productType)) {
+    return (
+      <CatalogProductPurchase
+        fragrance={{
+          ...fragrance,
+          productType: fragrance.productType ?? "WATCH",
+        }}
+      />
+    );
+  }
+  return <PerfumeProductPurchase fragrance={fragrance} />;
+}
+
+function PerfumeProductPurchase({ fragrance }: { fragrance: Fragrance }) {
   const initial = isBottleSize(fragrance.bottleSize) ? fragrance.bottleSize : 50;
   const [size, setSize] = useState<BottleSize>(initial);
 

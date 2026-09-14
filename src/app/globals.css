@@ -98,22 +98,27 @@
   background-color: #03045e !important;
 }
 
-/* Primary category nav (Brands, Price, Family, …) */
-.site-nav,
-.site-nav button,
-.site-nav a {
-  font-family: "Times New Roman", Times, serif !important;
+/* Category chip nav (catalog pills + filter) */
+.site-nav {
+  font-family: var(--font-roboto), ui-sans-serif, system-ui, sans-serif;
 }
 
-.site-nav > div > button,
-.site-nav > div > a {
-  font-weight: 700 !important;
-  color: #ffffff;
+.site-nav-chip {
+  @apply inline-flex shrink-0 items-center rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.06em] whitespace-nowrap transition-colors;
 }
 
-.site-nav > div > button:hover,
-.site-nav > div > a:hover {
-  color: #ffd200 !important;
+.site-nav-chip--idle {
+  @apply bg-white/10 text-white hover:bg-white/20;
+}
+
+.site-nav-chip--active {
+  background-color: #ffd200;
+  color: #03045e;
+}
+
+.site-nav-icon-btn {
+  @apply inline-flex shrink-0 items-center justify-center rounded-full w-10 h-10 transition-colors;
+  @apply bg-white/10 text-white hover:bg-white/20;
 }
 
 @layer components {
