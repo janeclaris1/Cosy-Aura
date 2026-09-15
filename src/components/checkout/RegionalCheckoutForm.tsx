@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { filterShippingMethodsForCountry } from "@/lib/shipping-methods";
+import { filterShippingMethodsForCountry } from "@/lib/shipping-method-utils";
 import { formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { shippingUsdToGhs } from "@/lib/fx";

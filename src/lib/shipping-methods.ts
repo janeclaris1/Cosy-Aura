@@ -1,6 +1,18 @@
 import type { ShippingMethod } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  filterShippingMethodsForCountry,
+  isPickupShippingMethod,
+  shippingDisplayName,
+} from "@/lib/shipping-method-utils";
 import { slugify } from "@/lib/utils";
+
+export {
+  filterShippingMethodsForCountry,
+  isPickupShippingMethod,
+  shippingDisplayName,
+} from "@/lib/shipping-method-utils";
+export type { CheckoutShippingMethodShape } from "@/lib/shipping-method-utils";
 
 export const DEFAULT_STANDARD_SHIPPING = {
   name: "Standard Shipping",
@@ -42,27 +54,6 @@ export type CheckoutShippingMethod = Pick<
   | "deliveryDaysMin"
   | "deliveryDaysMax"
 >;
-
-export function shippingDisplayName(method: Pick<CheckoutShippingMethod, "name" | "eta">): string {
-  return `${method.name} · ${method.eta}`;
-}
-
-export function isPickupShippingMethod(
-  method: Pick<CheckoutShippingMethod, "name" | "slug">
-): boolean {
-  const slug = method.slug?.toLowerCase() ?? "";
-  const name = method.name?.toLowerCase() ?? "";
-  return slug === "pickup" || /\bpickup\b/.test(name);
-}
-
-/** Shop pickup is Accra-only — hide for customers outside Ghana. */
-export function filterShippingMethodsForCountry(
-  methods: CheckoutShippingMethod[],
-  country: string | null | undefined
-): CheckoutShippingMethod[] {
-  if (country === "GH") return methods;
-  return methods.filter((method) => !isPickupShippingMethod(method));
-}
 
 export async function ensureDefaultShippingMethods(): Promise<void> {
   for (const method of DEFAULT_SHIPPING_METHODS) {

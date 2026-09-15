@@ -57,15 +57,17 @@ function SponsoredAdMedia({
   const video = parseProductVideoUrl(config.videoUrl);
 
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el || video?.kind !== "file") return;
+    const videoEl = videoRef.current;
+    if (!videoEl || video?.kind !== "file") return;
 
-    function fitCoverCrop() {
-      const parent = el.parentElement;
-      if (!parent || !el.videoWidth || !el.videoHeight) return;
+    const fitCoverCrop = () => {
+      const target = videoRef.current;
+      if (!target?.videoWidth || !target.videoHeight) return;
+      const parent = target.parentElement;
+      if (!parent) return;
 
       const containerAspect = parent.clientWidth / parent.clientHeight;
-      const videoAspect = el.videoWidth / el.videoHeight;
+      const videoAspect = target.videoWidth / target.videoHeight;
       // Zoom in when the file is taller/narrower than the wide ad frame (common on Pinterest downloads).
       const computed =
         videoAspect < containerAspect
@@ -73,14 +75,14 @@ function SponsoredAdMedia({
           : 1.25;
       const extraScale = Math.min(1.85, Math.max(1.4, computed));
 
-      el.style.transform = `translate(-50%, -50%) scale(${extraScale})`;
-    }
+      target.style.transform = `translate(-50%, -50%) scale(${extraScale})`;
+    };
 
-    el.addEventListener("loadedmetadata", fitCoverCrop);
+    videoEl.addEventListener("loadedmetadata", fitCoverCrop);
     fitCoverCrop();
-    void el.play().catch(() => undefined);
+    void videoEl.play().catch(() => undefined);
 
-    return () => el.removeEventListener("loadedmetadata", fitCoverCrop);
+    return () => videoEl.removeEventListener("loadedmetadata", fitCoverCrop);
   }, [video]);
 
   if (video?.kind === "youtube") {
