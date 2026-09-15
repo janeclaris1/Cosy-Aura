@@ -11,6 +11,7 @@ import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
 import { rebuildWatchDescriptionFromRecord, sanitizeDescriptionText } from "./lib/catalog-product-description";
 import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 const apply = process.argv.includes("--apply");
 
@@ -223,7 +224,7 @@ async function main() {
       description,
       conditionReport: CONDITION_REPORT,
       price: PRICE_GHS,
-      costPriceGhs: 0,
+      costPriceGhs: defaultCatalogCostPriceGhs("WATCH", data.bottleSize ?? 50),
       condition: "UNWORN" as const,
       year: 2026,
       fragranceFamily: "WOODY" as const,

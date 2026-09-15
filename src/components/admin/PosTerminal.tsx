@@ -17,7 +17,7 @@ import { AdminBranchSelect } from "@/components/admin/AdminBranchSelect";
 import { adminInputClass, adminLabelClass } from "@/components/admin/admin-ui";
 import { PosTaxSummary } from "@/components/admin/PosTaxSummary";
 import { computePosDiscountAmount } from "@/lib/pos-discount";
-import { extractGhanaPosTaxBreakdown } from "@/lib/pos-taxes";
+import { buildReceiptTaxBreakdown } from "@/lib/pos-taxes";
 import { cn, formatPrice } from "@/lib/utils";
 import { readAdminBranchCookie, writeAdminBranchCookie } from "@/lib/admin-context";
 import type { PosDiscountType } from "@prisma/client";
@@ -428,7 +428,7 @@ export function PosTerminal() {
     value: parsedDiscountValue,
   });
   const total = roundGhs(Math.max(0, subtotal - discountAmount));
-  const taxes = extractGhanaPosTaxBreakdown(total);
+  const receiptTax = buildReceiptTaxBreakdown(total, selectedBranch?.country);
   const creditSplit = computeCreditSplit(total);
   const branch = selectedBranch;
   const paymentOptions = PAYMENTS.filter(
@@ -784,7 +784,8 @@ export function PosTerminal() {
               )}
               {total > 0 && (
                 <PosTaxSummary
-                  taxes={taxes}
+                  taxes={receiptTax.breakdown}
+                  showGhanaLevies={receiptTax.showGhanaLevies}
                   formatAmount={formatPosGhs}
                   showTotal={false}
                   className="pt-2 border-t border-stone-100 text-xs"

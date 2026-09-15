@@ -21,8 +21,19 @@ export type GhanaPosTaxBreakdown = {
   total: number;
 };
 
+export type ReceiptTaxPresentation = {
+  /** When false, receipt omits NHIL / GETFund / VAT lines (non-Ghana customers). */
+  showGhanaLevies: boolean;
+  breakdown: GhanaPosTaxBreakdown;
+};
+
 function roundGhs(amount: number): number {
   return Math.round(amount * 100) / 100;
+}
+
+/** Ghana-only: NHIL, GETFund and VAT apply to customers in Ghana. */
+export function isGhanaTaxCustomer(country: string | null | undefined): boolean {
+  return country?.trim().toUpperCase() === "GH";
 }
 
 /**
@@ -48,6 +59,27 @@ export function extractGhanaPosTaxBreakdown(
   }
 
   return { taxable, nhil, getfund, vat, total };
+}
+
+/**
+ * Receipt / POS display: show GRA levy breakdown only for Ghana customers.
+ * Non-Ghana customers still pay the listed total; levies are not itemised.
+ */
+export function buildReceiptTaxBreakdown(
+  inclusiveTotal: number,
+  customerCountry: string | null | undefined
+): ReceiptTaxPresentation {
+  const total = roundGhs(Math.max(0, inclusiveTotal));
+  if (!isGhanaTaxCustomer(customerCountry)) {
+    return {
+      showGhanaLevies: false,
+      breakdown: { taxable: total, nhil: 0, getfund: 0, vat: 0, total },
+    };
+  }
+  return {
+    showGhanaLevies: true,
+    breakdown: extractGhanaPosTaxBreakdown(inclusiveTotal),
+  };
 }
 
 /** @deprecated Use extractGhanaPosTaxBreakdown — prices are tax-inclusive. */

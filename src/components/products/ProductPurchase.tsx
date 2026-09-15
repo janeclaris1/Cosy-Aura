@@ -11,12 +11,17 @@ import { CatalogProductPurchase } from "@/components/products/CatalogProductPurc
 import { ProductReviews } from "@/components/products/ProductReviews";
 import { isBottleSize, type BottleSize } from "@/lib/bottle-sizes";
 import { isPerfumeProduct } from "@/lib/product-catalog";
+import { PdpSponsoredAd } from "@/components/products/PdpSponsoredAd";
+import { parsePdpSponsoredAd } from "@/lib/pdp-sponsored-ad";
 
 type Fragrance = Parameters<typeof ProductInfo>[0]["fragrance"] & {
   productType?: import("@prisma/client").ProductType;
+  pdpSponsoredAd?: unknown;
 };
 
 export function ProductPurchase({ fragrance }: { fragrance: Fragrance }) {
+  const sponsoredAd = parsePdpSponsoredAd(fragrance.pdpSponsoredAd);
+
   if (!isPerfumeProduct(fragrance.productType)) {
     return (
       <CatalogProductPurchase
@@ -24,13 +29,22 @@ export function ProductPurchase({ fragrance }: { fragrance: Fragrance }) {
           ...fragrance,
           productType: fragrance.productType ?? "WATCH",
         }}
+        sponsoredAd={sponsoredAd}
       />
     );
   }
-  return <PerfumeProductPurchase fragrance={fragrance} />;
+  return (
+    <PerfumeProductPurchase fragrance={fragrance} sponsoredAd={sponsoredAd} />
+  );
 }
 
-function PerfumeProductPurchase({ fragrance }: { fragrance: Fragrance }) {
+function PerfumeProductPurchase({
+  fragrance,
+  sponsoredAd,
+}: {
+  fragrance: Fragrance;
+  sponsoredAd: ReturnType<typeof parsePdpSponsoredAd>;
+}) {
   const initial = isBottleSize(fragrance.bottleSize) ? fragrance.bottleSize : 50;
   const [size, setSize] = useState<BottleSize>(initial);
 
@@ -48,6 +62,7 @@ function PerfumeProductPurchase({ fragrance }: { fragrance: Fragrance }) {
             explainerVideoUrl={fragrance.explainerVideoUrl}
           />
           <ProductSpecsAccordion fragrance={fragrance} />
+          <PdpSponsoredAd config={sponsoredAd} className="mt-0" />
           <ProductLeftExperience fragrance={fragrance} />
         </div>
         <ProductInfo

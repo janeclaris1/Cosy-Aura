@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { filterShippingMethodsForCountry } from "@/lib/shipping-methods";
 import { formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { shippingUsdToGhs } from "@/lib/fx";
@@ -103,7 +104,7 @@ export function RegionalCheckoutForm({
   onBack?: () => void;
   endpoint: string;
   providerLabel: string;
-  hint: string;
+  hint?: string;
   phonePlaceholder: string;
   submitLabel: string;
 }) {
@@ -139,7 +140,12 @@ export function RegionalCheckoutForm({
 
   const useGhanaCourier = country === "GH" && Boolean(ghanaDelivery?.enabled);
   const ghanaSplitPayment = useGhanaCourier;
-  const shipping = methods.find((method) => method.id === shippingId) || methods[0];
+  const checkoutMethods = useMemo(
+    () => filterShippingMethodsForCountry(methods, country),
+    [methods, country]
+  );
+  const shipping =
+    checkoutMethods.find((method) => method.id === shippingId) || checkoutMethods[0];
   const flatShippingGhs = shippingUsdToGhs(shipping?.price || 0, rates);
   const isAccraRegion = /greater\s*accra/i.test(destinationRegion);
   const dawuroboOk = Boolean(ghanaDelivery?.providers?.dawurobo?.available) && isAccraRegion;
@@ -232,6 +238,9 @@ export function RegionalCheckoutForm({
           ? t("checkout.pickup")
           : undefined
     : shipping?.name;
+  const isStorePickup = activeCourier === "pickup";
+  const pickupHoursLabel = t("checkout.pickupHours");
+
   const paymentMethodLabel = ghanaSplitPayment
     ? deliveryPayer === "recipient"
       ? t("checkout.payOrderNow")
@@ -254,9 +263,11 @@ export function RegionalCheckoutForm({
       : flatShippingGhs > 0
         ? formatPrice(flatShippingGhs, currency)
         : undefined,
-    deliveryDateLabel: deliveryDate
-      ? formatDeliveryDateLabel(deliveryDate)
-      : undefined,
+    deliveryDateLabel: isStorePickup
+      ? pickupHoursLabel
+      : deliveryDate
+        ? formatDeliveryDateLabel(deliveryDate)
+        : undefined,
     paymentMethod: paymentMethodLabel,
     paymentStatus:
       ghanaSplitPayment && deliveryPayer === "cod"
@@ -280,11 +291,7 @@ export function RegionalCheckoutForm({
         const res = await fetch("/api/shipping/methods");
         const data = await res.json();
         if (cancelled) return;
-        const list = (data.methods || []) as Method[];
-        setMethods(list);
-        const defaultMethod =
-          list.find((m) => !/pickup/i.test(m.name)) || list[0];
-        if (defaultMethod) setShippingId(defaultMethod.id);
+        setMethods((data.methods || []) as Method[]);
       } catch {
         if (!cancelled) setError("Could not load shipping options");
       }
@@ -293,6 +300,20 @@ export function RegionalCheckoutForm({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const available = filterShippingMethodsForCountry(methods, country);
+    if (available.length === 0) {
+      setShippingId("");
+      return;
+    }
+    setShippingId((current) => {
+      if (available.some((method) => method.id === current)) return current;
+      const defaultMethod =
+        available.find((method) => !/pickup/i.test(method.name)) || available[0];
+      return defaultMethod.id;
+    });
+  }, [methods, country]);
 
   useEffect(() => {
     if (country !== "GH") {
@@ -543,7 +564,7 @@ export function RegionalCheckoutForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3">
       {onBack ? (
         <button
           type="button"
@@ -554,12 +575,12 @@ export function RegionalCheckoutForm({
         </button>
       ) : null}
 
-      <div>
-        <p className="text-sm font-medium text-espresso">
-          {t("form.payWith", { provider: providerLabel })}
-        </p>
-        <p className="text-xs text-wf-gray mt-1">{hint}</p>
-      </div>
+      <h2 className="font-playfair text-xl text-espresso">
+        {t("form.payWith", { provider: providerLabel })}
+      </h2>
+      {hint?.trim() ? (
+        <p className="text-xs text-wf-gray -mt-1">{hint}</p>
+      ) : null}
 
       {countryOptions && countryOptions.length > 1 && (
         <label className="block text-sm">
@@ -599,9 +620,6 @@ export function RegionalCheckoutForm({
       </label>
       <label className="block text-sm">
         {t("form.whatsapp")}
-        <span className="block text-xs text-wf-gray font-normal mt-0.5">
-          {t("form.whatsappHint")}
-        </span>
         <input
           required
           type="tel"
@@ -613,11 +631,6 @@ export function RegionalCheckoutForm({
       </label>
       <label className="block text-sm">
         {t("form.address")}
-        {useGhanaCourier && activeCourier === "pickup" ? (
-          <span className="block text-xs text-wf-gray font-normal mt-0.5">
-            Optional for shop pickup — we will confirm collection details by WhatsApp.
-          </span>
-        ) : null}
         <input
           required={!(useGhanaCourier && activeCourier === "pickup")}
           value={form.address}
@@ -712,65 +725,39 @@ export function RegionalCheckoutForm({
             </label>
           ) : null}
           {pickupOk ? (
-            <label className="flex items-start gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
               <input
                 type="radio"
                 name="courier"
                 checked={activeCourier === "pickup"}
                 onChange={() => setCourierChoice("pickup")}
-                className="mt-1"
               />
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{t("checkout.pickup")}</span>
-                <span className="mt-1 block text-[12px] leading-snug text-mocha">
-                  {[
-                    pickupInfo?.branchName,
-                    pickupInfo?.address,
-                    pickupInfo?.city,
-                    pickupInfo?.openingHours,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "15 Odaw Street, Kokomlemle, Accra"}
-                </span>
-              </span>
-              <span className="shrink-0 font-medium mt-0.5">{t("checkout.pickupFree")}</span>
+              <span className="flex-1 font-medium">{t("checkout.pickup")}</span>
+              <span className="shrink-0 font-medium">{t("checkout.pickupFree")}</span>
             </label>
           ) : null}
           {!dawuroboOk && !shaqOk && !pickupOk ? (
             <p className="text-sm text-red-600">{t("checkout.noDelivery")}</p>
           ) : null}
-          <p className="text-xs text-mocha leading-snug border border-dashed border-wf-border px-3 py-2">
-            {ghanaFreeDelivery
-              ? t("checkout.freeDelivery")
-              : t("checkout.freeDeliveryGh", {
-                  amount: formatPrice(freeDeliveryThresholdGhs, currency),
-                })}
-          </p>
         </fieldset>
       ) : null}
 
-      {!useGhanaCourier && methods.length > 0 ? (
+      {!useGhanaCourier && checkoutMethods.length > 0 ? (
         <fieldset className="space-y-2">
           <legend className="text-sm mb-1">{t("checkout.shipping")}</legend>
-          {methods.map((method) => (
+          {checkoutMethods.map((method) => (
             <label
               key={method.id}
-              className="flex items-start gap-3 border border-wf-border px-3 py-2 text-sm cursor-pointer has-[:checked]:border-espresso"
+              className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso"
             >
               <input
                 type="radio"
                 name="shipping"
                 checked={shippingId === method.id}
                 onChange={() => setShippingId(method.id)}
-                className="mt-1"
               />
-              <span className="flex-1">
-                <span className="block font-medium">
-                  {method.name} · {method.eta}
-                </span>
-                {method.description && (
-                  <span className="block text-xs text-wf-gray">{method.description}</span>
-                )}
+              <span className="flex-1 font-medium">
+                {method.name} · {method.eta}
               </span>
               <span className="shrink-0">
                 {formatPrice(shippingUsdToGhs(method.price, rates), currency)}
@@ -796,21 +783,15 @@ export function RegionalCheckoutForm({
             </span>
           </label>
           {codEnabled && activeCourier !== "pickup" ? (
-            <label className="flex items-start gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
               <input
                 type="radio"
                 name="deliveryPayer"
                 checked={deliveryPayer === "cod"}
                 onChange={() => setDeliveryPayer("cod")}
-                className="mt-1"
               />
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{t("checkout.cashOnDelivery")}</span>
-                <span className="mt-1 block text-[12px] leading-snug text-mocha">
-                  {t("checkout.codHint")}
-                </span>
-              </span>
-              <span className="shrink-0 font-medium mt-0.5">
+              <span className="flex-1 font-medium">{t("checkout.cashOnDelivery")}</span>
+              <span className="shrink-0 font-medium">
                 {ghanaFreeDelivery && prepaidDeliveryGhs === 0
                   ? t("checkout.freeDelivery")
                   : formatPrice(prepaidDeliveryGhs, currency)}
@@ -831,15 +812,6 @@ export function RegionalCheckoutForm({
               {formatPrice(subtotal + prepaidDeliveryGhs, currency)}
             </span>
           </label>
-          {pickupInfo && activeCourier !== "pickup" ? (
-            <p className="text-xs text-mocha leading-snug border border-dashed border-wf-border px-3 py-2">
-              Pickup available at {pickupInfo.branchName || "our shop"}
-              {pickupInfo.address ? ` · ${pickupInfo.address}` : ""}
-              {pickupInfo.city ? `, ${pickupInfo.city}` : ""}
-              {pickupInfo.openingHours ? ` · ${pickupInfo.openingHours}` : ""}
-              {pickupInfo.notes ? ` · ${pickupInfo.notes}` : ""}
-            </p>
-          ) : null}
         </fieldset>
       ) : (
         <fieldset className="space-y-2">
@@ -853,15 +825,25 @@ export function RegionalCheckoutForm({
         </fieldset>
       )}
 
-      <DeliveryDateSelect
-        value={deliveryDate}
-        onChange={setDeliveryDate}
-        nextDayOnly={useGhanaCourier || country === "GH"}
-      />
+      {isStorePickup ? (
+        <p className="text-sm text-espresso">
+          <span className="text-mocha">{t("checkout.pickup")}: </span>
+          <span className="font-medium">{pickupHoursLabel}</span>
+        </p>
+      ) : (
+        <DeliveryDateSelect
+          value={deliveryDate}
+          onChange={setDeliveryDate}
+          nextDayOnly={useGhanaCourier || country === "GH"}
+        />
+      )}
 
-      <p className="text-sm font-medium pt-2">
-        {t("form.totalDue", { price: formatPrice(total, currency) })}
-      </p>
+      <div className="flex items-baseline justify-between pt-2 border-t border-wf-border">
+        <span className="text-sm text-mocha">{t("checkout.totalDue")}</span>
+        <span className="text-lg font-semibold text-espresso">
+          {formatPrice(total, currency)}
+        </span>
+      </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -885,11 +867,6 @@ export function RegionalCheckoutForm({
               payBeforeWhatsApp
                 ? t("checkout.whatsappPayFirst")
                 : t("checkout.whatsappSubmit")
-            }
-            hint={
-              payBeforeWhatsApp
-                ? t("checkout.whatsappPayFirstHint")
-                : undefined
             }
             customer={{
               name: form.name,
@@ -916,12 +893,12 @@ export function RegionalCheckoutForm({
             }}
           />
 
-          <div className="relative my-2">
+          <div className="relative py-1">
             <div className="absolute inset-0 flex items-center" aria-hidden>
               <div className="w-full border-t border-wf-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-white px-3 text-wf-gray">{t("checkout.orPayOnline")}</span>
+            <div className="relative flex justify-center">
+              <span className="bg-white px-2 text-[11px] text-wf-gray">{t("checkout.orPayOnline")}</span>
             </div>
           </div>
         </>

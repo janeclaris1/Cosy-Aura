@@ -1,29 +1,31 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import {
   formatReceiptMoney,
-  receiptDeliveryLabel,
+  receiptBillToLines,
   receiptFilename,
   receiptItemsTotal,
+  receiptShipToLines,
   receiptShortId,
-  receiptTrackUrl,
   type ReceiptOrder,
 } from "./order-receipt";
+import { buildReceiptTaxBreakdown } from "./pos-taxes";
+import { receiptCompanyLetterhead, type ReceiptAddressBlock } from "./receipt-company";
 
-const IVORY = rgb(0.973, 0.957, 0.933);
-const ESPRESSO = rgb(0.11, 0.098, 0.09);
-const GOLD = rgb(0.651, 0.486, 0.322);
-const MUTED = rgb(0.42, 0.4, 0.38);
-const LINE = rgb(0.82, 0.78, 0.72);
-const ROW = rgb(0.945, 0.925, 0.898);
+const NAVY = rgb(3 / 255, 4 / 255, 94 / 255);
+const GOLD = rgb(1, 210 / 255, 0);
+const BLACK = rgb(0, 0, 0);
+const WHITE = rgb(1, 1, 1);
+const MUTED = rgb(0.35, 0.35, 0.35);
+const ROW_ALT = rgb(0.96, 0.97, 0.995);
 
-const RECEIPT_SITE_URL = "https://cosyaura.com";
+const STORE_NAME = "COSY AURA";
 
 function pdfSafe(text: string): string {
   return text
     .replace(/₵/g, "")
-    .replace(/[--]/g, "-")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, "-")
+    .replace(/['']/g, "'")
+    .replace(/[""]/g, '"')
     .replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, "");
 }
 
@@ -46,7 +48,21 @@ function wrap(
     }
   }
   if (current) lines.push(current);
-  return lines.length ? lines : [text];
+  return lines.length ? lines : [pdfSafe(text)];
+}
+
+function drawCentered(
+  page: PDFPage,
+  text: string,
+  font: PDFFont,
+  size: number,
+  centerX: number,
+  y: number,
+  color = BLACK
+) {
+  const safe = pdfSafe(text);
+  const w = font.widthOfTextAtSize(safe, size);
+  page.drawText(safe, { x: centerX - w / 2, y, size, font, color });
 }
 
 function drawRight(
@@ -56,11 +72,275 @@ function drawRight(
   size: number,
   xRight: number,
   y: number,
-  color = ESPRESSO
+  color = BLACK
 ) {
   const safe = pdfSafe(text);
   const w = font.widthOfTextAtSize(safe, size);
   page.drawText(safe, { x: xRight - w, y, size, font, color });
+}
+
+function drawAddressBlock(
+  page: PDFPage,
+  block: ReceiptAddressBlock,
+  x: number,
+  y: number,
+  align: "left" | "right",
+  maxWidth: number,
+  sans: PDFFont,
+  sansBold: PDFFont
+): number {
+  const lineHeight = 11;
+  let cy = y;
+
+  const nameLines = wrap(sansBold, block.name, 9, maxWidth);
+  for (const line of nameLines) {
+    if (align === "right") drawRight(page, line, sansBold, 9, x, cy, NAVY);
+    else page.drawText(line, { x, y: cy, size: 9, font: sansBold, color: NAVY });
+    cy -= lineHeight;
+  }
+
+  for (const raw of block.lines) {
+    const lines = wrap(sans, raw, 8, maxWidth);
+    for (const line of lines) {
+      if (align === "right") drawRight(page, line, sans, 8, x, cy, MUTED);
+      else page.drawText(line, { x, y: cy, size: 8, font: sans, color: MUTED });
+      cy -= lineHeight;
+    }
+  }
+
+  return y - cy;
+}
+
+function drawLetterheadAddresses(
+  page: PDFPage,
+  margin: number,
+  contentRight: number,
+  y: number,
+  sans: PDFFont,
+  sansBold: PDFFont
+): number {
+  const letterhead = receiptCompanyLetterhead();
+  const colWidth = (contentRight - margin) * 0.42;
+
+  const leftHeight = drawAddressBlock(
+    page,
+    letterhead.us,
+    margin,
+    y,
+    "left",
+    colWidth,
+    sans,
+    sansBold
+  );
+  const rightHeight = drawAddressBlock(
+    page,
+    letterhead.gh,
+    contentRight,
+    y,
+    "right",
+    colWidth,
+    sans,
+    sansBold
+  );
+
+  return Math.max(leftHeight, rightHeight);
+}
+
+function measureCustomerDetailColumn(
+  lines: string[],
+  maxWidth: number,
+  sans: PDFFont
+): number {
+  const lineHeight = 12;
+  let height = lineHeight + 2;
+  for (const raw of lines) {
+    height += wrap(sans, raw, 9, maxWidth).length * lineHeight;
+  }
+  return height;
+}
+
+function drawCustomerDetailColumn(
+  page: PDFPage,
+  title: string,
+  lines: string[],
+  x: number,
+  y: number,
+  maxWidth: number,
+  sans: PDFFont,
+  sansBold: PDFFont
+) {
+  const lineHeight = 12;
+  let cy = y;
+
+  page.drawText(pdfSafe(title), { x, y: cy, size: 9, font: sansBold, color: NAVY });
+  cy -= lineHeight + 2;
+
+  for (const raw of lines) {
+    for (const line of wrap(sans, raw, 9, maxWidth)) {
+      page.drawText(line, { x, y: cy, size: 9, font: sans, color: BLACK });
+      cy -= lineHeight;
+    }
+  }
+}
+
+function drawCustomerDetailsSection(
+  page: PDFPage,
+  order: ReceiptOrder,
+  margin: number,
+  contentWidth: number,
+  topY: number,
+  sans: PDFFont,
+  sansBold: PDFFont
+): number {
+  const pad = 12;
+  const colGap = 16;
+  const innerWidth = contentWidth - pad * 2;
+  const colWidth = (innerWidth - colGap) / 2;
+  const leftX = margin + pad;
+  const rightX = leftX + colWidth + colGap;
+  const bodyTop = topY - 22;
+
+  const billLines = receiptBillToLines(order);
+  const shipLines = receiptShipToLines(order);
+  const bodyHeight = Math.max(
+    measureCustomerDetailColumn(billLines, colWidth, sans),
+    measureCustomerDetailColumn(shipLines, colWidth, sans)
+  );
+  const sectionHeight = bodyHeight + 28;
+
+  page.drawRectangle({
+    x: margin,
+    y: topY - sectionHeight,
+    width: contentWidth,
+    height: sectionHeight,
+    color: WHITE,
+    borderColor: NAVY,
+    borderWidth: 0.75,
+  });
+
+  page.drawLine({
+    start: { x: margin + contentWidth / 2, y: topY },
+    end: { x: margin + contentWidth / 2, y: topY - sectionHeight },
+    thickness: 0.75,
+    color: NAVY,
+  });
+
+  drawCustomerDetailColumn(page, "Bill To", billLines, leftX, bodyTop, colWidth, sans, sansBold);
+  drawCustomerDetailColumn(page, "Ship To", shipLines, rightX, bodyTop, colWidth, sans, sansBold);
+
+  return sectionHeight;
+}
+
+type TotalsLine = {
+  label: string;
+  value: string;
+  muted?: boolean;
+};
+
+function drawReceiptTotalsPanel(
+  page: PDFPage,
+  topY: number,
+  margin: number,
+  contentRight: number,
+  contentWidth: number,
+  lines: TotalsLine[],
+  totalLabel: string,
+  totalValue: string,
+  sans: PDFFont,
+  sansBold: PDFFont
+): number {
+  const panelWidth = contentWidth * 0.48;
+  const panelLeft = contentRight - panelWidth;
+  const padX = 12;
+  const labelX = panelLeft + padX;
+  const valueX = contentRight - padX;
+  const rowHeight = 16;
+  const totalBandHeight = 30;
+  const bodyRows = lines.length;
+  const bodyHeight = bodyRows * rowHeight + 14;
+  const panelBottom = topY - bodyHeight - totalBandHeight;
+  const panelHeight = topY - panelBottom;
+
+  page.drawRectangle({
+    x: panelLeft,
+    y: panelBottom,
+    width: panelWidth,
+    height: panelHeight,
+    color: ROW_ALT,
+    borderColor: NAVY,
+    borderWidth: 0.75,
+  });
+
+  let rowY = topY - 12;
+  for (const line of lines) {
+    page.drawText(pdfSafe(line.label), {
+      x: labelX,
+      y: rowY,
+      size: line.muted ? 9 : 10,
+      font: sans,
+      color: line.muted ? MUTED : BLACK,
+    });
+    drawRight(
+      page,
+      line.value,
+      sans,
+      line.muted ? 9 : 10,
+      valueX,
+      rowY,
+      line.muted ? MUTED : BLACK
+    );
+    rowY -= rowHeight;
+  }
+
+  const bandTop = panelBottom + totalBandHeight;
+
+  page.drawRectangle({
+    x: panelLeft,
+    y: panelBottom,
+    width: panelWidth,
+    height: totalBandHeight,
+    color: NAVY,
+  });
+
+  page.drawRectangle({
+    x: panelLeft,
+    y: bandTop - 2,
+    width: panelWidth,
+    height: 2,
+    color: GOLD,
+  });
+
+  const totalTextY = panelBottom + 10;
+  page.drawText(pdfSafe(totalLabel), {
+    x: labelX,
+    y: totalTextY,
+    size: 11,
+    font: sansBold,
+    color: WHITE,
+  });
+  drawRight(page, totalValue, sansBold, 13, valueX, totalTextY, WHITE);
+
+  return panelBottom;
+}
+
+function receiptInvoiceNumber(order: ReceiptOrder): string {
+  return order.receiptNumber || receiptShortId(order.id);
+}
+
+function receiptCustomerName(order: ReceiptOrder): string {
+  const name = order.shippingName?.trim();
+  if (name) return name;
+  const email = order.email?.trim();
+  if (email && email.includes("@")) return email.split("@")[0];
+  return email || "-";
+}
+
+function receiptDateLabel(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
 }
 
 export async function buildOrderReceiptPdf(order: ReceiptOrder): Promise<Buffer> {
@@ -72,259 +352,237 @@ export async function buildOrderReceiptPdf(order: ReceiptOrder): Promise<Buffer>
   const sansBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
   const { width, height } = page.getSize();
-  const margin = 48;
+  const margin = 56;
   const contentRight = width - margin;
-  const shortId = receiptShortId(order.id);
-  const trackUrl = receiptTrackUrl(order, RECEIPT_SITE_URL);
+  const contentWidth = contentRight - margin;
+  const centerX = width / 2;
 
-  page.drawRectangle({ x: 0, y: 0, width, height, color: IVORY });
-  page.drawRectangle({ x: 0, y: height - 8, width, height: 8, color: GOLD });
-  page.drawRectangle({ x: 0, y: 0, width, height: 8, color: GOLD });
+  let y = height - margin;
 
-  page.drawText("COSY AURA", {
-    x: margin,
-    y: height - 70,
-    size: 18,
-    font: serifBold,
-    color: ESPRESSO,
-  });
-  page.drawText("Oil-based perfume atelier", {
-    x: margin,
-    y: height - 86,
-    size: 9,
-    font: sans,
-    color: MUTED,
-  });
-
-  drawRight(page, "PAYMENT RECEIPT", sansBold, 9, contentRight, height - 64, GOLD);
-  drawRight(page, `#${shortId}`, serifBold, 16, contentRight, height - 84);
-
-  let y = height - 118;
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: contentRight, y },
-    thickness: 0.6,
-    color: LINE,
-  });
-
-  y -= 22;
-  const paidOn = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(order.createdAt);
-
-  page.drawText("Date", { x: margin, y, size: 8, font: sans, color: MUTED });
-  page.drawText("Status", { x: margin + 160, y, size: 8, font: sans, color: MUTED });
-  page.drawText("Customer", { x: margin + 280, y, size: 8, font: sans, color: MUTED });
-  y -= 14;
-  page.drawText(pdfSafe(paidOn), { x: margin, y, size: 10, font: sansBold, color: ESPRESSO });
-  page.drawText((order.status || "PAID").toUpperCase(), {
-    x: margin + 160,
-    y,
-    size: 10,
-    font: sansBold,
+  page.drawRectangle({
+    x: 0,
+    y: height - 4,
+    width,
+    height: 4,
     color: GOLD,
   });
-  const emailLines = wrap(sans, order.email || "-", 10, 220);
-  page.drawText(emailLines[0], {
-    x: margin + 280,
-    y,
-    size: 10,
-    font: sans,
-    color: ESPRESSO,
-  });
 
-  y -= 28;
+  drawCentered(page, STORE_NAME, serifBold, 22, centerX, y, NAVY);
+  y -= 20;
+  drawCentered(page, "Official Receipt", sans, 11, centerX, y, MUTED);
+  y -= 22;
+
+  const addressHeight = drawLetterheadAddresses(page, margin, contentRight, y, sans, sansBold);
+  y -= addressHeight + 24;
+
+  const metaTop = y;
+  const metaHeight = 42;
+  const colWidth = contentWidth / 3;
+  const col1 = margin;
+  const col2 = margin + colWidth;
+  const col3 = margin + colWidth * 2;
+
   page.drawRectangle({
     x: margin,
-    y: y - 6,
-    width: contentRight - margin,
-    height: 22,
-    color: ROW,
+    y: metaTop - metaHeight,
+    width: contentWidth,
+    height: metaHeight,
+    color: ROW_ALT,
+    borderColor: NAVY,
+    borderWidth: 0.75,
   });
-  page.drawText("ITEM", { x: margin + 10, y, size: 8, font: sansBold, color: MUTED });
-  page.drawText("QTY", { x: margin + 360, y, size: 8, font: sansBold, color: MUTED });
-  drawRight(page, "AMOUNT", sansBold, 8, contentRight - 10, y, MUTED);
+  page.drawLine({
+    start: { x: col2, y: metaTop },
+    end: { x: col2, y: metaTop - metaHeight },
+    thickness: 0.75,
+    color: NAVY,
+  });
+  page.drawLine({
+    start: { x: col3, y: metaTop },
+    end: { x: col3, y: metaTop - metaHeight },
+    thickness: 0.75,
+    color: NAVY,
+  });
 
-  y -= 24;
+  const metaLabelY = metaTop - 16;
+  const metaValueY = metaTop - 32;
+  drawCentered(page, "Date", sansBold, 8, col1 + colWidth / 2, metaLabelY, NAVY);
+  drawCentered(page, "Invoice #", sansBold, 8, col2 + colWidth / 2, metaLabelY, NAVY);
+  drawCentered(page, "Customer Name", sansBold, 8, col3 + colWidth / 2, metaLabelY, NAVY);
+
+  drawCentered(page, receiptDateLabel(order.createdAt), sans, 10, col1 + colWidth / 2, metaValueY, BLACK);
+  drawCentered(page, receiptInvoiceNumber(order), sans, 10, col2 + colWidth / 2, metaValueY, BLACK);
+  const customerLines = wrap(sans, receiptCustomerName(order), 10, colWidth - 16);
+  drawCentered(page, customerLines[0], sans, 10, col3 + colWidth / 2, metaValueY);
+
+  y = metaTop - metaHeight - 20;
+
+  const customerSectionTop = y;
+  const customerSectionHeight = drawCustomerDetailsSection(
+    page,
+    order,
+    margin,
+    contentWidth,
+    customerSectionTop,
+    sans,
+    sansBold
+  );
+  y = customerSectionTop - customerSectionHeight - 24;
+
+  const tableTop = y;
+  const rowHeight = 22;
+  const headerHeight = 24;
+  const colProduct = margin + 8;
+  const colQty = margin + contentWidth * 0.52;
+  const colUnit = margin + contentWidth * 0.68;
+  const colTotal = contentRight - 8;
+
+  const qtyHeader = "QTY";
+  const unitHeader = "UNIT PRICE";
+  const totalHeader = "TOTAL";
+
+  page.drawRectangle({
+    x: margin,
+    y: tableTop - headerHeight,
+    width: contentWidth,
+    height: headerHeight,
+    color: NAVY,
+    borderColor: NAVY,
+    borderWidth: 0.75,
+  });
+
+  page.drawText("PRODUCT", {
+    x: colProduct,
+    y: tableTop - 16,
+    size: 8,
+    font: sansBold,
+    color: WHITE,
+  });
+  page.drawText(qtyHeader, {
+    x: colQty,
+    y: tableTop - 16,
+    size: 8,
+    font: sansBold,
+    color: WHITE,
+  });
+  page.drawText(unitHeader, {
+    x: colUnit,
+    y: tableTop - 16,
+    size: 8,
+    font: sansBold,
+    color: WHITE,
+  });
+  drawRight(page, totalHeader, sansBold, 8, colTotal, tableTop - 16, WHITE);
+
+  let rowY = tableTop - headerHeight;
+  let rowIndex = 0;
   for (const item of order.items) {
     const name = `${item.brand} ${item.model}`;
-    const nameLines = wrap(sans, name, 10, 330);
-    const blockHeight = Math.max(18, nameLines.length * 13 + (item.reference ? 12 : 0));
-    if (y - blockHeight < 220) break;
+    const nameLines = wrap(sans, name, 9, contentWidth * 0.48);
+    const currentRowHeight = Math.max(rowHeight, nameLines.length * 12 + 10);
+    rowY -= currentRowHeight;
 
+    if (rowY < 180) break;
+
+    page.drawRectangle({
+      x: margin,
+      y: rowY,
+      width: contentWidth,
+      height: currentRowHeight,
+      color: rowIndex % 2 === 1 ? ROW_ALT : WHITE,
+      borderColor: NAVY,
+      borderWidth: 0.75,
+    });
+    rowIndex += 1;
+
+    const textY = rowY + currentRowHeight - 14;
     nameLines.forEach((line, i) => {
       page.drawText(line, {
-        x: margin + 10,
-        y: y - i * 13,
-        size: 10,
+        x: colProduct,
+        y: textY - i * 12,
+        size: 9,
         font: sans,
-        color: ESPRESSO,
+        color: BLACK,
       });
     });
-    if (item.reference) {
-      page.drawText(pdfSafe(`Ref. ${item.reference}`), {
-        x: margin + 10,
-        y: y - nameLines.length * 13,
-        size: 8,
-        font: sans,
-        color: MUTED,
-      });
-    }
+
     page.drawText(String(item.quantity), {
-      x: margin + 366,
-      y,
-      size: 10,
+      x: colQty,
+      y: textY,
+      size: 9,
       font: sans,
-      color: ESPRESSO,
+      color: BLACK,
+    });
+    page.drawText(formatReceiptMoney(item.price), {
+      x: colUnit,
+      y: textY,
+      size: 9,
+      font: sans,
+      color: BLACK,
     });
     drawRight(
       page,
       formatReceiptMoney(item.price * item.quantity),
       sans,
-      10,
-      contentRight - 10,
-      y
+      9,
+      colTotal,
+      textY
     );
-    y -= blockHeight + 8;
   }
 
-  y -= 6;
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: contentRight, y },
-    thickness: 0.6,
-    color: LINE,
-  });
+  y = rowY - 20;
 
   const subtotal = receiptItemsTotal(order);
-  y -= 20;
-  page.drawText("Subtotal", { x: margin + 300, y, size: 10, font: sans, color: MUTED });
-  drawRight(page, formatReceiptMoney(subtotal), sans, 10, contentRight - 10, y);
+  const receiptTax = buildReceiptTaxBreakdown(order.total, order.shippingCountry);
+  const totalsLines: TotalsLine[] = [
+    { label: "Subtotal", value: formatReceiptMoney(subtotal) },
+  ];
 
-  y -= 16;
-  page.drawText("Shipping", { x: margin + 300, y, size: 10, font: sans, color: MUTED });
-  drawRight(
+  if (order.shippingCost > 0) {
+    totalsLines.push({
+      label: "Shipping",
+      value: formatReceiptMoney(order.shippingCost),
+    });
+  }
+
+  if (receiptTax.showGhanaLevies) {
+    totalsLines.push(
+      { label: "VAT (15%)", value: formatReceiptMoney(receiptTax.breakdown.vat), muted: true },
+      { label: "NHIL (2.5%)", value: formatReceiptMoney(receiptTax.breakdown.nhil), muted: true },
+      {
+        label: "GETFUND (2.5%)",
+        value: formatReceiptMoney(receiptTax.breakdown.getfund),
+        muted: true,
+      }
+    );
+  }
+
+  const panelBottom = drawReceiptTotalsPanel(
     page,
-    order.shippingCost > 0 ? formatReceiptMoney(order.shippingCost) : "Included",
+    y,
+    margin,
+    contentRight,
+    contentWidth,
+    totalsLines,
+    "TOTAL",
+    formatReceiptMoney(order.total),
     sans,
-    10,
-    contentRight - 10,
-    y
+    sansBold
   );
-  if (order.shippingMethod) {
-    y -= 12;
-    page.drawText(pdfSafe(order.shippingMethod), {
-      x: margin + 300,
-      y,
-      size: 8,
-      font: sans,
-      color: MUTED,
-    });
-  }
 
-  y -= 22;
-  page.drawText("Total paid", {
-    x: margin + 300,
-    y,
-    size: 12,
-    font: serifBold,
-    color: ESPRESSO,
-  });
-  drawRight(page, formatReceiptMoney(order.total), serifBold, 13, contentRight - 10, y, GOLD);
+  drawCentered(
+    page,
+    "Thank you for your purchase!",
+    serif,
+    12,
+    centerX,
+    Math.max(56, panelBottom - 28),
+    NAVY
+  );
 
-  y -= 28;
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: contentRight, y },
-    thickness: 0.6,
-    color: LINE,
-  });
-
-  y -= 22;
-  page.drawText("Deliver to", { x: margin, y, size: 8, font: sansBold, color: GOLD });
-  page.drawText("Delivery date", {
-    x: margin + 300,
-    y,
-    size: 8,
-    font: sansBold,
-    color: GOLD,
-  });
-
-  y -= 14;
-  const address = [
-    order.shippingName,
-    order.shippingAddress,
-    [order.shippingCity, order.shippingPostcode].filter(Boolean).join(" "),
-    order.shippingCountry,
-  ].filter(Boolean) as string[];
-
-  let addrY = y;
-  if (address.length === 0) {
-    page.drawText("Address collected at checkout", {
-      x: margin,
-      y: addrY,
-      size: 10,
-      font: sans,
-      color: MUTED,
-    });
-  } else {
-    for (const line of address) {
-      page.drawText(pdfSafe(line), { x: margin, y: addrY, size: 10, font: sans, color: ESPRESSO });
-      addrY -= 13;
-    }
-  }
-
-  const delivery = receiptDeliveryLabel(order) || "Monday to Saturday";
-  page.drawText(pdfSafe(delivery), {
-    x: margin + 300,
-    y,
-    size: 10,
-    font: sansBold,
-    color: ESPRESSO,
-  });
-  page.drawText("Monday - Saturday", {
-    x: margin + 300,
-    y: y - 14,
-    size: 8,
-    font: sans,
-    color: MUTED,
-  });
-
-  y = Math.min(addrY, y - 36) - 16;
-  page.drawText("Track your order", {
-    x: margin,
-    y,
-    size: 8,
-    font: sansBold,
-    color: GOLD,
-  });
-  y -= 13;
-  const trackLines = wrap(sans, trackUrl, 8, contentRight - margin);
-  for (const line of trackLines) {
-    page.drawText(line, { x: margin, y, size: 8, font: sans, color: ESPRESSO });
-    y -= 11;
-  }
-
-  page.drawText("Thank you for your order.", {
-    x: margin,
-    y: 42,
-    size: 11,
-    font: serif,
-    color: ESPRESSO,
-  });
-  page.drawText("support@cosyaura.com  ·  COSY AURA LLC", {
-    x: margin,
-    y: 28,
-    size: 8,
-    font: sans,
-    color: MUTED,
-  });
-
-  pdf.setTitle(`COSY AURA Receipt #${shortId}`);
-  pdf.setAuthor("COSY AURA");
-  pdf.setSubject("Payment receipt");
+  pdf.setTitle(`${STORE_NAME} Receipt #${receiptInvoiceNumber(order)}`);
+  pdf.setAuthor(STORE_NAME);
+  pdf.setSubject("Official receipt");
 
   const bytes = await pdf.save();
   return Buffer.from(bytes);

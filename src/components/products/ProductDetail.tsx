@@ -550,7 +550,7 @@ export function ProductInfo({
   selectedSize?: BottleSize;
   onSizeChange?: (size: BottleSize) => void;
 }) {
-  const [openAccordion, setOpenAccordion] = useState<string | null>("description");
+  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const catalogSize = isBottleSize(fragrance.bottleSize)
     ? fragrance.bottleSize
     : 50;

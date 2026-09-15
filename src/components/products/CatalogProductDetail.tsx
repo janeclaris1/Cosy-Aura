@@ -5,7 +5,10 @@ import { ProductCarousel } from "@/components/products/ProductCarousel";
 import { ProductPurchase } from "@/components/products/ProductPurchase";
 import { authOptions } from "@/lib/auth";
 import { isGuestPriceHidden } from "@/lib/catalog-price-visibility";
-import { getFragranceBySlug, getRelatedFragrances } from "@/lib/fragrances";
+import {
+  getCatalogAlsoLikeProducts,
+  getFragranceBySlug,
+} from "@/lib/fragrances";
 import { getCatalog, productDetailPath, type CatalogSlug } from "@/lib/product-catalog";
 import { getStoreConfig } from "@/lib/store-config";
 import { absoluteUrl, defaultOgImage, SEO } from "@/lib/seo";
@@ -66,11 +69,10 @@ export async function CatalogProductDetail({
   const fragrance = await getFragranceBySlug(slug);
   if (!fragrance || fragrance.productType !== config.productType) notFound();
 
-  const related = await getRelatedFragrances(
+  const alsoLike = await getCatalogAlsoLikeProducts(
     fragrance.id,
-    fragrance.brandId,
-    12,
-    fragrance.productType
+    fragrance.productType,
+    12
   );
 
   const [session, storeConfig] = await Promise.all([
@@ -115,12 +117,7 @@ export async function CatalogProductDetail({
       />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <ProductPurchase fragrance={fragrance} />
-        {related.length > 0 && (
-          <div className="mt-12">
-            <h2 className="font-playfair text-xl mb-4">More {config.label.toLowerCase()}</h2>
-            <ProductCarousel fragrances={related} />
-          </div>
-        )}
+        {alsoLike.length > 0 && <ProductCarousel fragrances={alsoLike} />}
       </div>
     </>
   );

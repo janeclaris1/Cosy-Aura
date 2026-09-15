@@ -352,11 +352,6 @@ export default function CheckoutPage() {
 
           {!detecting && (
             <>
-              {viaWhatsApp && (
-                <p className="mb-6 text-sm text-espresso">
-                  Complete your details below, then submit on WhatsApp so we can confirm your order.
-                </p>
-              )}
 
               {(destination === "GH" || destination === "NG") && (
                 <PaystackCheckoutForm

@@ -314,6 +314,8 @@ model Fragrance {
   viewCount           Int              @default(0)
   likeCount           Int              @default(0)
   explainerVideoUrl   String?
+  /// Per-product sponsored video ad (below Product details on PDP).
+  pdpSponsoredAd      Json             @default("{}")
   featured            Boolean          @default(false)
   category            String?
   createdAt           DateTime         @default(now())
@@ -1141,6 +1143,8 @@ enum JournalSource {
   EXPENSE
   ORDER
   ORDER_COGS
+  INVENTORY_RECEIPT
+  INVENTORY_WRITEOFF
   DEBT
   CREDIT_PAYMENT
   CREDIT_DEFAULT
@@ -1284,6 +1288,8 @@ model StoreConfig {
   maintenanceMode        Boolean  @default(false)
   /// ProductType values (non-perfume) whose prices are hidden from guests.
   guestHiddenPriceCatalogs Json   @default("[]")
+  /// Sponsored video ad below Shipping & Returns on product pages.
+  pdpSponsoredAd           Json    @default("{}")
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }

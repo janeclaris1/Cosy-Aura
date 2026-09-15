@@ -20,7 +20,7 @@ import { receiptToken } from "@/lib/order-receipt";
 import { PosVoidButton } from "@/components/admin/PosVoidButton";
 import { PosTaxSummary } from "@/components/admin/PosTaxSummary";
 import { formatPosDiscountLabel } from "@/lib/pos-discount";
-import { extractGhanaPosTaxBreakdown } from "@/lib/pos-taxes";
+import { buildReceiptTaxBreakdown } from "@/lib/pos-taxes";
 import { AdminLink, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminOrderDetailPage({
@@ -72,7 +72,9 @@ export default async function AdminOrderDetailPage({
   );
   const posDiscountAmount = Number(order.posDiscountAmount || 0);
   const posInclusiveTotal = Math.max(0, itemsSubtotal - posDiscountAmount);
-  const posTaxes = isPos ? extractGhanaPosTaxBreakdown(posInclusiveTotal) : null;
+  const posReceiptTax = isPos
+    ? buildReceiptTaxBreakdown(posInclusiveTotal, order.shippingCountry)
+    : null;
   const bookTotalGhs = resolveOrderBookTotalGhs({
     total: order.total,
     chargeAmount: order.chargeAmount,
@@ -205,9 +207,10 @@ export default async function AdminOrderDetailPage({
                   <span>−{formatPrice(posDiscountAmount)}</span>
                 </div>
               )}
-              {isPos && posTaxes && posTaxes.total > 0 && (
+              {isPos && posReceiptTax && posReceiptTax.breakdown.total > 0 && (
                 <PosTaxSummary
-                  taxes={posTaxes}
+                  taxes={posReceiptTax.breakdown}
+                  showGhanaLevies={posReceiptTax.showGhanaLevies}
                   formatAmount={formatPrice}
                   showTotal={false}
                   className="text-sm"

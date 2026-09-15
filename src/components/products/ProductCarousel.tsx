@@ -14,7 +14,7 @@ interface ProductCarouselProps {
 
 export function ProductCarousel({ title, fragrances }: ProductCarouselProps) {
   const t = useT();
-  const heading = title ?? t("product.pairsWell");
+  const heading = title ?? t("product.peopleAlsoLike");
   const scrollerRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
 

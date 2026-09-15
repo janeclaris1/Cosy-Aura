@@ -1,6 +1,8 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi, scopedBranchIds } from "@/lib/admin";
+import { postInventoryMovementIfNeeded } from "@/lib/accounting-inventory-post";
 import { writeAuditLog } from "@/lib/audit";
 import { syncCountryPoolFromBranches } from "@/lib/branches";
 import type { ManagedStockCountry } from "@/lib/country-stock";
@@ -137,6 +139,16 @@ export async function PATCH(req: Request, { params }: Params) {
     const bottleSize = Number(row.bottleSize);
     const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
     if (!fragranceId || !isBottleSize(bottleSize)) continue;
+
+    const existing = await prisma.branchStock.findUnique({
+      where: {
+        branchId_fragranceId_bottleSize: { branchId, fragranceId, bottleSize },
+      },
+      select: { quantity: true },
+    });
+    const before = Number(existing?.quantity || 0);
+    const delta = quantity - before;
+
     await prisma.branchStock.upsert({
       where: {
         branchId_fragranceId_bottleSize: { branchId, fragranceId, bottleSize },
@@ -152,6 +164,27 @@ export async function PATCH(req: Request, { params }: Params) {
       bottleSize,
       quantity,
     });
+
+    if (delta !== 0) {
+      const product = await prisma.fragrance.findUnique({
+        where: { id: fragranceId },
+        select: { model: true, brand: { select: { name: true } } },
+      });
+      const label = product
+        ? `${product.brand.name} ${product.model}`
+        : fragranceId;
+      await postInventoryMovementIfNeeded({
+        branchId,
+        branchCountry: branch.country,
+        fragranceId,
+        bottleSize,
+        delta,
+        actorUserId: ctx.userId,
+        sourceId: randomUUID(),
+        productLabel: label,
+        reason: "Bulk stock update",
+      });
+    }
   }
 
   for (const fragranceId of touched) {

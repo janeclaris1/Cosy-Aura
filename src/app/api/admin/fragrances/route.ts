@@ -10,6 +10,11 @@ import {
 import { initialEngagementCounts } from "@/lib/product-engagement";
 import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
 import { CATALOG_PRODUCT_TYPES } from "@/lib/product-catalog";
+import { resolveCostPriceGhs } from "@/lib/catalog-cost";
+import {
+  parsePdpSponsoredAd,
+  validatePdpSponsoredAd,
+} from "@/lib/pdp-sponsored-ad";
 
 export async function POST(req: Request) {
   const { ctx, error } = await requireAdminApi("catalog.write", { req });
@@ -17,6 +22,13 @@ export async function POST(req: Request) {
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+
+  const pdpSponsoredAd = parsePdpSponsoredAd(body.pdpSponsoredAd);
+  const adError = validatePdpSponsoredAd(pdpSponsoredAd);
+  if (adError) {
+    return NextResponse.json({ error: adError }, { status: 400 });
+  }
+
   const brand = await prisma.brand.findUnique({ where: { id: body.brandId } });
   if (!brand) {
     return NextResponse.json({ error: "Brand not found" }, { status: 400 });
@@ -31,6 +43,12 @@ export async function POST(req: Request) {
     ? productTypeRaw
     : "PERFUME";
 
+  const costPriceGhs = resolveCostPriceGhs(
+    productType as import("@prisma/client").ProductType,
+    Number(body.bottleSize) || 50,
+    body.costPriceGhs
+  );
+
   const fragrance = await prisma.fragrance.create({
     data: {
       productType: productType as never,
@@ -41,7 +59,7 @@ export async function POST(req: Request) {
       description: body.description,
       conditionReport: body.conditionReport,
       price: body.price,
-      costPriceGhs: Math.max(0, Number(body.costPriceGhs) || 0),
+      costPriceGhs,
       condition: body.condition,
       year: body.year,
       fragranceFamily: body.fragranceFamily,
@@ -68,6 +86,7 @@ export async function POST(req: Request) {
       viewCount: engagement.viewCount,
       likeCount: engagement.likeCount,
       explainerVideoUrl: body.explainerVideoUrl?.trim() || null,
+      pdpSponsoredAd,
       featured: body.featured,
       category: body.category || null,
       images: body.imageUrl

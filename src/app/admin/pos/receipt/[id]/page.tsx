@@ -9,7 +9,7 @@ import { PosReceiptAutoPrint } from "@/components/admin/PosReceiptAutoPrint";
 import { PosReceiptQr } from "@/components/admin/PosReceiptQr";
 import { PosTaxSummary } from "@/components/admin/PosTaxSummary";
 import { formatPosDiscountLabel } from "@/lib/pos-discount";
-import { extractGhanaPosTaxBreakdown } from "@/lib/pos-taxes";
+import { buildReceiptTaxBreakdown } from "@/lib/pos-taxes";
 import { siteUrl } from "@/lib/seo";
 import { creditBalanceRemaining, creditReceiptReady } from "@/lib/credit-agreement";
 
@@ -79,7 +79,7 @@ export default async function PosReceiptPage({
   );
   const discountAmount = Number(order.posDiscountAmount || 0);
   const inclusiveTotal = Math.max(0, itemsSubtotal - discountAmount);
-  const taxes = extractGhanaPosTaxBreakdown(inclusiveTotal);
+  const receiptTax = buildReceiptTaxBreakdown(inclusiveTotal, order.shippingCountry);
   const credit = order.creditAgreement;
   const creditRemaining = credit ? creditBalanceRemaining(credit) : 0;
   const receiptLocked = credit && !creditReceiptReady(credit);
@@ -228,7 +228,8 @@ export default async function PosReceiptPage({
             </div>
           )}
           <PosTaxSummary
-            taxes={taxes}
+            taxes={receiptTax.breakdown}
+            showGhanaLevies={receiptTax.showGhanaLevies}
             formatAmount={(amount) => formatPrice(amount, "GHS")}
             showTaxable
             className="pt-2 border-t border-dashed border-wf-border/60"

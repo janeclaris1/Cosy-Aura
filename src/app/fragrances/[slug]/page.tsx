@@ -10,8 +10,8 @@ import { ScentLayeringGuide } from "@/components/perfume/ScentLayeringGuide";
 import { DiscoverySetBuilder } from "@/components/perfume/DiscoverySetBuilder";
 import {
   getFragranceBySlug,
+  getCatalogAlsoLikeProducts,
   getRelatedFragrances,
-  getSuggestedFragrances,
   getFragrances,
   getBrandBySlug,
   getAllFragranceSlugs,
@@ -199,9 +199,9 @@ async function FragranceDetailExtras({
 }: {
   fragrance: FragranceDetailData;
 }) {
-  const [related, suggested] = await Promise.all([
+  const [related, alsoLike] = await Promise.all([
     getRelatedFragrances(fragrance.id, fragrance.brandId),
-    getSuggestedFragrances(fragrance.id),
+    getCatalogAlsoLikeProducts(fragrance.id, fragrance.productType, 12),
   ]);
 
   const sampleOptions = [fragrance, ...related].map((f) => ({
@@ -252,7 +252,7 @@ async function FragranceDetailExtras({
         </a>
       </div>
 
-      <ProductCarousel fragrances={suggested} />
+      {alsoLike.length > 0 && <ProductCarousel fragrances={alsoLike} />}
     </>
   );
 }

@@ -19,6 +19,12 @@ import {
   isPerfumeProduct,
 } from "@/lib/product-catalog";
 import { ProductBranchStockPanel } from "@/components/admin/ProductBranchStockPanel";
+import { ProductSponsoredAdFormFields } from "@/components/admin/ProductSponsoredAdFormFields";
+import {
+  pdpSponsoredAdFromForm,
+  pdpSponsoredAdToForm,
+  type PdpSponsoredAdFormState,
+} from "@/lib/pdp-sponsored-ad";
 import type { ProductType } from "@prisma/client";
 
 interface Brand {
@@ -68,6 +74,7 @@ interface FragranceFormProps {
     category: string | null;
     productType?: string;
     explainerVideoUrl?: string | null;
+    pdpSponsoredAd?: unknown;
     images: { url: string }[];
     countryStocks?: { country: string; inStock: boolean }[];
     barcodes?: { bottleSize: number; barcode: string }[];
@@ -179,6 +186,9 @@ export function FragranceForm({
     imageUrl: fragrance?.images[0]?.url || "",
     explainerVideoUrl: fragrance?.explainerVideoUrl || "",
   });
+  const [sponsoredAd, setSponsoredAd] = useState<PdpSponsoredAdFormState>(() =>
+    pdpSponsoredAdToForm(fragrance?.pdpSponsoredAd)
+  );
 
   const isPerfume = isPerfumeProduct(form.productType as ProductType);
   const typeLabel = productTypeLabel(form.productType);
@@ -196,6 +206,7 @@ export function FragranceForm({
 
     const payload = {
       ...form,
+      pdpSponsoredAd: pdpSponsoredAdFromForm(sponsoredAd),
       topNotes: parseNotes(form.topNotes),
       heartNotes: parseNotes(form.heartNotes),
       baseNotes: parseNotes(form.baseNotes),
@@ -793,6 +804,8 @@ export function FragranceForm({
           }
         />
       </div>
+
+      <ProductSponsoredAdFormFields value={sponsoredAd} onChange={setSponsoredAd} />
 
       {isPerfume && (
         <div>

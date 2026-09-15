@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import {
+  filterShippingMethodsForCountry,
   getActiveShippingMethods,
   toStripeShippingOptions,
 } from "@/lib/shipping-methods";
@@ -182,7 +183,10 @@ export async function POST(req: Request) {
 
     const baseUrl = checkoutBaseUrl(req);
 
-    const shippingMethods = await getActiveShippingMethods();
+    const shippingMethods = filterShippingMethodsForCountry(
+      await getActiveShippingMethods(),
+      shopperCountry ?? null
+    );
 
     const session = await stripe.checkout.sessions.create({
       ui_mode: "embedded",

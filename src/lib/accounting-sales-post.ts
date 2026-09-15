@@ -53,17 +53,13 @@ export function salesPaymentAccountCode(order: {
   return PAYMENT_SOURCE_ACCOUNT.BANK;
 }
 
+/** Ghana levies apply only when the customer / ship-to country is Ghana. */
 export async function isGhanaOrder(
-  client: TxClient,
+  _client: TxClient,
   order: Pick<OrderForSales, "shippingCountry" | "fulfillmentBranchId">
 ): Promise<boolean> {
-  if (order.shippingCountry?.trim().toUpperCase() === "GH") return true;
-  if (!order.fulfillmentBranchId) return false;
-  const branch = await client.branch.findUnique({
-    where: { id: order.fulfillmentBranchId },
-    select: { country: true },
-  });
-  return branch?.country?.toUpperCase() === "GH";
+  void order.fulfillmentBranchId;
+  return order.shippingCountry?.trim().toUpperCase() === "GH";
 }
 
 export async function resolveJournalActor(

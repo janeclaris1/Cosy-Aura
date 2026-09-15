@@ -75,6 +75,28 @@ export function assertBalanced(lines: DraftJournalLine[]) {
   }
 }
 
+export async function resolveAccountingActor(
+  client: TxClient,
+  explicitId?: string
+): Promise<string> {
+  if (explicitId) return explicitId;
+
+  const envId = process.env.ACCOUNTING_SYSTEM_USER_ID?.trim();
+  if (envId) {
+    const user = await client.user.findUnique({ where: { id: envId }, select: { id: true } });
+    if (user) return user.id;
+  }
+
+  const admin = await client.user.findFirst({
+    where: { role: "ADMIN" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (admin) return admin.id;
+
+  throw new Error("No user available to author journal");
+}
+
 export async function createPostedJournal(
   client: TxClient,
   input: {
@@ -88,6 +110,8 @@ export async function createPostedJournal(
       | "EXPENSE"
       | "ORDER"
       | "ORDER_COGS"
+      | "INVENTORY_RECEIPT"
+      | "INVENTORY_WRITEOFF"
       | "DEBT"
       | "CREDIT_PAYMENT"
       | "CREDIT_DEFAULT";

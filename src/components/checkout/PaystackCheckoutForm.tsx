@@ -14,7 +14,6 @@ export function PaystackCheckoutForm({
   subtotal: number;
 }) {
   const t = useT();
-  const countryLabel = country === "GH" ? "Ghana" : "Nigeria";
   return (
     <RegionalCheckoutForm
       country={country}
@@ -22,11 +21,7 @@ export function PaystackCheckoutForm({
       subtotal={subtotal}
       endpoint="/api/checkout/paystack"
       providerLabel="Paystack"
-      hint={
-        country === "GH"
-          ? t("checkout.ghanaHint")
-          : t("checkout.nigeriaHint", { country: countryLabel })
-      }
+      hint=""
       phonePlaceholder={country === "GH" ? "050 000 0000" : "0800 000 0000"}
       submitLabel={t("checkout.continuePaystack")}
     />

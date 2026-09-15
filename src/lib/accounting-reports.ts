@@ -394,7 +394,11 @@ export async function cashFlowForMonth(
           inflow > 0 ? "Loan proceeds received" : "Debt principal & interest paid",
           inflow
         );
-      } else if (source === "ORDER_COGS") {
+      } else if (
+        source === "ORDER_COGS" ||
+        source === "INVENTORY_RECEIPT" ||
+        source === "INVENTORY_WRITEOFF"
+      ) {
         // Non-cash inventory movement — skip
       } else {
         const category = categorizeManualCashFlow(inflow, counterpartTypes, counterpartCodes);

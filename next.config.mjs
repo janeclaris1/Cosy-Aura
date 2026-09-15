@@ -22,6 +22,7 @@ const nextConfig = {
       { protocol: "https", hostname: "i.ytimg.com" },
       { protocol: "https", hostname: "img.youtube.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "i.pinimg.com" },
     ],
   },
   // Keep native DB drivers out of the Next webpack bundle

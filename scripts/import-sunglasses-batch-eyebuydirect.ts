@@ -21,6 +21,7 @@ import {
   downloadSunglassesImagesFromUrls,
 } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 const apply = process.argv.includes("--apply");
 const onlyArg = process.argv.find((a) => a.startsWith("--only="));
@@ -672,7 +673,7 @@ async function importSunglasses(
     description: buildDescription(config),
     conditionReport: "New with case. Unworn. Authentic designer sunglasses.",
     price: config.priceGhs,
-    costPriceGhs: 0,
+    costPriceGhs: defaultCatalogCostPriceGhs("SUNGLASSES", config.bottleSize ?? 50),
     condition: "UNWORN" as const,
     year: 2026,
     fragranceFamily: "FRESH" as const,

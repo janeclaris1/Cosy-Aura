@@ -21,7 +21,11 @@ type OrderItemForCogs = {
   quantity: number;
   bottleSize: number;
   unitCostGhs: number | null;
-  fragrance: { costPriceGhs: number; bottleSize: number } | null;
+  fragrance: {
+    costPriceGhs: number;
+    bottleSize: number;
+    productType: import("@prisma/client").ProductType;
+  } | null;
 };
 
 function resolveLineUnitCost(item: OrderItemForCogs): number {
@@ -30,6 +34,7 @@ function resolveLineUnitCost(item: OrderItemForCogs): number {
   }
   if (!item.fragrance) return 0;
   return unitCostForBottleSize(
+    item.fragrance.productType,
     item.fragrance.costPriceGhs,
     item.fragrance.bottleSize,
     item.bottleSize
@@ -48,7 +53,9 @@ export async function postOrderCogsJournal(
     include: {
       items: {
         include: {
-          fragrance: { select: { costPriceGhs: true, bottleSize: true } },
+          fragrance: {
+            select: { costPriceGhs: true, bottleSize: true, productType: true },
+          },
         },
       },
     },

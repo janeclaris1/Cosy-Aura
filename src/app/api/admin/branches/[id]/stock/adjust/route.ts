@@ -1,6 +1,8 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi, scopedBranchIds } from "@/lib/admin";
+import { postInventoryMovementIfNeeded } from "@/lib/accounting-inventory-post";
 import { writeAuditLog } from "@/lib/audit";
 import { syncCountryPoolFromBranches } from "@/lib/branches";
 import { isBottleSize } from "@/lib/bottle-sizes";
@@ -106,6 +108,8 @@ export async function POST(req: Request, { params }: Params) {
 
   const label = `${fragrance.brand.name} ${fragrance.model}`;
   const delta = after - before;
+  const journalSourceId = randomUUID();
+
   await writeAuditLog({
     actorId: ctx.userId,
     action: `stock.${type}`,
@@ -121,8 +125,23 @@ export async function POST(req: Request, { params }: Params) {
       after,
       delta,
       reason,
+      journalSourceId,
     },
   });
+
+  if (delta !== 0) {
+    await postInventoryMovementIfNeeded({
+      branchId,
+      branchCountry: branch.country,
+      fragranceId,
+      bottleSize,
+      delta,
+      actorUserId: ctx.userId,
+      sourceId: journalSourceId,
+      productLabel: label,
+      reason,
+    });
+  }
 
   await checkLowStockForRows([
     {

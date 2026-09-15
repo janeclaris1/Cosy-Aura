@@ -12,6 +12,7 @@ import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
 import { downloadWatchImagesFromEntries } from "./lib/catalog-image-import";
 import { rebuildWatchDescriptionFromRecord } from "./lib/catalog-product-description";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 const apply = process.argv.includes("--apply");
 const onlyArg = process.argv.find((a) => a.startsWith("--only="));
@@ -692,7 +693,7 @@ async function importWatch(config: WatchConfig, prisma: PrismaClient) {
     }),
     conditionReport: config.conditionReport,
     price: config.priceGhs,
-    costPriceGhs: 0,
+    costPriceGhs: defaultCatalogCostPriceGhs("WATCH", data.bottleSize ?? 50),
     condition: "UNWORN" as const,
     year: 2026,
     fragranceFamily: "WOODY" as const,

@@ -413,6 +413,28 @@ export async function getRelatedFragrances(
   });
 }
 
+/** Random products from the same catalog for PDP carousels (excludes current item). */
+export async function getCatalogAlsoLikeProducts(
+  fragranceId: string,
+  productType: ProductType,
+  limit = 12
+) {
+  try {
+    const poolSize = Math.max(limit * 8, 48);
+    const products = await prisma.fragrance.findMany({
+      where: {
+        productType,
+        id: { not: fragranceId },
+      },
+      include: fragranceListInclude,
+      take: poolSize,
+    });
+    return shuffleFragrances(products).slice(0, limit);
+  } catch {
+    return [];
+  }
+}
+
 /** Suggested products for PDP carousel — complementary families, in stock. */
 export async function getSuggestedFragrances(
   fragranceId: string,

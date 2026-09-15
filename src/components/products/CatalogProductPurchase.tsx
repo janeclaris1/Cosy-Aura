@@ -23,6 +23,8 @@ import {
   catalogForProductType,
   catalogPlaceholder,
 } from "@/lib/product-catalog";
+import { PdpSponsoredAd } from "@/components/products/PdpSponsoredAd";
+import type { PdpSponsoredAdConfig } from "@/lib/pdp-sponsored-ad";
 import type { ProductType } from "@prisma/client";
 
 export type CatalogPurchaseFragrance = {
@@ -529,7 +531,7 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
       </div>
 
       <div className="border-t border-wf-border">
-        <DetailAccordion title={t("pdp.description")} defaultOpen>
+        <DetailAccordion title={t("pdp.description")}>
           <TranslatedText text={fragrance.description} as="div" />
         </DetailAccordion>
         <DetailAccordion title={t("pdp.condition")}>
@@ -549,8 +551,10 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
 
 export function CatalogProductPurchase({
   fragrance,
+  sponsoredAd,
 }: {
   fragrance: CatalogPurchaseFragrance;
+  sponsoredAd: PdpSponsoredAdConfig;
 }) {
   return (
     <>
@@ -563,6 +567,7 @@ export function CatalogProductPurchase({
             explainerVideoUrl={fragrance.explainerVideoUrl}
           />
           <CatalogSpecsAccordion fragrance={fragrance} />
+          <PdpSponsoredAd config={sponsoredAd} className="mt-0" />
         </div>
         <CatalogProductInfo fragrance={fragrance} />
       </div>

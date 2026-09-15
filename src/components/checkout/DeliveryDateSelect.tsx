@@ -94,15 +94,10 @@ export function DeliveryDateSelect({
   return (
     <div ref={rootRef} className="relative">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm text-espresso">
-            {t("checkout.delivery")}{" "}
-            <span className="font-medium">{formatDeliveryDateLabel(selected)}</span>
-          </p>
-          {!nextDayOnly ? (
-            <p className="text-xs text-wf-gray mt-0.5">{t("checkout.weekdays")}</p>
-          ) : null}
-        </div>
+        <p className="text-sm text-espresso">
+          {t("checkout.delivery")}{" "}
+          <span className="font-medium">{formatDeliveryDateLabel(selected)}</span>
+        </p>
         {!nextDayOnly && (
           <button
             type="button"

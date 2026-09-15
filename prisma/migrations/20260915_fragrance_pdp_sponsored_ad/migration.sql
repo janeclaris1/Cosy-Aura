@@ -1,0 +1,1 @@
+ALTER TABLE "Fragrance" ADD COLUMN "pdpSponsoredAd" JSONB NOT NULL DEFAULT '{}';

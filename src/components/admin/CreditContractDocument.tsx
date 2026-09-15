@@ -81,6 +81,7 @@ export function CreditContractDocument({ doc }: { doc: CreditContractDocumentPro
           </div>
           <PosTaxSummary
             taxes={doc.taxes}
+            showGhanaLevies={doc.showGhanaLevies}
             formatAmount={formatContractMoney}
             showTaxable
             showTotal={false}

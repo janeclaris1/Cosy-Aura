@@ -5,6 +5,11 @@ import { writeAuditLog } from "@/lib/audit";
 import { syncFragranceCountryStocks } from "@/lib/sync-country-stock";
 import { ensureFragranceBarcodes, syncFragranceBarcodes } from "@/lib/barcodes";
 import { CATALOG_PRODUCT_TYPES } from "@/lib/product-catalog";
+import { resolveCostPriceGhs } from "@/lib/catalog-cost";
+import {
+  parsePdpSponsoredAd,
+  validatePdpSponsoredAd,
+} from "@/lib/pdp-sponsored-ad";
 
 export async function PUT(
   req: Request,
@@ -16,10 +21,34 @@ export async function PUT(
 
   const body = await req.json();
 
+  let pdpSponsoredAd;
+  if (body.pdpSponsoredAd !== undefined) {
+    pdpSponsoredAd = parsePdpSponsoredAd(body.pdpSponsoredAd);
+    const adError = validatePdpSponsoredAd(pdpSponsoredAd);
+    if (adError) {
+      return NextResponse.json({ error: adError }, { status: 400 });
+    }
+  }
+
+  const existing = await prisma.fragrance.findUnique({
+    where: { id: params.id },
+    select: { productType: true, bottleSize: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  }
+
   const productTypeRaw = String(body.productType ?? "").toUpperCase();
   const productType = CATALOG_PRODUCT_TYPES.includes(productTypeRaw as never)
     ? productTypeRaw
     : undefined;
+
+  const costPriceGhs = resolveCostPriceGhs(
+    (productType as import("@prisma/client").ProductType | undefined) ??
+      existing.productType,
+    Number(body.bottleSize) || existing.bottleSize || 50,
+    body.costPriceGhs
+  );
 
   const fragrance = await prisma.fragrance.update({
     where: { id: params.id },
@@ -31,7 +60,7 @@ export async function PUT(
       description: body.description,
       conditionReport: body.conditionReport,
       price: body.price,
-      costPriceGhs: Math.max(0, Number(body.costPriceGhs) || 0),
+      costPriceGhs,
       condition: body.condition,
       year: body.year,
       fragranceFamily: body.fragranceFamily,
@@ -56,6 +85,7 @@ export async function PUT(
       stock: body.stock ?? 0,
       rating: body.rating ?? null,
       explainerVideoUrl: body.explainerVideoUrl?.trim() || null,
+      ...(pdpSponsoredAd !== undefined ? { pdpSponsoredAd } : {}),
       featured: body.featured,
       category: body.category || null,
     },

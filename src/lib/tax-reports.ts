@@ -5,7 +5,7 @@ import {
   type BranchReportBranch,
 } from "@/lib/branch-reports";
 import {
-  extractGhanaPosTaxBreakdown,
+  buildReceiptTaxBreakdown,
   type GhanaPosTaxBreakdown,
 } from "@/lib/pos-taxes";
 
@@ -152,7 +152,7 @@ export function aggregateTaxReport(
     const gross = orderTaxableAmount(order);
     if (gross <= 0) continue;
 
-    const taxes = extractGhanaPosTaxBreakdown(gross);
+    const taxes = buildReceiptTaxBreakdown(gross, order.shippingCountry).breakdown;
     const isPos = order.channel === "POS";
 
     addToBucket(totals, gross, taxes, isPos);

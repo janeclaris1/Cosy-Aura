@@ -7,7 +7,7 @@ import {
   formatCreditDate,
 } from "@/lib/credit-contract";
 import {
-  extractGhanaPosTaxBreakdown,
+  buildReceiptTaxBreakdown,
   type GhanaPosTaxBreakdown,
 } from "@/lib/pos-taxes";
 
@@ -38,6 +38,7 @@ export type CreditContractDocumentProps = {
   downPaymentMethodLabel: string | null;
   downPaymentReference: string | null;
   taxes: GhanaPosTaxBreakdown;
+  showGhanaLevies: boolean;
   contractApprovedAt: Date | null;
   approvedByName: string | null;
   status: string;
@@ -102,7 +103,16 @@ export function buildCreditContractDocumentProps(
       ? downPaymentMethodLabel(credit.downPaymentMethod)
       : null,
     downPaymentReference: credit.downPaymentReference,
-    taxes: extractGhanaPosTaxBreakdown(credit.totalGhs),
+    ...(() => {
+      const receiptTax = buildReceiptTaxBreakdown(
+        credit.totalGhs,
+        order.shippingCountry
+      );
+      return {
+        taxes: receiptTax.breakdown,
+        showGhanaLevies: receiptTax.showGhanaLevies,
+      };
+    })(),
     contractApprovedAt: credit.contractApprovedAt,
     approvedByName:
       credit.contractApprovedBy?.name ||

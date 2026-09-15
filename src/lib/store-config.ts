@@ -1,5 +1,10 @@
 import type { ProductType } from "@prisma/client";
 import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
+import {
+  DEFAULT_PDP_SPONSORED_AD,
+  parsePdpSponsoredAd,
+  type PdpSponsoredAdConfig,
+} from "@/lib/pdp-sponsored-ad";
 import { prisma } from "@/lib/prisma";
 
 export type StorePricingConfig = {
@@ -22,10 +27,15 @@ export type StoreGuestPriceConfig = {
   guestHiddenPriceCatalogs: ProductType[];
 };
 
+export type StorePdpSponsoredAdConfig = {
+  pdpSponsoredAd: PdpSponsoredAdConfig;
+};
+
 export type StoreConfigPayload = StorePricingConfig &
   StoreWhatsAppCheckoutConfig &
   StoreMaintenanceConfig &
-  StoreGuestPriceConfig;
+  StoreGuestPriceConfig &
+  StorePdpSponsoredAdConfig;
 
 const DEFAULT_MARKUP_USD = Number(process.env.NON_AFRICA_MARKUP_USD) || 10;
 
@@ -44,6 +54,7 @@ export const DEFAULT_STORE_CONFIG: StoreConfigPayload = {
   ...DEFAULT_WHATSAPP_CHECKOUT,
   maintenanceMode: false,
   guestHiddenPriceCatalogs: [],
+  pdpSponsoredAd: { ...DEFAULT_PDP_SPONSORED_AD },
 };
 
 let cache: { at: number; value: StoreConfigPayload } | null = null;
@@ -79,6 +90,7 @@ function rowToConfig(row: {
   whatsappCheckoutNumbers?: unknown;
   maintenanceMode?: boolean;
   guestHiddenPriceCatalogs?: unknown;
+  pdpSponsoredAd?: unknown;
 }): StoreConfigPayload {
   return {
     nonAfricaMarkupEnabled: row.nonAfricaMarkupEnabled,
@@ -87,6 +99,7 @@ function rowToConfig(row: {
     whatsappCheckoutNumbers: parseWhatsAppCheckoutNumbers(row.whatsappCheckoutNumbers),
     maintenanceMode: Boolean(row.maintenanceMode),
     guestHiddenPriceCatalogs: parseGuestHiddenPriceCatalogs(row.guestHiddenPriceCatalogs),
+    pdpSponsoredAd: parsePdpSponsoredAd(row.pdpSponsoredAd),
   };
 }
 
@@ -154,6 +167,10 @@ export async function upsertStoreConfig(
     input.guestHiddenPriceCatalogs !== undefined
       ? parseGuestHiddenPriceCatalogs(input.guestHiddenPriceCatalogs)
       : undefined;
+  const pdpSponsoredAd =
+    input.pdpSponsoredAd !== undefined
+      ? parsePdpSponsoredAd(input.pdpSponsoredAd)
+      : undefined;
 
   const row = await prisma.storeConfig.upsert({
     where: { id: "default" },
@@ -166,6 +183,7 @@ export async function upsertStoreConfig(
       whatsappCheckoutNumbers: numbers ?? {},
       maintenanceMode: Boolean(input.maintenanceMode),
       guestHiddenPriceCatalogs: guestHidden ?? [],
+      pdpSponsoredAd: pdpSponsoredAd ?? DEFAULT_PDP_SPONSORED_AD,
     },
     update: {
       ...(input.nonAfricaMarkupEnabled !== undefined
@@ -182,6 +200,7 @@ export async function upsertStoreConfig(
         ? { maintenanceMode: Boolean(input.maintenanceMode) }
         : {}),
       ...(guestHidden !== undefined ? { guestHiddenPriceCatalogs: guestHidden } : {}),
+      ...(pdpSponsoredAd !== undefined ? { pdpSponsoredAd } : {}),
     },
   });
 
@@ -213,6 +232,7 @@ export async function ensureDefaultStoreConfig() {
       whatsappCheckoutNumbers: {},
       maintenanceMode: DEFAULT_STORE_CONFIG.maintenanceMode,
       guestHiddenPriceCatalogs: [],
+      pdpSponsoredAd: DEFAULT_PDP_SPONSORED_AD,
     },
     update: {},
   });

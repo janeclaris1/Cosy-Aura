@@ -1,13 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  Popup,
-  useMap,
-} from "react-leaflet";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -20,16 +13,6 @@ export type StorePin = {
   directionsUrl: string;
   directionsLabel: string;
 };
-
-function FitBounds({ pins }: { pins: StorePin[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!pins.length) return;
-    const bounds = L.latLngBounds(pins.map((p) => [p.lat, p.lng]));
-    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 6 });
-  }, [map, pins]);
-  return null;
-}
 
 function pinIcon() {
   return L.divIcon({
@@ -45,54 +28,65 @@ function pinIcon() {
   });
 }
 
+type LeafletElement = HTMLElement & { _leaflet_id?: number };
+
+function clearLeafletContainer(el: LeafletElement) {
+  if (el._leaflet_id != null) {
+    delete el._leaflet_id;
+  }
+}
+
 export function StoreLocationsMap({ pins }: { pins: StorePin[] }) {
-  const icon = useMemo(() => pinIcon(), []);
-  const center: [number, number] = pins.length
-    ? [pins[0].lat, pins[0].lng]
-    : [5.6, 4.5];
-  // Avoid "Map container is already initialized" under React Strict Mode remounts.
-  const [mapKey, setMapKey] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    setMapKey(`${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    return () => setMapKey(null);
-  }, []);
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+    clearLeafletContainer(el);
+
+    const center: [number, number] = pins.length
+      ? [pins[0].lat, pins[0].lng]
+      : [5.6, 4.5];
+
+    const map = L.map(el, { scrollWheelZoom: false }).setView(center, 6);
+    mapRef.current = map;
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(map);
+
+    if (pins.length) {
+      const bounds = L.latLngBounds(pins.map((pin) => [pin.lat, pin.lng]));
+      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 6 });
+    }
+
+    const icon = pinIcon();
+    for (const pin of pins) {
+      L.marker([pin.lat, pin.lng], { icon })
+        .addTo(map)
+        .bindPopup(
+          `<strong>${pin.label}</strong><br>${pin.address}<br><a href="${pin.directionsUrl}" target="_blank" rel="noopener noreferrer" class="underline">${pin.directionsLabel}</a>`
+        );
+    }
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      clearLeafletContainer(el);
+    };
+  }, [pins]);
 
   return (
-    <div className="w-full overflow-hidden rounded-sm border border-white/15 bg-[#02033f] h-64 sm:h-80 lg:h-96 [&_.leaflet-container]:h-full [&_.leaflet-container]:w-full [&_.leaflet-container]:bg-[#e8eef5] [&_.leaflet-popup-content-wrapper]:rounded-sm [&_.leaflet-popup-content]:text-sm [&_.leaflet-popup-content]:text-[#03045e]">
-      {mapKey ? (
-        <MapContainer
-          key={mapKey}
-          center={center}
-          zoom={6}
-          scrollWheelZoom={false}
-          className="h-full w-full z-0"
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FitBounds pins={pins} />
-          {pins.map((pin) => (
-            <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={icon}>
-              <Popup>
-                <strong>{pin.label}</strong>
-                <br />
-                {pin.address}
-                <br />
-                <a
-                  href={pin.directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  {pin.directionsLabel}
-                </a>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      ) : null}
-    </div>
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden rounded-sm border border-white/15 bg-[#02033f] h-64 sm:h-80 lg:h-96 [&_.leaflet-container]:h-full [&_.leaflet-container]:w-full [&_.leaflet-container]:bg-[#e8eef5] [&_.leaflet-popup-content-wrapper]:rounded-sm [&_.leaflet-popup-content]:text-sm [&_.leaflet-popup-content]:text-[#03045e]"
+    />
   );
 }

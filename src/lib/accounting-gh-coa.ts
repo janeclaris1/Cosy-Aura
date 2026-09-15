@@ -34,6 +34,13 @@ export const COGS_ACCOUNTS = {
   inventoryFinished: "1110",
 } as const;
 
+/** Inventory movement posting account codes (Ghana). */
+export const INVENTORY_ACCOUNTS = {
+  finishedGoods: "1110",
+  accountsPayable: "2100",
+  shrinkage: "6290",
+} as const;
+
 /** Customer credit posting account codes (Ghana). */
 export const CREDIT_ACCOUNTS = {
   receivable: "1200",

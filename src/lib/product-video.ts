@@ -25,7 +25,7 @@ export function parseProductVideoUrl(
     return {
       kind: "youtube",
       id,
-      embedUrl: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`,
+      embedUrl: `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1`,
       thumbUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
     };
   }
@@ -35,4 +35,24 @@ export function parseProductVideoUrl(
   }
 
   return null;
+}
+
+/** Chromeless embed for sponsored product-page ads (autoplay, no controls). */
+export function youtubeSponsoredEmbedUrl(videoId: string): string {
+  const params = new URLSearchParams({
+    autoplay: "1",
+    mute: "1",
+    loop: "1",
+    playlist: videoId,
+    controls: "0",
+    modestbranding: "1",
+    rel: "0",
+    playsinline: "1",
+    fs: "0",
+    disablekb: "1",
+    iv_load_policy: "3",
+    cc_load_policy: "0",
+    enablejsapi: "0",
+  });
+  return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
 }

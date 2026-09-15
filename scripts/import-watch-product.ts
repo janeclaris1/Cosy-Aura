@@ -10,6 +10,7 @@ import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
 import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 async function syncCountryPool(
   prisma: PrismaClient,
@@ -190,7 +191,7 @@ async function main() {
       description: DESCRIPTION,
       conditionReport: CONDITION_REPORT,
       price: PRICE_GHS,
-      costPriceGhs: 0,
+      costPriceGhs: defaultCatalogCostPriceGhs("WATCH", data.bottleSize ?? 50),
       condition: "UNWORN" as const,
       year: 2026,
       fragranceFamily: "WOODY" as const,

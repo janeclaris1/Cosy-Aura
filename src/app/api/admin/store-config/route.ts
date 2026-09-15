@@ -4,6 +4,10 @@ import { requireAdminApi } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
 import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import {
+  parsePdpSponsoredAd,
+  validatePdpSponsoredAd,
+} from "@/lib/pdp-sponsored-ad";
+import {
   getStoreConfig,
   upsertStoreConfig,
   type WhatsAppCheckoutNumbers,
@@ -30,6 +34,7 @@ export async function PATCH(req: Request) {
     whatsappCheckoutNumbers?: WhatsAppCheckoutNumbers;
     maintenanceMode?: boolean;
     guestHiddenPriceCatalogs?: ProductType[];
+    pdpSponsoredAd?: unknown;
   };
 
   const markupUsd = Number(body.nonAfricaMarkupUsd);
@@ -62,6 +67,15 @@ export async function PATCH(req: Request) {
     );
   }
 
+  let pdpSponsoredAd;
+  if (body.pdpSponsoredAd !== undefined) {
+    pdpSponsoredAd = parsePdpSponsoredAd(body.pdpSponsoredAd);
+    const adError = validatePdpSponsoredAd(pdpSponsoredAd);
+    if (adError) {
+      return NextResponse.json({ error: adError }, { status: 400 });
+    }
+  }
+
   const config = await upsertStoreConfig({
     nonAfricaMarkupEnabled: body.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: body.nonAfricaMarkupUsd,
@@ -72,6 +86,7 @@ export async function PATCH(req: Request) {
       body.guestHiddenPriceCatalogs !== undefined
         ? parseGuestHiddenPriceCatalogs(body.guestHiddenPriceCatalogs)
         : undefined,
+    pdpSponsoredAd,
   });
 
   await writeAuditLog({
@@ -87,15 +102,19 @@ export async function PATCH(req: Request) {
       whatsappCheckoutEnabled: config.whatsappCheckoutEnabled,
       maintenanceMode: config.maintenanceMode,
       guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs,
+      pdpSponsoredAdEnabled: config.pdpSponsoredAd.enabled,
     },
   });
 
   if (
     body.maintenanceMode !== undefined ||
-    body.guestHiddenPriceCatalogs !== undefined
+    body.guestHiddenPriceCatalogs !== undefined ||
+    body.pdpSponsoredAd !== undefined
   ) {
     revalidatePath("/", "layout");
     revalidatePath("/maintenance");
+    revalidatePath("/watches", "layout");
+    revalidatePath("/fragrances", "layout");
   }
 
   return NextResponse.json(config);

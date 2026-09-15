@@ -1,18 +1,36 @@
+import type { ProductType } from "@prisma/client";
+import {
+  defaultCatalogCostPriceGhs,
+  FLAT_PRODUCT_COST_GHS,
+  perfumeCostGhs,
+} from "@/lib/catalog-cost";
+import { isPerfumeProduct } from "@/lib/product-catalog";
 import { prisma } from "@/lib/prisma";
+import { roundGhs } from "@/lib/round-money";
 
 export function roundCogs(value: number): number {
-  return Math.round(value * 100) / 100;
+  return roundGhs(value);
 }
 
-/** Scale catalog cost to the line bottle size. */
+/** Resolve unit cost for a line item from product type and bottle size. */
 export function unitCostForBottleSize(
+  productType: ProductType | null | undefined,
   costPriceGhs: number,
   catalogBottleSize: number,
   lineBottleSize: number
 ): number {
-  if (!Number.isFinite(costPriceGhs) || costPriceGhs <= 0) return 0;
-  if (!catalogBottleSize || catalogBottleSize <= 0) return roundCogs(costPriceGhs);
-  return roundCogs(costPriceGhs * (lineBottleSize / catalogBottleSize));
+  if (isPerfumeProduct(productType)) {
+    const byLine = perfumeCostGhs(lineBottleSize);
+    if (byLine > 0) return byLine;
+  }
+
+  if (productType && FLAT_PRODUCT_COST_GHS[productType] != null) {
+    return FLAT_PRODUCT_COST_GHS[productType]!;
+  }
+
+  if (costPriceGhs > 0) return roundCogs(costPriceGhs);
+
+  return defaultCatalogCostPriceGhs(productType, catalogBottleSize);
 }
 
 export type OrderLineInput = {
@@ -35,14 +53,19 @@ export async function orderLinesWithUnitCost(
   const ids = [...new Set(lines.map((l) => l.fragranceId))];
   const fragrances = await prisma.fragrance.findMany({
     where: { id: { in: ids } },
-    select: { id: true, costPriceGhs: true, bottleSize: true },
+    select: { id: true, costPriceGhs: true, bottleSize: true, productType: true },
   });
   const byId = new Map(fragrances.map((f) => [f.id, f]));
 
   return lines.map((line) => {
     const f = byId.get(line.fragranceId);
     const unitCostGhs = f
-      ? unitCostForBottleSize(f.costPriceGhs, f.bottleSize, line.bottleSize)
+      ? unitCostForBottleSize(
+          f.productType,
+          f.costPriceGhs,
+          f.bottleSize,
+          line.bottleSize
+        )
       : 0;
     return {
       ...line,

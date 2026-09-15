@@ -1,0 +1,1 @@
+ALTER TABLE "StoreConfig" ADD COLUMN "pdpSponsoredAd" JSONB NOT NULL DEFAULT '{}';

@@ -1,5 +1,7 @@
 import crypto from "crypto";
+import type { OrderChannel, PosPaymentMethod } from "@prisma/client";
 import { deliveryDateIso, formatDeliveryDateLabel } from "./delivery-dates";
+import { paymentGatewayLabel } from "./order-payment";
 
 export type ReceiptItem = {
   brand: string;
@@ -12,14 +14,21 @@ export type ReceiptItem = {
 export type ReceiptOrder = {
   id: string;
   email: string;
+  receiptNumber?: string | null;
   total: number;
   status: string;
   createdAt: Date;
+  channel: OrderChannel;
+  paymentProvider: string | null;
+  posPaymentMethod: PosPaymentMethod | null;
+  chargeCurrency: string | null;
+  dawuroboPayer: string | null;
   shippingName: string | null;
   shippingAddress: string | null;
   shippingCity: string | null;
   shippingPostcode: string | null;
   shippingCountry: string | null;
+  shippingRegion: string | null;
   shippingMethod: string | null;
   shippingCost: number;
   shippingPhone: string | null;
@@ -74,6 +83,72 @@ export function receiptTrackUrl(order: ReceiptOrder, siteUrl: string): string {
   return `${base}/track?ref=${receiptShortId(order.id)}&email=${encodeURIComponent(order.email || "")}`;
 }
 
+export function receiptPaymentMethodLabel(order: {
+  channel: OrderChannel;
+  paymentProvider: string | null;
+  posPaymentMethod: PosPaymentMethod | null;
+  chargeCurrency: string | null;
+  status: string;
+  dawuroboPayer: string | null;
+}): string {
+  if (order.dawuroboPayer === "cod") return "Cash on delivery";
+  return paymentGatewayLabel(order);
+}
+
+export function receiptCustomerAddressLines(order: ReceiptOrder): string[] {
+  const lines: string[] = [];
+  const street = order.shippingAddress?.trim();
+  if (street) lines.push(street);
+
+  const cityLine = [order.shippingCity?.trim(), order.shippingPostcode?.trim()]
+    .filter(Boolean)
+    .join(", ");
+  if (cityLine) lines.push(cityLine);
+
+  const region = order.shippingRegion?.trim();
+  if (region) lines.push(region);
+
+  const country = order.shippingCountry?.trim();
+  if (country) lines.push(country);
+
+  return lines;
+}
+
+export function receiptBillToLines(order: ReceiptOrder): string[] {
+  const lines: string[] = [];
+  const name = order.shippingName?.trim();
+  if (name) lines.push(name);
+
+  const email = order.email?.trim();
+  if (email) lines.push(email);
+
+  const phone = order.shippingPhone?.trim();
+  if (phone) lines.push(phone);
+
+  return lines.length ? lines : ["-"];
+}
+
+export function receiptShipToLines(order: ReceiptOrder): string[] {
+  const lines: string[] = [];
+  const name = order.shippingName?.trim();
+  if (name) lines.push(name);
+
+  lines.push(...receiptCustomerAddressLines(order));
+
+  const email = order.email?.trim();
+  if (email) lines.push(email);
+
+  const phone = order.shippingPhone?.trim();
+  if (phone) lines.push(phone);
+
+  const payment = receiptPaymentMethodLabel(order);
+  if (payment && payment !== "—") {
+    lines.push(`Payment: ${payment}`);
+  }
+
+  return lines.length ? lines : ["-"];
+}
+
 export function formatReceiptMoney(amount: number): string {
   const value = Number(amount).toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -85,14 +160,21 @@ export function formatReceiptMoney(amount: number): string {
 export function toReceiptOrder(order: {
   id: string;
   email: string;
+  receiptNumber?: string | null;
   total: number;
   status: string;
   createdAt: Date;
+  channel?: OrderChannel;
+  paymentProvider?: string | null;
+  posPaymentMethod?: PosPaymentMethod | null;
+  chargeCurrency?: string | null;
+  dawuroboPayer?: string | null;
   shippingName: string | null;
   shippingAddress: string | null;
   shippingCity: string | null;
   shippingPostcode: string | null;
   shippingCountry: string | null;
+  shippingRegion?: string | null;
   shippingMethod: string | null;
   shippingCost: number;
   shippingPhone: string | null;
@@ -106,14 +188,21 @@ export function toReceiptOrder(order: {
   return {
     id: order.id,
     email: order.email,
+    receiptNumber: order.receiptNumber,
     total: order.total,
     status: order.status,
     createdAt: order.createdAt,
+    channel: order.channel ?? "WEB",
+    paymentProvider: order.paymentProvider ?? null,
+    posPaymentMethod: order.posPaymentMethod ?? null,
+    chargeCurrency: order.chargeCurrency ?? null,
+    dawuroboPayer: order.dawuroboPayer ?? null,
     shippingName: order.shippingName,
     shippingAddress: order.shippingAddress,
     shippingCity: order.shippingCity,
     shippingPostcode: order.shippingPostcode,
     shippingCountry: order.shippingCountry,
+    shippingRegion: order.shippingRegion ?? null,
     shippingMethod: order.shippingMethod,
     shippingCost: order.shippingCost,
     shippingPhone: order.shippingPhone,

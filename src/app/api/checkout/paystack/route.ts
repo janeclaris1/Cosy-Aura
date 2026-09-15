@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkoutBaseUrl } from "@/lib/checkout-url";
-import { getActiveShippingMethods } from "@/lib/shipping-methods";
+import {
+  filterShippingMethodsForCountry,
+  getActiveShippingMethods,
+  isPickupShippingMethod,
+} from "@/lib/shipping-methods";
 import {
   initializePaystackTransaction,
   isPaystackCountry,
@@ -283,11 +287,20 @@ export async function POST(req: Request) {
       } // end courier (non-pickup)
     }
 
-    const methods = await getActiveShippingMethods();
+    const methods = filterShippingMethodsForCountry(
+      await getActiveShippingMethods(),
+      country
+    );
     const shipping =
       methods.find((method) => method.id === shippingMethodId) || methods[0];
     if (!useGhanaCourier && !shipping) {
       return NextResponse.json({ error: "No shipping methods available" }, { status: 400 });
+    }
+    if (!useGhanaCourier && shipping && isPickupShippingMethod(shipping)) {
+      return NextResponse.json(
+        { error: "Shop pickup is only available in Ghana." },
+        { status: 400 }
+      );
     }
 
     const member = await getCheckoutMemberContext();

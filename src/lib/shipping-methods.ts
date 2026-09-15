@@ -47,6 +47,23 @@ export function shippingDisplayName(method: Pick<CheckoutShippingMethod, "name" 
   return `${method.name} · ${method.eta}`;
 }
 
+export function isPickupShippingMethod(
+  method: Pick<CheckoutShippingMethod, "name" | "slug">
+): boolean {
+  const slug = method.slug?.toLowerCase() ?? "";
+  const name = method.name?.toLowerCase() ?? "";
+  return slug === "pickup" || /\bpickup\b/.test(name);
+}
+
+/** Shop pickup is Accra-only — hide for customers outside Ghana. */
+export function filterShippingMethodsForCountry(
+  methods: CheckoutShippingMethod[],
+  country: string | null | undefined
+): CheckoutShippingMethod[] {
+  if (country === "GH") return methods;
+  return methods.filter((method) => !isPickupShippingMethod(method));
+}
+
 export async function ensureDefaultShippingMethods(): Promise<void> {
   for (const method of DEFAULT_SHIPPING_METHODS) {
     await prisma.shippingMethod.upsert({

@@ -1,5 +1,5 @@
 /**
- * Import Pre-Owned Rolex Daytona 116518LN (Walmart listing).
+ * Import / re-import Rolex Daytona 116518LN (Shopify source).
  *
  * Usage:
  *   npx tsx scripts/import-rolex-daytona-116518ln-walmart.ts
@@ -8,13 +8,15 @@
 import { createHash } from "crypto";
 import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
-import { downloadWatchImagesFromUrls } from "./lib/catalog-image-import";
+import { rebuildWatchDescriptionFromRecord } from "./lib/catalog-product-description";
+import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 const apply = process.argv.includes("--apply");
 
 const PRODUCT_URL =
-  "https://www.walmart.com/ip/Pre-Owned-Rolex-Daytona-116518LN-Yellow-Gold-Champagne-Dial/17364908360";
+  "https://wristaficionado.com/collections/rolex-daytona/products/rolex-daytona-116518ln-paul-newman-yellow-gold-black-dial-2018";
 
 const PRICE_GHS = 1900;
 const STOCK_PER_BRANCH = 1;
@@ -23,23 +25,7 @@ const BRAND = "Rolex";
 const MODEL = "Daytona Yellow Gold Champagne Dial";
 const REFERENCE = "116518LN";
 const COLLECTION = "Daytona";
-
-const DESCRIPTION = `Pre-owned Rolex Cosmograph Daytona reference 116518LN in 18 ct yellow gold with a champagne sunburst dial and black Cerachrom bezel.
-
-This iconic chronograph pairs the warmth of yellow gold with high-contrast black tachymeter ceramic and the signature three-subdial layout. Self-winding manufacture calibre with chronograph function and approximately 72 hours of power reserve.
-
-**Specifications**
-- Reference: 116518LN
-- Collection: Cosmograph Daytona
-- Case: 40 mm, 18 ct yellow gold
-- Bezel: Black monobloc Cerachrom with tachymeter scale
-- Dial: Champagne sunburst with gold sub-dials
-- Bracelet: Oysterflex (high-performance elastomer with yellow gold deployant)
-- Movement: Self-winding chronograph, ~72 h power reserve
-- Water resistance: 100 metres
-- Condition: Pre-owned, professionally inspected`;
-
-const CONDITION_REPORT = `Pre-owned luxury chronograph. Yellow gold case and deployant. Black Cerachrom bezel. Champagne dial. Oysterflex bracelet. Inspected and ready for sale.`;
+const YEAR = 2017;
 
 const BARCODE_LEAD: Record<BottleSize, string> = { 30: "3", 50: "5", 100: "1" };
 
@@ -126,50 +112,89 @@ async function syncCountryPool(
   });
 }
 
-async function fetchWalmartImageUrls(url: string): Promise<string[]> {
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml",
-    },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch Walmart page (${res.status})`);
+type ShopifyImage = {
+  src: string;
+  position: number;
+  alt: string | null;
+};
 
-  const html = await res.text();
-  const matches = html.matchAll(
-    /https:\/\/i5\.walmartimages\.com\/asr\/[a-f0-9-]+\.[a-f0-9]+\.(?:png|jpe?g)/gi
-  );
-  const seen = new Set<string>();
-  const urls: string[] = [];
-  for (const match of matches) {
-    const src = match[0].split("?")[0];
-    if (!seen.has(src)) {
-      seen.add(src);
-      urls.push(src);
-    }
-  }
-  if (!urls.length) throw new Error("No product images found on Walmart page");
-  return urls;
+type ShopifyProduct = {
+  title: string;
+  vendor: string;
+  body_html: string;
+  variants: Array<{ sku: string; price: string }>;
+  images: ShopifyImage[];
+};
+
+function isProductPhoto(img: ShopifyImage): boolean {
+  const alt = (img.alt || "").toLowerCase();
+  if (alt.includes("warranty") || alt.includes("garantie")) return false;
+  if (img.src.toLowerCase().includes("garantie")) return false;
+  return true;
+}
+
+const LEAD = `The Cosmograph Daytona 116518LN pairs 18 ct yellow gold with a black lacquer dial and contrasting champagne subdials — a sharp panda chronograph layout built for the track. A black Cerachrom tachymeter bezel and black Oysterflex strap keep the look modern and sporting.
+
+Gold pushers, a screw-down crown, and applied gold hour markers complete the case. Caliber 4130 delivers self-winding chronograph precision with roughly 72 hours of power reserve. A pre-owned icon that wears its racing heritage with unmistakable warmth.`;
+
+function buildDescription(): string {
+  return rebuildWatchDescriptionFromRecord({
+    model: MODEL,
+    reference: REFERENCE,
+    category: "Chronograph",
+    collection: COLLECTION,
+    bottleDetail:
+      "40 mm 18 ct yellow gold · black Cerachrom bezel · black Oysterflex · 100 m WR",
+    liquidColor: "Black dial · champagne subdials",
+    longevity: "Caliber 4130 automatic chronograph · ~72 h power reserve",
+    bottleSize: 40,
+    condition: "EXCELLENT",
+    lead: LEAD,
+    legacyDescription: `Specifications
+- Reference: ${REFERENCE}
+- Collection: Cosmograph Daytona
+- Case: 40 mm, 18 ct yellow gold
+- Bezel: Black monobloc Cerachrom with tachymeter scale
+- Dial: Black lacquer with champagne chronograph subdials
+- Bracelet: Black Oysterflex with yellow gold deployant
+- Movement: Caliber 4130 self-winding chronograph
+- Water resistance: 100 metres
+- Year: ${YEAR}
+- Included: Original box and papers`,
+  });
+}
+
+const CONDITION_REPORT =
+  "Pre-owned chronograph in excellent condition. 40 mm yellow gold case, black Cerachrom bezel, black dial with champagne subdials. Black Oysterflex strap. Caliber 4130. Original box and papers. Carefully inspected before listing.";
+
+async function fetchShopifyProduct(url: string): Promise<ShopifyProduct> {
+  const jsonUrl = url.replace(/\/?(\?.*)?$/, ".json");
+  const res = await fetch(jsonUrl, {
+    headers: { "User-Agent": "CosyAuraCatalogImport/1.0" },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch product JSON (${res.status})`);
+  const data = (await res.json()) as { product: ShopifyProduct };
+  return data.product;
 }
 
 async function main() {
   console.log(apply ? "Importing watch…" : "Dry run — pass --apply to write");
   console.log(`Source: ${PRODUCT_URL}\n`);
 
+  const product = await fetchShopifyProduct(PRODUCT_URL);
   const brandSlug = slugify(BRAND);
   const slug = slugify(`${brandSlug}-${MODEL}-${REFERENCE}`);
+  const productImages = product.images.filter(isProductPhoto);
 
   console.log(`Brand: ${BRAND}`);
   console.log(`Model: ${MODEL}`);
   console.log(`Reference: ${REFERENCE}`);
   console.log(`Slug: ${slug}`);
-  console.log(`Price: ${PRICE_GHS} GHS\n`);
+  console.log(`Price: ${PRICE_GHS} GHS`);
+  console.log(`Source USD: $${product.variants[0]?.price ?? "—"}`);
+  console.log(`Images: ${productImages.length} product photos\n`);
 
-  const imageUrls = await fetchWalmartImageUrls(PRODUCT_URL);
-  console.log(`Found ${imageUrls.length} images on Walmart\n`);
-
-  const localPaths = await downloadWatchImagesFromUrls(imageUrls, slug, apply);
+  const imageUrls = await downloadWatchImagesFromShopify(productImages, slug, apply);
 
   if (!apply) {
     console.log("\nDry run complete. Re-run with --apply to persist.");
@@ -190,24 +215,27 @@ async function main() {
       create: { name: BRAND, slug: brandSlug },
     });
 
+    const description = buildDescription();
+
     const data = {
       productType: "WATCH" as const,
       brandId: brand.id,
       model: MODEL,
       reference: REFERENCE,
-      description: DESCRIPTION,
+      description,
       conditionReport: CONDITION_REPORT,
       price: PRICE_GHS,
-      costPriceGhs: 0,
+      costPriceGhs: defaultCatalogCostPriceGhs("WATCH", data.bottleSize ?? 50),
       condition: "EXCELLENT" as const,
-      year: 2020,
+      year: YEAR,
       fragranceFamily: "WOODY" as const,
       bottleMaterial: "METAL" as const,
-      bottleDetail: "40 mm 18 ct yellow gold · Cerachrom bezel · Oysterflex · 100 m WR",
-      bottleSize: 50,
+      bottleDetail:
+        "40 mm 18 ct yellow gold · black Cerachrom bezel · black Oysterflex · 100 m WR",
+      bottleSize: 40,
       capType: "MAGNETIC" as const,
-      liquidColor: "Champagne",
-      longevity: "72 h power reserve (approx.)",
+      liquidColor: "Black dial · champagne subdials",
+      longevity: "Caliber 4130 · ~72 h power reserve",
       bottleShape: "Round chronograph",
       concentration: "EDP" as const,
       topNotes: [] as string[],
@@ -232,9 +260,9 @@ async function main() {
       : await prisma.fragrance.create({ data: { ...data, slug } });
 
     await prisma.fragranceImage.deleteMany({ where: { fragranceId: fragrance.id } });
-    if (localPaths.length) {
+    if (imageUrls.length) {
       await prisma.fragranceImage.createMany({
-        data: localPaths.map((url, i) => ({
+        data: imageUrls.map((url, i) => ({
           fragranceId: fragrance.id,
           url,
           alt: `${BRAND} ${MODEL} luxury watch`,
@@ -272,6 +300,7 @@ async function main() {
     console.log(`\n✓ Imported ${BRAND} ${MODEL}`);
     console.log(`  Product page: /watches/${slug}`);
     console.log(`  Admin: /admin/fragrances/${fragrance.id}/edit`);
+    console.log(`  Images saved: ${imageUrls.length}`);
   } finally {
     await disconnect();
   }

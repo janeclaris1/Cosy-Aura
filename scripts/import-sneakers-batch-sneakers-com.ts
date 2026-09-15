@@ -19,6 +19,7 @@ import {
 import { downloadSneakerImagesFromUrls } from "./lib/catalog-image-import";
 import { resolveSneakerImages } from "./lib/sneaker-image-sources";
 import { createScriptPrisma } from "./lib/script-prisma";
+import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
 
 const apply = process.argv.includes("--apply");
 const onlyArg = process.argv.find((a) => a.startsWith("--only="));
@@ -445,7 +446,7 @@ async function importSneaker(
     description: buildDescription(config),
     conditionReport: "New in box. Unworn. Authentic sneaker.",
     price: config.priceGhs,
-    costPriceGhs: 0,
+    costPriceGhs: defaultCatalogCostPriceGhs("SNEAKER", 50),
     condition: "UNWORN" as const,
     year: 2026,
     fragranceFamily: "FRESH" as const,
