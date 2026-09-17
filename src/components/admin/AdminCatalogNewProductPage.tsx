@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { getAllBrands } from "@/lib/fragrances";
 import { FragranceForm } from "@/components/admin/FragranceForm";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";

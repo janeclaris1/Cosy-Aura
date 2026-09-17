@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 
 /** Staff management now lives under HR & payroll. */
 export default async function AdminStaffPage() {

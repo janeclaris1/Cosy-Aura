@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { FragranceForm } from "@/components/admin/FragranceForm";
 import { getAllBrands } from "@/lib/fragrances";

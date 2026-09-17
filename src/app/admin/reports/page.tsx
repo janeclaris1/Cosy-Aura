@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { BranchReports } from "@/components/admin/BranchReports";
 import { TaxReport } from "@/components/admin/TaxReport";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
+import { orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import {
   formatOrderBookTotal,

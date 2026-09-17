@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { checkoutAbandonmentWhere } from "@/lib/checkout-abandonment-scope";
 import { prisma } from "@/lib/prisma";
 import { AbandonedCheckoutsTable } from "@/components/admin/AbandonedCheckoutsTable";

@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { AttendanceDashboard } from "@/components/admin/AttendanceDashboard";
 import { AttendanceAbsenceReport } from "@/components/admin/AttendanceAbsenceReport";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";

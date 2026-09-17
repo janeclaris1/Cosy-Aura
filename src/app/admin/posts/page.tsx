@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { getAllBlogPostsAdmin, formatBlogDate } from "@/lib/blog";
 import { DeletePostButton } from "@/components/admin/DeletePostButton";
 import {

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { HrHub } from "@/components/admin/HrHub";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 import { hasPermission } from "@/lib/rbac";

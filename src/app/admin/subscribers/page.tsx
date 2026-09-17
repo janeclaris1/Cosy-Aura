@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { mailchimpConfigured } from "@/lib/mailchimp";
 import { SyncMailchimpButton } from "@/components/admin/SyncMailchimpButton";

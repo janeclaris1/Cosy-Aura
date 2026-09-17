@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { isSuperAdminEmail, staffRoleLabel } from "@/lib/rbac";
 import { AdminProfileForm } from "@/components/admin/AdminProfileForm";

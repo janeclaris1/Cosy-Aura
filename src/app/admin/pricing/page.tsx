@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { CatalogMarkupSettings } from "@/components/admin/CatalogMarkupSettings";
 import { PricingSettings } from "@/components/admin/PricingSettings";
 import { WhatsAppCheckoutSettings } from "@/components/admin/WhatsAppCheckoutSettings";

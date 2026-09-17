@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { hasPermission } from "@/lib/rbac";

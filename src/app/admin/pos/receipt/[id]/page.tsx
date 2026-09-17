@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
-import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
+import { orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { AdminButton, AdminLink } from "@/components/admin/admin-ui";

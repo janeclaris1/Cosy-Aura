@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { formatPrice, conditionLabel } from "@/lib/utils";
 import { salePriceForSize } from "@/lib/pricing";

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { HrDocumentPrintClient } from "@/components/admin/HrDocumentPrintClient";
 import { buildHrDocumentSheetProps } from "@/lib/hr-document";

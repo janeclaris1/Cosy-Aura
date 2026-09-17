@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { PayslipPrintActions } from "@/components/admin/PayslipPrintActions";
 import { PayslipSheet } from "@/components/admin/PayslipSheet";
 import {

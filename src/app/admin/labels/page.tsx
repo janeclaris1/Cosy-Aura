@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { BarcodeLabelSheet } from "@/components/admin/BarcodeLabelSheet";
 import { salePriceForSize } from "@/lib/pricing";

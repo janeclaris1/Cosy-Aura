@@ -1,4 +1,5 @@
-import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
+import { orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { OrdersFilters } from "@/components/admin/OrdersFilters";
 import { OrdersTable } from "@/components/admin/OrdersTable";

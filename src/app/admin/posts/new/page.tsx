@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { PostForm } from "@/components/admin/PostForm";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 

@@ -13,7 +13,8 @@ import {
   Warehouse,
 } from "lucide-react";
 import { AdminDashboardCharts } from "@/components/admin/AdminDashboardCharts";
-import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
+import { orderBranchWhere } from "@/lib/admin";
 import {
   buildDashboardChartData,
   REVENUE_STATUSES,

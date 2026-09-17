@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultShippingMethods } from "@/lib/shipping-methods";
 import { ShippingManager } from "@/components/admin/ShippingManager";

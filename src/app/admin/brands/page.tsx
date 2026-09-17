@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { prisma } from "@/lib/prisma";
 import { BrandManager } from "@/components/admin/BrandManager";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";

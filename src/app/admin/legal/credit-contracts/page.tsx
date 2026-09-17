@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { requireAdminPage, orderBranchWhere } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
+import { orderBranchWhere } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { formatCreditDate } from "@/lib/credit-contract";
 import { creditBalanceRemaining, creditReceiptReady } from "@/lib/credit-agreement";

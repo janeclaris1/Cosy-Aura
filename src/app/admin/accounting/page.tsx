@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { AccountingHub } from "@/components/admin/AccountingHub";
 import { AdminButton, AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 import { hasPermission } from "@/lib/rbac";

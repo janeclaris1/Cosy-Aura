@@ -1,4 +1,4 @@
-import { requireAdminPage } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-page";
 import { AuditLogViewer } from "@/components/admin/AuditLogViewer";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
