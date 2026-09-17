@@ -1,60 +1,14 @@
 import { NextResponse } from "next/server";
 import { paymentRouteFromCountry } from "@/lib/geo-payment";
 import {
+  countryFromLatLng,
+  headerCountry,
+  resolveServerCountry,
+} from "@/lib/geo-server";
+import {
   languageFromAcceptLanguage,
   localeProfileFromCountry,
 } from "@/lib/geo-locale";
-
-function headerCountry(req: Request): string | null {
-  const raw =
-    req.headers.get("x-vercel-ip-country") ||
-    req.headers.get("cf-ipcountry") ||
-    req.headers.get("cloudfront-viewer-country") ||
-    req.headers.get("x-country-code") ||
-    req.headers.get("x-geo-country");
-  const code = raw?.trim().toUpperCase();
-  if (!code || code === "XX" || code === "T1") return null;
-  return /^[A-Z]{2}$/.test(code) ? code : null;
-}
-
-function clientIp(req: Request): string | null {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const real = req.headers.get("x-real-ip")?.trim();
-  const ip = forwarded || real || "";
-  if (!ip || ip === "::1" || ip.startsWith("127.") || ip === "0.0.0.0") return null;
-  return ip;
-}
-
-async function countryFromIp(ip: string | null): Promise<string | null> {
-  if (!ip) return null;
-  const url = `https://ipwho.is/${encodeURIComponent(ip)}`;
-  try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { success?: boolean; country_code?: string };
-    if (data.success === false) return null;
-    const code = String(data.country_code || "").toUpperCase();
-    return /^[A-Z]{2}$/.test(code) ? code : null;
-  } catch {
-    return null;
-  }
-}
-
-async function countryFromLatLng(lat: number, lng: number): Promise<string | null> {
-  try {
-    const url = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
-    url.searchParams.set("latitude", String(lat));
-    url.searchParams.set("longitude", String(lng));
-    url.searchParams.set("localityLanguage", "en");
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { countryCode?: string };
-    const code = String(data.countryCode || "").toUpperCase();
-    return /^[A-Z]{2}$/.test(code) ? code : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -75,7 +29,7 @@ export async function GET(req: Request) {
   }
 
   if (!country) {
-    country = await countryFromIp(clientIp(req));
+    country = await resolveServerCountry(req);
     if (country) source = "ip";
   }
 

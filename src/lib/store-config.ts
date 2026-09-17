@@ -1,4 +1,5 @@
 import type { ProductType } from "@prisma/client";
+import { parseCatalogMarkupUsd, type CatalogMarkupUsd } from "@/lib/catalog-markup";
 import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import {
   DEFAULT_PDP_SPONSORED_AD,
@@ -10,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 export type StorePricingConfig = {
   nonAfricaMarkupEnabled: boolean;
   nonAfricaMarkupUsd: number;
+  catalogMarkupUsd: CatalogMarkupUsd;
 };
 
 export type WhatsAppCheckoutNumbers = Record<string, string>;
@@ -42,6 +44,7 @@ const DEFAULT_MARKUP_USD = Number(process.env.NON_AFRICA_MARKUP_USD) || 10;
 export const DEFAULT_STORE_PRICING: StorePricingConfig = {
   nonAfricaMarkupEnabled: false,
   nonAfricaMarkupUsd: DEFAULT_MARKUP_USD,
+  catalogMarkupUsd: {},
 };
 
 export const DEFAULT_WHATSAPP_CHECKOUT: StoreWhatsAppCheckoutConfig = {
@@ -86,6 +89,7 @@ export function parseWhatsAppCheckoutNumbers(raw: unknown): WhatsAppCheckoutNumb
 function rowToConfig(row: {
   nonAfricaMarkupEnabled: boolean;
   nonAfricaMarkupUsd: number;
+  catalogMarkupUsd?: unknown;
   whatsappCheckoutEnabled?: boolean;
   whatsappCheckoutNumbers?: unknown;
   maintenanceMode?: boolean;
@@ -95,6 +99,7 @@ function rowToConfig(row: {
   return {
     nonAfricaMarkupEnabled: row.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: row.nonAfricaMarkupUsd,
+    catalogMarkupUsd: parseCatalogMarkupUsd(row.catalogMarkupUsd),
     whatsappCheckoutEnabled: Boolean(row.whatsappCheckoutEnabled),
     whatsappCheckoutNumbers: parseWhatsAppCheckoutNumbers(row.whatsappCheckoutNumbers),
     maintenanceMode: Boolean(row.maintenanceMode),
@@ -124,6 +129,7 @@ export async function getStorePricingConfig(): Promise<StorePricingConfig> {
   return {
     nonAfricaMarkupEnabled: full.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: full.nonAfricaMarkupUsd,
+    catalogMarkupUsd: full.catalogMarkupUsd,
   };
 }
 
@@ -171,6 +177,10 @@ export async function upsertStoreConfig(
     input.pdpSponsoredAd !== undefined
       ? parsePdpSponsoredAd(input.pdpSponsoredAd)
       : undefined;
+  const catalogMarkupUsd =
+    input.catalogMarkupUsd !== undefined
+      ? parseCatalogMarkupUsd(input.catalogMarkupUsd)
+      : undefined;
 
   const row = await prisma.storeConfig.upsert({
     where: { id: "default" },
@@ -179,6 +189,7 @@ export async function upsertStoreConfig(
       nonAfricaMarkupEnabled: Boolean(input.nonAfricaMarkupEnabled),
       nonAfricaMarkupUsd:
         Number.isFinite(markupUsd) && markupUsd >= 0 ? markupUsd : DEFAULT_MARKUP_USD,
+      catalogMarkupUsd: catalogMarkupUsd ?? {},
       whatsappCheckoutEnabled: Boolean(input.whatsappCheckoutEnabled),
       whatsappCheckoutNumbers: numbers ?? {},
       maintenanceMode: Boolean(input.maintenanceMode),
@@ -192,6 +203,7 @@ export async function upsertStoreConfig(
       ...(Number.isFinite(markupUsd) && markupUsd >= 0
         ? { nonAfricaMarkupUsd: markupUsd }
         : {}),
+      ...(catalogMarkupUsd !== undefined ? { catalogMarkupUsd } : {}),
       ...(input.whatsappCheckoutEnabled !== undefined
         ? { whatsappCheckoutEnabled: Boolean(input.whatsappCheckoutEnabled) }
         : {}),
@@ -217,6 +229,7 @@ export async function upsertStorePricingConfig(
   return {
     nonAfricaMarkupEnabled: full.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: full.nonAfricaMarkupUsd,
+    catalogMarkupUsd: full.catalogMarkupUsd,
   };
 }
 
@@ -228,6 +241,7 @@ export async function ensureDefaultStoreConfig() {
       id: "default",
       nonAfricaMarkupEnabled: DEFAULT_STORE_CONFIG.nonAfricaMarkupEnabled,
       nonAfricaMarkupUsd: DEFAULT_STORE_CONFIG.nonAfricaMarkupUsd,
+      catalogMarkupUsd: DEFAULT_STORE_CONFIG.catalogMarkupUsd,
       whatsappCheckoutEnabled: DEFAULT_STORE_CONFIG.whatsappCheckoutEnabled,
       whatsappCheckoutNumbers: {},
       maintenanceMode: DEFAULT_STORE_CONFIG.maintenanceMode,

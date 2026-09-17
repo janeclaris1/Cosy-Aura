@@ -86,10 +86,10 @@ function PerfumeProductCard({
   const discount = STORE_DISCOUNT_PERCENT;
   const member = useMemberDiscount();
   const baseSalePrice = salePriceForSize(30, fragrance.slug);
-  const regionalSalePrice = useRegionalPrice(baseSalePrice);
+  const regionalSalePrice = useRegionalPrice(baseSalePrice, "PERFUME");
   const salePrice =
     mounted && member.active ? member.apply(regionalSalePrice) : regionalSalePrice;
-  const originalPrice = useRegionalPrice(listPriceForSize(30, fragrance.slug));
+  const originalPrice = useRegionalPrice(listPriceForSize(30, fragrance.slug), "PERFUME");
   const inStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
     country,
@@ -119,7 +119,7 @@ function PerfumeProductCard({
     <article
       ref={ref}
       className={cn(
-        "group/card flex h-full flex-col overflow-hidden bg-white",
+        "group/card flex h-full flex-col overflow-hidden rounded-xl bg-white",
         "ring-1 ring-stone-200/90 shadow-[0_1px_2px_rgba(3,4,94,0.04)]",
         "transition-all duration-300 ease-organic",
         "hover:shadow-[0_8px_30px_rgba(3,4,94,0.08)] hover:ring-[#03045e]/15",
@@ -193,7 +193,7 @@ function PerfumeProductCard({
                 <p className="mb-1 text-[8px] font-bold uppercase leading-none tracking-[0.1em] text-[#c8102e] sm:text-[9px]">
                   Inspired by
                 </p>
-                <div className="relative aspect-[3/4] w-full max-h-[6.5rem] overflow-hidden rounded-sm bg-white ring-1 ring-stone-100 sm:max-h-[7.25rem]">
+                <div className="relative aspect-[3/4] w-full max-h-[6.5rem] overflow-hidden rounded-md bg-white ring-1 ring-stone-100 sm:max-h-[7.25rem]">
                   <Image
                     src={inspiredUrl}
                     alt={`Inspired by ${fragrance.brand.name} ${fragrance.model}`}

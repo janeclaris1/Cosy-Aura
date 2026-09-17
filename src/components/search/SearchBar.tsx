@@ -20,7 +20,7 @@ interface SearchResult {
 
 function SearchResultPrice({ slug, currency }: { slug: string; currency: string }) {
   const rates = useShopperRates();
-  const regionalPrice = useRegionalPrice(salePriceForSize(30, slug));
+  const regionalPrice = useRegionalPrice(salePriceForSize(30, slug), "PERFUME");
   return <>{formatPrice(regionalPrice, currency, rates)}</>;
 }
 

@@ -113,6 +113,11 @@ export function ShippingManager({ initialMethods }: { initialMethods: ShippingRo
 
   return (
     <div className="space-y-8">
+      <p className="text-sm text-mocha rounded-xl border border-wf-border bg-stone-50 px-4 py-3">
+        International checkout (outside Ghana) uses live <strong>Aramex</strong> quotes via
+        EasyPost. Flat methods below are for Ghana shop pickup fallback only — standard
+        delivery rows are disabled automatically.
+      </p>
       <AdminCard>
         <form onSubmit={createMethod} className="space-y-4">
           <AdminSectionTitle title="Add shipping method" className="!mb-0" />

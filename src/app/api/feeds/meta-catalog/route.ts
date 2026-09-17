@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { buildMetaCatalogCsv } from "@/lib/meta-catalog-feed";
+import { isProductionEnv } from "@/lib/env-security";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 function isAuthorized(req: Request): boolean {
   const required = process.env.META_CATALOG_FEED_TOKEN?.trim();
-  if (!required) return process.env.NODE_ENV !== "production";
+  if (!required) return !isProductionEnv();
 
   const url = new URL(req.url);
   const token = url.searchParams.get("token")?.trim();

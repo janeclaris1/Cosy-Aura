@@ -3,6 +3,9 @@ import { prisma } from "./prisma";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { verifyPaystackTransaction } from "./paystack";
 import { dispatchGhanaForOrder } from "./dispatch-ghana-delivery";
+import { paymentProviderWhere, rejectWrongPaymentProvider } from "./fulfill-guards";
+import { verifyPaystackPaidAmount } from "./fulfill-amount";
+import { markCheckoutAbandonmentsConverted } from "./checkout-abandonment";
 
 /**
  * Marks a PENDING Paystack order as PAID after a successful charge.
@@ -23,28 +26,43 @@ export async function fulfillPaystackReference(reference: string): Promise<{
   });
 
   if (freeCheckoutOrder) {
+    const providerError = rejectWrongPaymentProvider(freeCheckoutOrder, "paystack");
+    if (providerError) {
+      return { ok: false, reason: providerError, orderId: freeCheckoutOrder.id };
+    }
+
     const previousStatus = freeCheckoutOrder.status;
-    const order =
-      freeCheckoutOrder.status === "PENDING"
-        ? await prisma.order.update({
-            where: { id: freeCheckoutOrder.id },
-            data: { status: "PAID" },
-          })
-        : freeCheckoutOrder;
+    let isNewlyPaid = freeCheckoutOrder.status === "PENDING";
 
-    if (previousStatus === "PENDING") {
-      hookOrderSalesJournal(order.id, { previousStatus });
-    }
-
-    if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {
-      void dispatchGhanaForOrder(order.id).then((result) => {
-        if (!result.ok) {
-          console.error("[fulfill-paystack] ghana dispatch", order.id, result.reason);
-        }
+    if (isNewlyPaid) {
+      const transitioned = await prisma.order.updateMany({
+        where: {
+          id: freeCheckoutOrder.id,
+          status: "PENDING",
+          ...paymentProviderWhere("paystack"),
+        },
+        data: { status: "PAID", paymentProvider: "paystack" },
       });
+      isNewlyPaid = transitioned.count > 0;
     }
 
-    return finalizePaidOrderNotifications(order);
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: freeCheckoutOrder.id },
+    });
+
+    if (isNewlyPaid) {
+      hookOrderSalesJournal(order.id, { previousStatus });
+      void markCheckoutAbandonmentsConverted(order.email, order.id);
+      if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {
+        void dispatchGhanaForOrder(order.id).then((result) => {
+          if (!result.ok) {
+            console.error("[fulfill-paystack] ghana dispatch", order.id, result.reason);
+          }
+        });
+      }
+    }
+
+    return finalizePaidOrderNotifications(order, !isNewlyPaid);
   }
 
   const verified = await verifyPaystackTransaction(reference);
@@ -53,10 +71,16 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     return { ok: false, reason: verified.message || "Paystack payment not successful" };
   }
 
+  const metadataOrderId = String(txn.metadata?.orderId || "").trim();
   const order =
     (await prisma.order.findFirst({
       where: {
-        OR: [{ paystackReference: txn.reference }, { id: String(txn.metadata?.orderId || "") }],
+        OR: [
+          { paystackReference: txn.reference },
+          ...(metadataOrderId
+            ? [{ id: metadataOrderId, paymentProvider: "paystack" as const }]
+            : []),
+        ],
       },
     })) || null;
 
@@ -64,29 +88,82 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     return { ok: false, reason: "Order not found", orderId: txn.metadata?.orderId };
   }
 
-  const email = txn.customer?.email || order.email;
-  const alreadyPaid = order.status !== "PENDING";
-
-  const previousStatus = order.status;
-
-  await prisma.order.update({
-    where: { id: order.id },
-    data: {
-      status: alreadyPaid ? order.status : "PAID",
-      email: email || order.email,
-      paymentProvider: "paystack",
-      paystackReference: txn.reference,
-      stripePaymentId: String(txn.id),
-      shippingPhone: txn.customer?.phone || order.shippingPhone,
-    },
-  });
-
-  if (!alreadyPaid) {
-    hookOrderSalesJournal(order.id, { previousStatus });
+  const providerError = rejectWrongPaymentProvider(order, "paystack");
+  if (providerError) {
+    return { ok: false, reason: providerError, orderId: order.id };
   }
 
-  // Ghana hybrid dispatch (Dawurobo Accra / ShaQ nationwide)
-  if (order.shippingCountry === "GH" && (order.deliveryProvider || order.dawuroboPayer)) {
+  const orderWithItems = await prisma.order.findUnique({
+    where: { id: order.id },
+    include: { items: { select: { price: true, quantity: true } } },
+  });
+  if (!orderWithItems) {
+    return { ok: false, reason: "Order not found", orderId: order.id };
+  }
+
+  const amountCheck = await verifyPaystackPaidAmount(
+    orderWithItems,
+    txn.amount,
+    txn.currency
+  );
+  if (!amountCheck.ok) {
+    console.error("[fulfill-paystack] amount verification failed", order.id, amountCheck.reason);
+    return { ok: false, reason: amountCheck.reason, orderId: order.id };
+  }
+
+  const email = txn.customer?.email || order.email;
+  const previousStatus = order.status;
+  let isNewlyPaid = order.status === "PENDING";
+
+  const syncData = {
+    email: email || order.email,
+    paystackReference: txn.reference,
+    stripePaymentId: String(txn.id),
+    shippingPhone: txn.customer?.phone || order.shippingPhone,
+  };
+
+  if (isNewlyPaid) {
+    const transitioned = await prisma.order.updateMany({
+      where: {
+        id: order.id,
+        status: "PENDING",
+        ...paymentProviderWhere("paystack"),
+      },
+      data: {
+        status: "PAID",
+        paymentProvider: "paystack",
+        ...syncData,
+      },
+    });
+
+    if (transitioned.count === 0) {
+      const refetched = await prisma.order.findUnique({ where: { id: order.id } });
+      if (!refetched) {
+        return { ok: false, reason: "Order not found", orderId: order.id };
+      }
+      const retryError = rejectWrongPaymentProvider(refetched, "paystack");
+      if (retryError) {
+        return { ok: false, reason: retryError, orderId: order.id };
+      }
+      isNewlyPaid = false;
+    } else {
+      hookOrderSalesJournal(order.id, { previousStatus });
+      void markCheckoutAbandonmentsConverted(email || order.email, order.id);
+    }
+  }
+
+  if (!isNewlyPaid) {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: syncData,
+    });
+  }
+
+  if (
+    isNewlyPaid &&
+    order.shippingCountry === "GH" &&
+    (order.deliveryProvider || order.dawuroboPayer)
+  ) {
     void dispatchGhanaForOrder(order.id).then((result) => {
       if (!result.ok) {
         console.error("[fulfill-paystack] ghana dispatch", order.id, result.reason);
@@ -94,7 +171,8 @@ export async function fulfillPaystackReference(reference: string): Promise<{
     });
   }
 
-  return finalizePaidOrderNotifications(order, alreadyPaid);
+  const updated = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+  return finalizePaidOrderNotifications(updated, !isNewlyPaid);
 }
 
 async function finalizePaidOrderNotifications(

@@ -45,7 +45,7 @@ function CrossSellCard({
   const country = useLocaleStore((s) => s.country);
   const member = useMemberDiscount();
   const baseSale = salePriceForSize(30, product.slug);
-  const regionalBase = useRegionalPrice(baseSale);
+  const regionalBase = useRegionalPrice(baseSale, "PERFUME");
   const price = member.apply(regionalBase);
   const image = product.images[0]?.url || "/images/placeholders/fragrance.svg";
   const inStock = isInStockForCountry(

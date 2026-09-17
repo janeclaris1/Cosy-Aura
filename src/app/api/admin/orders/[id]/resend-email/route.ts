@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi } from "@/lib/admin";
+import { requireAdminApi, orderBranchWhere } from "@/lib/admin";
 import { notifyOrderPaid } from "@/lib/notifications";
 import { stripe } from "@/lib/stripe";
 
@@ -10,10 +10,14 @@ export async function POST(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const { error } = await requireAdminApi("orders.write");
+  const { ctx, error } = await requireAdminApi("orders.write");
   if (error) return error;
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let order = await prisma.order.findUnique({ where: { id: params.id } });
+  const scope = orderBranchWhere(ctx);
+  let order = await prisma.order.findFirst({
+    where: { id: params.id, ...(scope || {}) },
+  });
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }

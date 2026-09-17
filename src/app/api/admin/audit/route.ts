@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { auditLogWhere } from "@/lib/audit-scope";
 
 export async function GET(req: Request) {
   const { ctx, error } = await requireAdminApi("audit.read");
@@ -12,12 +13,10 @@ export async function GET(req: Request) {
   const action = String(searchParams.get("action") || "").trim();
   const entityType = String(searchParams.get("entityType") || "").trim();
 
-  const where: Record<string, unknown> = {};
+  const scope = auditLogWhere(ctx);
+  const where: Record<string, unknown> = { ...scope };
   if (action) where.action = action;
   if (entityType) where.entityType = entityType;
-  if (!ctx.isSuperAdmin && !ctx.isGlobal && ctx.staffRole === "FULFILMENT") {
-    where.actorId = ctx.userId;
-  }
 
   const logs = await prisma.auditLog.findMany({
     where,

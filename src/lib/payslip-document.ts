@@ -1,6 +1,10 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import {
+  hrCompanyLetterhead,
+  letterheadRegistrationLines,
+} from "@/lib/hr-company-letterhead";
 import { staffRoleLabel } from "@/lib/rbac";
 
 export type PayslipDocument = {
@@ -47,8 +51,11 @@ export type PayslipDocument = {
     name: string;
     addressLine: string;
     phone: string | null;
+    email: string | null;
     officialNumber: string | null;
     officialNumberLabel: string;
+    registrationLines: string[];
+    footerWording: string;
   };
   payment: {
     method: string;
@@ -156,17 +163,28 @@ type UserInfo = {
 };
 
 function companyFromBranch(branch: BranchInfo, payRunCountry: string) {
-  const official = companyOfficialNumber(branch?.country || payRunCountry);
+  const country = branch?.country || payRunCountry;
+  const official = companyOfficialNumber(country);
+  const head = hrCompanyLetterhead(country);
   const addressLine = branch
     ? [branch.address, branch.city, branch.country].filter(Boolean).join(", ")
-    : PAYSLIP_COMPANY.addressLine;
+    : head.addressLine;
+
+  const registrationLines = letterheadRegistrationLines(head);
+  const officialValue = official.value;
+  if (officialValue && !registrationLines.some((l) => l.includes(officialValue))) {
+    registrationLines.unshift(`${official.label}: ${officialValue}`);
+  }
 
   return {
-    name: PAYSLIP_COMPANY.name,
-    addressLine: addressLine || PAYSLIP_COMPANY.addressLine,
-    phone: resolveCompanyPhone(branch),
+    name: head.name || PAYSLIP_COMPANY.name,
+    addressLine: addressLine || head.addressLine,
+    phone: resolveCompanyPhone(branch) || head.phone,
+    email: head.email,
     officialNumber: official.value,
     officialNumberLabel: official.label,
+    registrationLines,
+    footerWording: head.footerWording,
   };
 }
 

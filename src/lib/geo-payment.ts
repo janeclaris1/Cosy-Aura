@@ -30,7 +30,7 @@ export function paymentRouteFromCountry(
       country: null,
       destination: "OTHER",
       provider: "stripe",
-      label: "location unknown",
+      label: "International",
     };
   }
 

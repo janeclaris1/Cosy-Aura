@@ -263,7 +263,7 @@ const SUNGLASSES: SunglassesConfig[] = [
   },
   {
     key: "versace-ve4425u-536887",
-    sourceUrl: "https://hallofframescompany.com/products/4425u-536887",
+    sourceUrl: "https://www.sunglasshut.com/uk/versace/ve4430u-8056597724388",
     priceGhs: 363,
     brand: "Versace",
     model: "VE4425U Blue/Dark Grey",
@@ -280,10 +280,7 @@ const SUNGLASSES: SunglassesConfig[] = [
     bottleDetail: "Maxi Medusa Biggie acetate frame",
     liquidColor: "Dark grey lenses",
     longevity: "100% UVA/UVB protection",
-    imageSource: {
-      kind: "shopify",
-      jsonUrl: "https://hallofframescompany.com/products/4425u-536887.json",
-    },
+    imageSource: { kind: "sh-za", upc: "8056597724388" },
     descriptionLead:
       "Maxi Medusa Biggie attitude in a bold blue acetate square — statement luxury eyewear.",
   },

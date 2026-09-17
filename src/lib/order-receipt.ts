@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import type { OrderChannel, PosPaymentMethod } from "@prisma/client";
+import { isProductionEnv } from "@/lib/env-security";
 import { deliveryDateIso, formatDeliveryDateLabel } from "./delivery-dates";
 import { paymentGatewayLabel } from "./order-payment";
 
@@ -44,24 +45,26 @@ export function receiptFilename(orderId: string): string {
   return `COSY-AURA-Receipt-${receiptShortId(orderId)}.pdf`;
 }
 
-function receiptSecret(): string {
-  return (
-    process.env.RECEIPT_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "cosy-aura-receipt"
-  );
+function receiptSecret(): string | null {
+  const secret =
+    process.env.RECEIPT_SECRET?.trim() ||
+    (!isProductionEnv() ? process.env.NEXTAUTH_SECRET?.trim() : undefined) ||
+    (!isProductionEnv() ? "cosy-aura-receipt-dev" : undefined);
+  return secret || null;
 }
 
 export function receiptToken(orderId: string): string {
+  const secret = receiptSecret();
+  if (!secret) return "";
   return crypto
-    .createHmac("sha256", receiptSecret())
+    .createHmac("sha256", secret)
     .update(orderId)
     .digest("hex")
     .slice(0, 32);
 }
 
 export function verifyReceiptToken(orderId: string, token: string | null): boolean {
-  if (!token) return false;
+  if (!token || !receiptSecret()) return false;
   const expected = receiptToken(orderId);
   const a = Buffer.from(expected);
   const b = Buffer.from(String(token));

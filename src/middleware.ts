@@ -1,8 +1,8 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminMutationCsrfBlocked } from "@/lib/admin-csrf";
 import { isMaintenanceBypassPath } from "@/lib/maintenance-paths";
-
-const adminApiHits = new Map<string, number[]>();
+import { clientIp, isRateLimited } from "@/lib/rate-limit";
 
 function isMaintenanceEnvForced() {
   const value = process.env.MAINTENANCE_MODE?.trim().toLowerCase();
@@ -70,28 +70,22 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Basic rate limit on admin API mutations (per IP, edge memory)
+  // CSRF + rate limit admin API mutations (Upstash when configured, else edge memory)
   if (
     pathname.startsWith("/api/admin") &&
     !["GET", "HEAD", "OPTIONS"].includes(req.method)
   ) {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      "local";
-    const key = `mw:${ip}`;
-    const now = Date.now();
-    const windowMs = 60_000;
-    const maxHits = 90;
-    const recent = (adminApiHits.get(key) || []).filter((t) => now - t < windowMs);
-    if (recent.length >= maxHits) {
+    if (isAdminMutationCsrfBlocked(req)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const limited = await isRateLimited(`admin-mw:${clientIp(req)}`, 90, 60_000);
+    if (limited) {
       return NextResponse.json(
         { error: "Too many requests. Please wait a moment." },
         { status: 429 }
       );
     }
-    recent.push(now);
-    adminApiHits.set(key, recent);
   }
 
   return NextResponse.next({

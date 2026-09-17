@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 const ALLOWED = new Set(["fr", "es", "pt", "de"]);
+const MAX_TEXT_LEN = 5000;
+const MAX_CHUNKS = 12;
 
 export async function POST(req: NextRequest) {
+  if (await checkPublicRateLimit(req, "translate", 20)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = (await req.json()) as { text?: string; target?: string };
-    const text = (body.text || "").trim();
+    const text = (body.text || "").trim().slice(0, MAX_TEXT_LEN);
     const target = (body.target || "").toLowerCase();
 
     if (!text) {
@@ -27,6 +34,10 @@ export async function POST(req: NextRequest) {
       if (cut < 200) cut = 450;
       chunks.push(rest.slice(0, cut));
       rest = rest.slice(cut).trimStart();
+    }
+
+    if (chunks.length > MAX_CHUNKS) {
+      return NextResponse.json({ error: "Text too long" }, { status: 400 });
     }
 
     const parts: string[] = [];

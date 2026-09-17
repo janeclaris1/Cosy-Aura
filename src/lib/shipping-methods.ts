@@ -11,19 +11,21 @@ export {
   filterShippingMethodsForCountry,
   isPickupShippingMethod,
   shippingDisplayName,
+  usesAramexShipping,
 } from "@/lib/shipping-method-utils";
 export type { CheckoutShippingMethodShape } from "@/lib/shipping-method-utils";
 
+/** Retained for legacy orders — disabled; international uses live Aramex rates. */
 export const DEFAULT_STANDARD_SHIPPING = {
   name: "Standard Shipping",
   slug: "standard",
-  description: "Tracked delivery with discreet packaging",
+  description: "Replaced by live Aramex quotes for international checkout",
   price: 5,
   eta: "5-10 business days",
   deliveryDaysMin: 5,
   deliveryDaysMax: 10,
   sortOrder: 0,
-  enabled: true,
+  enabled: false,
 } as const;
 
 export const DEFAULT_PICKUP_SHIPPING = {
@@ -56,6 +58,20 @@ export type CheckoutShippingMethod = Pick<
 >;
 
 export async function ensureDefaultShippingMethods(): Promise<void> {
+  // Flat international methods replaced by live Aramex — disable legacy rows.
+  await prisma.shippingMethod.updateMany({
+    where: {
+      OR: [
+        { slug: "standard" },
+        { slug: "standard-delivery" },
+        { name: { contains: "Standard Delivery", mode: "insensitive" } },
+        { name: { contains: "Standard Shipping", mode: "insensitive" } },
+      ],
+      NOT: { slug: "pickup" },
+    },
+    data: { enabled: false },
+  });
+
   for (const method of DEFAULT_SHIPPING_METHODS) {
     await prisma.shippingMethod.upsert({
       where: { slug: method.slug },

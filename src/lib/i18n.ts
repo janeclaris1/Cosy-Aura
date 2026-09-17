@@ -69,6 +69,8 @@ const en: Messages = {
   "product.likeAdd": "Like this product",
   "product.likeRemove": "Unlike this product",
   "product.addToCart": "Add to Cart",
+  "product.selectSize": "Select size",
+  "product.selectSizeHint": "Choose your EU size before adding to cart.",
   "product.signInForPricing": "Sign in for pricing",
   "product.signInForPricingDetail":
     "Create an account or sign in to view prices and add items to your bag.",
@@ -80,6 +82,7 @@ const en: Messages = {
   "footer.support": "Support",
   "footer.company": "Company",
   "footer.viewMore": "View more",
+  "footer.viewLess": "View less",
   "footer.tagline":
     "Haute Parfumerie - alcohol-free oil-based perfume oils with artisanal craftsmanship. Every fragrance is sold new and delivered after successful payment confirmation.",
   "footer.allFragrances": "All Fragrances",
@@ -117,6 +120,8 @@ const en: Messages = {
   "checkout.shippingCalc": "Calculated in form",
   "checkout.totalDue": "Total due",
   "checkout.detecting": "Detecting your location…",
+  "checkout.loading": "Preparing checkout…",
+  "checkout.country": "Country / region",
   "checkout.displayNote":
     "Prices shown in {display}. You will be charged in {charge}.",
   "checkout.detected": "Customer country {place}, pay with {provider}",
@@ -189,6 +194,8 @@ const fr: Messages = {
   "product.likeAdd": "Aimer ce produit",
   "product.likeRemove": "Retirer votre j'aime",
   "product.addToCart": "Ajouter au panier",
+  "product.selectSize": "Choisir la pointure",
+  "product.selectSizeHint": "Choisissez votre pointure EU avant d'ajouter au panier.",
   "product.signInForPricing": "Connectez-vous pour voir les prix",
   "product.signInForPricingDetail":
     "Créez un compte ou connectez-vous pour voir les prix et ajouter des articles à votre panier.",
@@ -200,6 +207,7 @@ const fr: Messages = {
   "footer.support": "Assistance",
   "footer.company": "Maison",
   "footer.viewMore": "Voir plus",
+  "footer.viewLess": "Voir moins",
   "footer.tagline":
     "Haute Parfumerie - huiles parfumées sans alcool, artisanales. Chaque fragrance est neuve et expédiée après confirmation du paiement.",
   "footer.allFragrances": "Toutes les fragrances",
@@ -237,6 +245,8 @@ const fr: Messages = {
   "checkout.shippingCalc": "Calculé dans le formulaire",
   "checkout.totalDue": "Total dû",
   "checkout.detecting": "Détection de votre localisation…",
+  "checkout.loading": "Préparation du paiement…",
+  "checkout.country": "Pays / région",
   "checkout.displayNote":
     "Prix affichés en {display}. Le paiement sera prélevé en {charge}.",
   "checkout.detected": "Pays du client {place}, payer avec {provider}",
@@ -309,6 +319,8 @@ const es: Messages = {
   "product.likeAdd": "Me gusta este producto",
   "product.likeRemove": "Quitar me gusta",
   "product.addToCart": "Añadir al carrito",
+  "product.selectSize": "Elegir talla",
+  "product.selectSizeHint": "Elige tu talla EU antes de añadir al carrito.",
   "product.signInForPricing": "Inicia sesión para ver precios",
   "product.signInForPricingDetail":
     "Crea una cuenta o inicia sesión para ver precios y añadir artículos a tu bolsa.",
@@ -320,6 +332,7 @@ const es: Messages = {
   "footer.support": "Soporte",
   "footer.company": "Casa",
   "footer.viewMore": "Ver más",
+  "footer.viewLess": "Ver menos",
   "footer.tagline":
     "Haute Parfumerie - aceites de perfume sin alcohol con oficio artesanal. Cada fragancia se vende nueva y se envía tras confirmar el pago.",
   "footer.allFragrances": "Todas las fragancias",
@@ -357,6 +370,8 @@ const es: Messages = {
   "checkout.shippingCalc": "Se calcula en el formulario",
   "checkout.totalDue": "Total a pagar",
   "checkout.detecting": "Detectando tu ubicación…",
+  "checkout.loading": "Preparando el pago…",
+  "checkout.country": "País / región",
   "checkout.displayNote":
     "Precios mostrados en {display}. El cargo se realizará en {charge}.",
   "checkout.detected": "País del cliente {place}, pagar con {provider}",
@@ -429,6 +444,8 @@ const pt: Messages = {
   "product.likeAdd": "Curtir este produto",
   "product.likeRemove": "Remover curtida",
   "product.addToCart": "Adicionar ao carrinho",
+  "product.selectSize": "Escolher tamanho",
+  "product.selectSizeHint": "Escolha o tamanho EU antes de adicionar ao carrinho.",
   "product.signInForPricing": "Inicie sessão para ver preços",
   "product.signInForPricingDetail":
     "Crie uma conta ou inicie sessão para ver preços e adicionar itens ao carrinho.",
@@ -440,6 +457,7 @@ const pt: Messages = {
   "footer.support": "Apoio",
   "footer.company": "Casa",
   "footer.viewMore": "Ver mais",
+  "footer.viewLess": "Ver menos",
   "footer.tagline":
     "Haute Parfumerie - óleos de perfume sem álcool com artesanato. Cada fragrância é nova e enviada após confirmação do pagamento.",
   "footer.allFragrances": "Todas as fragrâncias",
@@ -477,6 +495,8 @@ const pt: Messages = {
   "checkout.shippingCalc": "Calculado no formulário",
   "checkout.totalDue": "Total a pagar",
   "checkout.detecting": "A detetar a sua localização…",
+  "checkout.loading": "A preparar o pagamento…",
+  "checkout.country": "País / região",
   "checkout.displayNote":
     "Preços apresentados em {display}. O pagamento será cobrado em {charge}.",
   "checkout.detected": "País do cliente {place}, pagar com {provider}",
@@ -549,6 +569,8 @@ const de: Messages = {
   "product.likeAdd": "Produkt liken",
   "product.likeRemove": "Like entfernen",
   "product.addToCart": "In den Warenkorb",
+  "product.selectSize": "Größe wählen",
+  "product.selectSizeHint": "Wählen Sie Ihre EU-Größe, bevor Sie in den Warenkorb legen.",
   "product.signInForPricing": "Anmelden für Preise",
   "product.signInForPricingDetail":
     "Erstellen Sie ein Konto oder melden Sie sich an, um Preise zu sehen und Artikel in den Warenkorb zu legen.",
@@ -560,6 +582,7 @@ const de: Messages = {
   "footer.support": "Support",
   "footer.company": "Haus",
   "footer.viewMore": "Mehr ansehen",
+  "footer.viewLess": "Weniger ansehen",
   "footer.tagline":
     "Haute Parfumerie - alkoholfreie ölbasierte Parfümöle mit handwerklicher Sorgfalt. Jeder Duft ist neu und wird nach Zahlungsbestätigung versendet.",
   "footer.allFragrances": "Alle Düfte",
@@ -597,6 +620,8 @@ const de: Messages = {
   "checkout.shippingCalc": "Wird im Formular berechnet",
   "checkout.totalDue": "Gesamtbetrag",
   "checkout.detecting": "Standort wird erkannt…",
+  "checkout.loading": "Checkout wird vorbereitet…",
+  "checkout.country": "Land / Region",
   "checkout.displayNote":
     "Preise in {display} angezeigt. Abbuchung erfolgt in {charge}.",
   "checkout.detected": "Kundenland {place}, zahlen mit {provider}",

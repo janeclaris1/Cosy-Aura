@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { upsertMailchimpContact } from "@/lib/mailchimp";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 function normalizePhone(raw: string): string {
   return raw.trim().replace(/[\s()-]/g, "");
@@ -15,6 +16,10 @@ function isValidPhone(phone: string): boolean {
 }
 
 export async function POST(req: Request) {
+  if (await checkPublicRateLimit(req, "register", 10)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = await req.json();
     const name = String(body.name || "").trim();

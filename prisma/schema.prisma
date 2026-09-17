@@ -106,6 +106,11 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum CheckoutAbandonmentStatus {
+  ACTIVE
+  CONVERTED
+}
+
 enum OrderChannel {
   WEB
   POS
@@ -174,8 +179,9 @@ model User {
 
   accounts         Account[]
   sessions         Session[]
-  orders           Order[]
-  wishlist         WishlistItem[]
+  orders               Order[]
+  checkoutAbandonments CheckoutAbandonment[]
+  wishlist               WishlistItem[]
   reviews          FragranceReview[]
   staffAssignments StaffAssignment[]
   auditLogs        AuditLog[]
@@ -199,6 +205,8 @@ model User {
   creditDownPaymentsRecorded  CreditAgreement[]        @relation("CreditDownPaymentRecordedBy")
   creditApprovalsGranted      User[]                   @relation("CreditApprovedBy")
   creditApprovedBy User? @relation("CreditApprovedBy", fields: [creditApprovedByUserId], references: [id], onDelete: SetNull)
+  hrDocumentTemplatesCreated HrDocumentTemplate[] @relation("HrTemplateCreatedBy")
+  hrDocumentInstancesGenerated HrDocumentInstance[] @relation("HrDocumentGeneratedBy")
 
   @@index([email])
   @@index([phone])
@@ -672,6 +680,7 @@ model Order {
   reviews           FragranceReview[]
   creditAgreement   CreditAgreement?
   staffCommissions  StaffCommissionEntry[]
+  checkoutAbandonment CheckoutAbandonment?
 
   @@index([userId])
   @@index([status])
@@ -742,6 +751,37 @@ model CreditPayment {
 
   @@index([creditAgreementId])
   @@index([paidAt])
+}
+
+/** Checkout started (email entered) but not yet paid — for admin recovery. */
+model CheckoutAbandonment {
+  id               String                    @id @default(cuid())
+  email            String
+  userId           String?
+  status           CheckoutAbandonmentStatus @default(ACTIVE)
+  items            Json
+  subtotalGhs      Float
+  displayCurrency  String?
+  shippingCountry  String?
+  customerName     String?
+  customerPhone    String?
+  checkoutProvider String?
+  orderId          String?                   @unique
+  /** One-click cart restore link in recovery emails. */
+  recoveryToken    String                    @unique @default(cuid())
+  recoveryEmailedAt DateTime?
+  recoveryEmailCount Int                    @default(0)
+  lastSeenAt       DateTime                  @default(now())
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([status, lastSeenAt])
+  @@index([shippingCountry])
+  @@index([lastSeenAt])
 }
 
 model OrderItem {
@@ -951,9 +991,70 @@ model EmployeeProfile {
   payRunLines   PayRunLine[]
   staffCommissions StaffCommissionEntry[]
   commissionOrders Order[] @relation("OrderCommissionEmployee")
+  hrDocumentInstances HrDocumentInstance[]
 
   @@index([employmentType])
   @@index([hireDate])
+}
+
+enum HrDocumentCategory {
+  OFFER_LETTER
+  EMPLOYMENT_CONTRACT
+  DISCIPLINARY_WARNING
+  FINAL_WRITTEN_WARNING
+  ONBOARDING_CHECKLIST
+  OFFBOARDING_CHECKLIST
+}
+
+enum HrDocumentTemplateKind {
+  LETTER
+  CHECKLIST
+}
+
+model HrDocumentTemplate {
+  id              String                 @id @default(cuid())
+  slug            String                 @unique
+  name            String
+  category        HrDocumentCategory
+  kind            HrDocumentTemplateKind @default(LETTER)
+  country         String                 @default("GH")
+  staffRole       StaffRole?
+  employmentType  EmploymentType?
+  body            String                 @db.Text
+  checklistItems  Json?
+  active          Boolean                @default(true)
+  sortOrder       Int                    @default(0)
+  version         Int                    @default(1)
+  createdById     String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  createdBy User?                @relation("HrTemplateCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  instances HrDocumentInstance[]
+
+  @@index([category, country, active])
+  @@index([staffRole])
+}
+
+model HrDocumentInstance {
+  id                String   @id @default(cuid())
+  templateId        String
+  employeeId        String
+  renderedBody      String   @db.Text
+  mergeData         Json?
+  checklistProgress Json?
+  generatedById     String?
+  generatedAt       DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  template    HrDocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  employee    EmployeeProfile    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  generatedBy User?              @relation("HrDocumentGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([templateId])
+  @@index([generatedAt])
 }
 
 model LeaveBalance {
@@ -1280,6 +1381,8 @@ model StoreConfig {
   id                     String   @id @default("default")
   nonAfricaMarkupEnabled Boolean  @default(false)
   nonAfricaMarkupUsd     Float    @default(10)
+  /// ProductType → USD surcharge override for non-African shoppers (falls back to nonAfricaMarkupUsd).
+  catalogMarkupUsd       Json     @default("{}")
   /// Master switch for WhatsApp order buttons (checkout + product pages).
   whatsappCheckoutEnabled Boolean @default(false)
   /// ISO country code → WhatsApp number digits, e.g. { "GH": "233500741699", "CM": "2376..." }

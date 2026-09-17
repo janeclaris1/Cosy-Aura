@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import type { StaffRole } from "@prisma/client";
 import { authOptions } from "./auth";
-import { isAdminRateLimited } from "./admin-rate-limit";
+import { isAdminMutationCsrfBlocked } from "./admin-csrf";
+import { isAdminRateLimitedAsync } from "./admin-rate-limit";
 import { prisma } from "./prisma";
 import {
   canAccessNavItem,
@@ -65,20 +66,29 @@ async function loadAdminContext(): Promise<AdminContext | null> {
 }
 
 export async function requireAdminPage(permission?: Permission | Permission[]) {
+  const session = await getServerSession(authOptions);
   const ctx = await loadAdminContext();
-  if (!ctx) redirect("/admin/login");
+  if (!ctx) {
+    // Valid session but inactive/demoted — don't send them through login again.
+    if (session?.user?.id) redirect("/admin?access=denied");
+    redirect("/admin/login");
+  }
   if (permission && !hasPermission(ctx.permissions, permission)) {
-    redirect("/admin");
+    redirect("/admin?access=denied");
   }
   return ctx;
 }
 
 /** Page gate: user needs at least one of the listed permissions. */
 export async function requireAdminPageAny(permissions: Permission[]) {
+  const session = await getServerSession(authOptions);
   const ctx = await loadAdminContext();
-  if (!ctx) redirect("/admin/login");
+  if (!ctx) {
+    if (session?.user?.id) redirect("/admin?access=denied");
+    redirect("/admin/login");
+  }
   if (!hasAnyPermission(ctx.permissions, permissions)) {
-    redirect("/admin");
+    redirect("/admin?access=denied");
   }
   return ctx;
 }
@@ -92,14 +102,27 @@ export async function requireAdminApi(
   | { ctx: AdminContext; error: null }
   | { ctx: null; error: NextResponse }
 > {
-  if (options?.req && isAdminRateLimited(options.req, options.rateLimitKey || "admin")) {
-    return {
-      ctx: null,
-      error: NextResponse.json(
-        { error: "Too many requests. Please wait a moment and try again." },
-        { status: 429 }
-      ),
-    };
+  if (options?.req) {
+    if (isAdminMutationCsrfBlocked(options.req)) {
+      return {
+        ctx: null,
+        error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+      };
+    }
+    if (
+      await isAdminRateLimitedAsync(
+        options.req,
+        options.rateLimitKey || "admin"
+      )
+    ) {
+      return {
+        ctx: null,
+        error: NextResponse.json(
+          { error: "Too many requests. Please wait a moment and try again." },
+          { status: 429 }
+        ),
+      };
+    }
   }
 
   const ctx = await loadAdminContext();

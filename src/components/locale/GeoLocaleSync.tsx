@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { ProductType } from "@prisma/client";
+import { parseCatalogMarkupUsd } from "@/lib/catalog-markup";
 import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import { isUiLang } from "@/lib/geo-locale";
 import { useLocaleStore } from "@/lib/locale-store";
@@ -37,6 +38,7 @@ export function GeoLocaleSync() {
         const config = (await configRes.json()) as {
           nonAfricaMarkupEnabled?: boolean;
           nonAfricaMarkupUsd?: number;
+          catalogMarkupUsd?: unknown;
           guestHiddenPriceCatalogs?: ProductType[];
         };
         if (cancelled) return;
@@ -45,6 +47,7 @@ export function GeoLocaleSync() {
           setStorePricing({
             nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
             nonAfricaMarkupUsd: Number(config.nonAfricaMarkupUsd) || 10,
+            catalogMarkupUsd: parseCatalogMarkupUsd(config.catalogMarkupUsd),
             guestHiddenPriceCatalogs: parseGuestHiddenPriceCatalogs(
               config.guestHiddenPriceCatalogs
             ),

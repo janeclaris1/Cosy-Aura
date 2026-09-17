@@ -69,7 +69,7 @@ export function CatalogProductCard({
   const primaryImage =
     fragrance.images[0]?.url || catalogPlaceholder(productType);
   const member = useMemberDiscount();
-  const regionalPrice = useRegionalPrice(fragrance.price);
+  const regionalPrice = useRegionalPrice(fragrance.price, fragrance.productType);
   const displayPrice =
     mounted && member.active ? member.apply(regionalPrice) : regionalPrice;
   const inStock = isInStockForCountry(
@@ -102,7 +102,7 @@ export function CatalogProductCard({
     <article
       ref={ref}
       className={cn(
-        "group/card flex h-full flex-col overflow-hidden bg-white",
+        "group/card flex h-full flex-col overflow-hidden rounded-xl bg-white",
         "ring-1 ring-stone-200/90 shadow-[0_1px_2px_rgba(3,4,94,0.04)]",
         "transition-all duration-300 ease-organic",
         "hover:shadow-[0_8px_30px_rgba(3,4,94,0.08)] hover:ring-[#03045e]/15",
@@ -199,7 +199,7 @@ export function CatalogProductCard({
           className="text-stone-500"
         />
 
-        {inStock && !priceHidden ? (
+        {inStock && !priceHidden && productType !== "SNEAKER" ? (
           <div className="mt-2.5" onClick={(e) => e.stopPropagation()}>
             <WhatsAppToCheckoutButton
               compact

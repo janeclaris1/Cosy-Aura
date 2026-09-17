@@ -1,7 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
 import type { BottleSize } from "../../src/lib/bottle-sizes";
-import { postInventoryMovementJournal } from "../../src/lib/accounting-inventory-post";
-import { resolveAccountingActor } from "../../src/lib/accounting";
 
 /**
  * Upsert branch stock and post a Ghana inventory receipt journal when applying imports.
@@ -52,6 +50,10 @@ export async function upsertBranchStockWithReceipt(
   if (delta <= 0) return;
 
   try {
+    const { resolveAccountingActor } = await import("../../src/lib/accounting");
+    const { postInventoryMovementJournal } = await import(
+      "../../src/lib/accounting-inventory-post"
+    );
     const actorId = await resolveAccountingActor(prisma);
     await prisma.$transaction((tx) =>
       postInventoryMovementJournal(tx, {

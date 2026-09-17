@@ -2,13 +2,18 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkoutBaseUrl } from "@/lib/checkout-url";
 import {
+  aramexShippingLabel,
+  resolveAramexRateForCheckout,
+  type LiveShippingRate,
+} from "@/lib/shipping";
+import {
   filterShippingMethodsForCountry,
   getActiveShippingMethods,
   isPickupShippingMethod,
+  usesAramexShipping,
 } from "@/lib/shipping-methods";
 import {
   initializePaystackTransaction,
-  isPaystackCountry,
   paystackChannels,
   paystackCharge,
   paystackSecretForCountry,
@@ -36,13 +41,23 @@ import { resolveGhanaDeliveryLocation } from "@/lib/ghana-geo";
 import { earliestDeliveryIso } from "@/lib/delivery-dates";
 import { resolveFulfillmentBranchId, getCountryCommerceConfig } from "@/lib/branches";
 import { assertCartSizeStockAvailable } from "@/lib/size-stock-server";
+import {
+  linkCheckoutAbandonmentToOrder,
+  markCheckoutAbandonmentsConverted,
+} from "@/lib/checkout-abandonment";
+import {
+  assertCheckoutGateway,
+  logCheckoutCountryHintMismatch,
+  resolveCheckoutCountry,
+  resolveServerCountry,
+} from "@/lib/geo-server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
       items,
-      country,
+      country: countryRaw,
       email,
       name,
       phone,
@@ -50,6 +65,8 @@ export async function POST(req: Request) {
       city,
       postcode,
       shippingMethodId,
+      shippingRateId,
+      shippingPriceUsd,
       deliveryDate: deliveryDateRaw,
       deliveryPayer: deliveryPayerRaw,
       deliveryLat,
@@ -73,6 +90,8 @@ export async function POST(req: Request) {
       city?: string;
       postcode?: string;
       shippingMethodId?: string;
+      shippingRateId?: string;
+      shippingPriceUsd?: number;
       deliveryDate?: string;
       deliveryPayer?: string;
       deliveryLat?: number;
@@ -86,12 +105,14 @@ export async function POST(req: Request) {
     if (!items?.length) {
       return NextResponse.json({ error: "Your cart is empty" }, { status: 400 });
     }
-    if (!isPaystackCountry(country)) {
-      return NextResponse.json(
-        { error: "Paystack checkout is only available for Ghana and Nigeria" },
-        { status: 400 }
-      );
+    const ipHint = await resolveServerCountry(req);
+    const checkoutCountry = resolveCheckoutCountry(countryRaw, ipHint);
+    const gateway = assertCheckoutGateway(checkoutCountry, "paystack");
+    if (!gateway.ok) {
+      return NextResponse.json({ error: gateway.error }, { status: gateway.status });
     }
+    logCheckoutCountryHintMismatch(gateway.country, ipHint, "paystack");
+    const country = gateway.country;
 
     try {
       await assertCartSizeStockAvailable(items, country);
@@ -287,16 +308,48 @@ export async function POST(req: Request) {
       } // end courier (non-pickup)
     }
 
+    const useAramex = usesAramexShipping(country);
+    let aramexRate: LiveShippingRate | null = null;
+
+    if (useAramex) {
+      try {
+        aramexRate = await resolveAramexRateForCheckout({
+          rateId: String(shippingRateId || shippingMethodId || ""),
+          to: {
+            name: String(name).trim(),
+            street1: String(address).trim(),
+            city: String(city).trim(),
+            zip: String(postcode || "").trim() || "00000",
+            country: country!,
+            phone: String(phone || "").trim(),
+            email: customerEmail,
+          },
+          quotedPriceUsd:
+            shippingPriceUsd != null ? Number(shippingPriceUsd) : undefined,
+        });
+      } catch (rateErr) {
+        return NextResponse.json(
+          {
+            error:
+              rateErr instanceof Error
+                ? rateErr.message
+                : "Could not confirm Aramex shipping rate",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const methods = filterShippingMethodsForCountry(
       await getActiveShippingMethods(),
       country
     );
     const shipping =
       methods.find((method) => method.id === shippingMethodId) || methods[0];
-    if (!useGhanaCourier && !shipping) {
+    if (!useGhanaCourier && !useAramex && !shipping) {
       return NextResponse.json({ error: "No shipping methods available" }, { status: 400 });
     }
-    if (!useGhanaCourier && shipping && isPickupShippingMethod(shipping)) {
+    if (!useGhanaCourier && !useAramex && shipping && isPickupShippingMethod(shipping)) {
       return NextResponse.json(
         { error: "Shop pickup is only available in Ghana." },
         { status: 400 }
@@ -328,7 +381,9 @@ export async function POST(req: Request) {
       qualifiesForGhanaFreeDelivery(itemsTotal);
     const shippingGhs = useGhanaCourier
       ? applyGhanaFreeDelivery(courierFeeGhs, itemsTotal)
-      : shippingUsdToGhs(shipping!.price, fx.rates);
+      : useAramex
+        ? shippingUsdToGhs(aramexRate!.price, fx.rates)
+        : shippingUsdToGhs(shipping!.price, fx.rates);
     // Record full order value; Paystack charge may be delivery-only for COD
     const orderTotal = itemsTotal + shippingGhs;
     const chargeTotal =
@@ -358,7 +413,9 @@ export async function POST(req: Request) {
           : deliveryPayer === "partner"
             ? `${providerLabel} · paid in full${freeDeliverySuffix}`
             : `${providerLabel} · pay rider${freeDeliverySuffix}`
-      : `${shipping!.name} · ${shipping!.eta}`;
+      : useAramex
+        ? aramexShippingLabel(aramexRate!)
+        : `${shipping!.name} · ${shipping!.eta}`;
 
     const fulfillmentBranchId = await resolveFulfillmentBranchId(dest);
     const pickupCommerce =
@@ -391,6 +448,7 @@ export async function POST(req: Request) {
         total: orderTotal,
         shippingMethod: shippingMethodLabel,
         shippingCost: shippingGhs,
+        ...(useAramex ? { carrier: "Aramex" } : {}),
         shippingName: String(name).trim(),
         shippingPhone: String(phone || "").trim() || null,
         shippingAddress: resolvedShippingAddress,
@@ -411,6 +469,8 @@ export async function POST(req: Request) {
         items: { create: orderItemRows },
       },
     });
+
+    void linkCheckoutAbandonmentToOrder(customerEmail, order.id);
 
     const reference = `ca_${order.id}`;
     const baseUrl = checkoutBaseUrl(req);
@@ -435,6 +495,7 @@ export async function POST(req: Request) {
           stripePaymentId: "free-checkout",
         },
       });
+      void markCheckoutAbandonmentsConverted(customerEmail, order.id);
 
       return NextResponse.json({
         authorizationUrl: `${baseUrl}/checkout/success?reference=${encodeURIComponent(reference)}`,
@@ -499,7 +560,11 @@ export async function POST(req: Request) {
 
     await prisma.order.update({
       where: { id: order.id },
-      data: { paystackReference: init.data.reference || reference },
+      data: {
+        paystackReference: init.data.reference || reference,
+        chargeAmount: charge!.displayTotal,
+        chargeCurrency: charge!.currency,
+      },
     });
 
     return NextResponse.json({

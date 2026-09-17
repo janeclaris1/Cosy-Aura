@@ -29,7 +29,7 @@ export default async function AdminHrPage() {
       <AdminPageHeader
         eyebrow="People"
         title="HR & payroll"
-        description="Staff access, employee records, leave, in-store sales commissions, and monthly payroll with Ghana PAYE and SSNIT."
+        description="Staff access, employee records, HR document templates, leave, commissions, and monthly payroll with Ghana PAYE and SSNIT."
       />
       <HrHub access={access} />
     </div>

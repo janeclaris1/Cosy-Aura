@@ -2,16 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
 import {
-  filterShippingMethodsForCountry,
-  getActiveShippingMethods,
-  toStripeShippingOptions,
-} from "@/lib/shipping-methods";
-import { COUNTRIES } from "@/lib/countries";
+  aramexShippingLabel,
+  resolveAramexRateForCheckout,
+} from "@/lib/shipping";
+import { shippingUsdToGhs } from "@/lib/fx";
 import { checkoutBaseUrl } from "@/lib/checkout-url";
-import {
-  formatDeliveryDateLabel,
-  parseDeliveryDate,
-} from "@/lib/delivery-dates";
+import { parseDeliveryDate } from "@/lib/delivery-dates";
 import {
   assertGuestCanCheckoutItems,
   cartLinesTotal,
@@ -19,6 +15,13 @@ import {
   priceCartLines,
 } from "@/lib/checkout-pricing";
 import { fetchRatesFromGhs, rateFromGhs } from "@/lib/fx";
+import {
+  assertCheckoutGateway,
+  logCheckoutCountryHintMismatch,
+  resolveCheckoutCountry,
+  resolveServerCountry,
+} from "@/lib/geo-server";
+import { linkCheckoutAbandonmentToOrder } from "@/lib/checkout-abandonment";
 
 function toAbsoluteImageUrl(url: string | undefined | null): string | null {
   if (!url) return null;
@@ -30,38 +33,22 @@ function toAbsoluteImageUrl(url: string | undefined | null): string | null {
   return `${base}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-/**
- * Stripe Checkout shipping_address_collection only accepts this set.
- * (Excludes sanctions / unsupported codes like CU, IR, KP, SY, etc.)
- */
-const STRIPE_SHIPPING_COUNTRY_CODES = new Set([
-  "AC","AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AT","AU","AW","AX","AZ",
-  "BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS",
-  "BT","BV","BW","BY","BZ","CA","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO",
-  "CR","CV","CW","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER",
-  "ES","ET","FI","FJ","FK","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL",
-  "GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HN","HR","HT","HU","ID",
-  "IE","IL","IM","IN","IO","IQ","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI",
-  "KM","KN","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV",
-  "LY","MA","MC","MD","ME","MF","MG","MK","ML","MM","MN","MO","MQ","MR","MS","MT",
-  "MU","MV","MW","MX","MY","MZ","NA","NC","NE","NG","NI","NL","NO","NP","NR","NU",
-  "NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PY","QA",
-  "RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL",
-  "SM","SN","SO","SR","SS","ST","SV","SX","SZ","TA","TC","TD","TF","TG","TH","TJ",
-  "TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","US","UY","UZ","VA",
-  "VC","VE","VG","VN","VU","WF","WS","XK","YE","YT","ZA","ZM","ZW","ZZ",
-]);
-
-function allowedShippingCountries(): string[] {
-  return COUNTRIES.map((c) => c.code).filter((code) =>
-    STRIPE_SHIPPING_COUNTRY_CODES.has(code)
-  );
-}
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { items, deliveryDate: deliveryDateRaw, shopperCountry } = body;
+    const {
+      items,
+      deliveryDate: deliveryDateRaw,
+      shopperCountry,
+      shippingRateId,
+      shippingPriceUsd,
+      email,
+      name,
+      phone,
+      address,
+      city,
+      postcode,
+    } = body;
     const deliveryDate = parseDeliveryDate(deliveryDateRaw);
 
     if (!items?.length) {
@@ -70,6 +57,65 @@ export async function POST(req: Request) {
     if (!deliveryDate) {
       return NextResponse.json(
         { error: "Please select a delivery date (Monday to Saturday)" },
+        { status: 400 }
+      );
+    }
+
+    const customerEmail = String(email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      return NextResponse.json({ error: "A valid email is required" }, { status: 400 });
+    }
+    if (
+      !String(name || "").trim() ||
+      !String(address || "").trim() ||
+      !String(city || "").trim() ||
+      !String(postcode || "").trim()
+    ) {
+      return NextResponse.json(
+        { error: "Name, address, city, and postal code are required" },
+        { status: 400 }
+      );
+    }
+    if (!String(shippingRateId || "").trim()) {
+      return NextResponse.json(
+        { error: "Select an Aramex shipping option" },
+        { status: 400 }
+      );
+    }
+
+    const ipHint = await resolveServerCountry(req);
+    const checkoutCountry = resolveCheckoutCountry(shopperCountry, ipHint);
+    const gateway = assertCheckoutGateway(checkoutCountry, "stripe");
+    if (!gateway.ok) {
+      return NextResponse.json({ error: gateway.error }, { status: gateway.status });
+    }
+    logCheckoutCountryHintMismatch(gateway.country, ipHint, "stripe");
+    const resolvedShopperCountry = gateway.country;
+
+    let aramexRate;
+    try {
+      aramexRate = await resolveAramexRateForCheckout({
+        rateId: String(shippingRateId),
+        to: {
+          name: String(name).trim(),
+          street1: String(address).trim(),
+          city: String(city).trim(),
+          zip: String(postcode).trim(),
+          country: resolvedShopperCountry,
+          phone: String(phone || "").trim(),
+          email: customerEmail,
+        },
+        quotedPriceUsd:
+          shippingPriceUsd != null ? Number(shippingPriceUsd) : undefined,
+      });
+    } catch (rateErr) {
+      return NextResponse.json(
+        {
+          error:
+            rateErr instanceof Error
+              ? rateErr.message
+              : "Could not confirm Aramex shipping rate",
+        },
         { status: 400 }
       );
     }
@@ -101,12 +147,14 @@ export async function POST(req: Request) {
       throw err;
     }
     const [pricedItems, fx] = await Promise.all([
-      priceCartLines(items, shopperCountry ?? null, {
+      priceCartLines(items, resolvedShopperCountry, {
         applyMemberDiscount: member.applyMemberDiscount,
       }),
       fetchRatesFromGhs(),
     ]);
     const itemsTotal = cartLinesTotal(pricedItems);
+    const shippingCostGhs = shippingUsdToGhs(aramexRate.price, fx.rates);
+    const orderTotalGhs = itemsTotal + shippingCostGhs;
     // US Stripe accounts cannot charge GHS — convert catalog (GHS) → USD for Checkout.
     const usdPerGhs = rateFromGhs(fx.rates, "USD");
 
@@ -131,15 +179,24 @@ export async function POST(req: Request) {
 
     const order = await prisma.order.create({
       data: {
-        email: "pending@checkout.cosyaura.com",
+        email: customerEmail,
         ...(member.userId ? { user: { connect: { id: member.userId } } } : {}),
-        total: itemsTotal,
-        shippingMethod: null,
-        shippingCost: 0,
+        total: orderTotalGhs,
+        shippingMethod: aramexShippingLabel(aramexRate),
+        shippingCost: shippingCostGhs,
+        carrier: "Aramex",
+        shippingName: String(name).trim(),
+        shippingPhone: String(phone || "").trim() || null,
+        shippingAddress: String(address).trim(),
+        shippingCity: String(city).trim(),
+        shippingPostcode: String(postcode).trim(),
+        shippingCountry: resolvedShopperCountry,
         deliveryDate,
         items: { create: orderItemRows },
       },
     });
+
+    void linkCheckoutAbandonmentToOrder(customerEmail, order.id);
 
     const lineItems = await Promise.all(
       pricedItems.map(
@@ -181,49 +238,58 @@ export async function POST(req: Request) {
       )
     );
 
-    const baseUrl = checkoutBaseUrl(req);
+    lineItems.push({
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: aramexShippingLabel(aramexRate),
+          description: "International delivery via Aramex from Accra, Ghana",
+        },
+        unit_amount: Math.max(1, Math.round(aramexRate.price * 100)),
+      },
+      quantity: 1,
+    });
 
-    const shippingMethods = filterShippingMethodsForCountry(
-      await getActiveShippingMethods(),
-      shopperCountry ?? null
-    );
+    const baseUrl = checkoutBaseUrl(req);
 
     const session = await stripe.checkout.sessions.create({
       ui_mode: "embedded",
       mode: "payment",
       line_items: lineItems,
+      customer_email: customerEmail,
       consent_collection: {
         terms_of_service: "required",
       },
       custom_text: {
-        shipping_address: {
-          message: `We deliver Monday to Saturday. Requested delivery: ${formatDeliveryDateLabel(
-            deliveryDate.toISOString().slice(0, 10)
-          )}. Add your WhatsApp number for a payment receipt.`,
-        },
         terms_of_service_acceptance: {
           message:
             "By placing this order, you agree to our Terms and Conditions, including shipping and returns terms.",
         },
       },
-      // Full Checkout form: email, shipping address, shipping method, payment
       billing_address_collection: "auto",
       phone_number_collection: { enabled: true },
-      shipping_address_collection: {
-        allowed_countries: allowedShippingCountries() as never[],
-      },
-      shipping_options: toStripeShippingOptions(shippingMethods),
       return_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         orderId: order.id,
         deliveryDate: deliveryDate.toISOString().slice(0, 10),
         usdPerGhs: String(usdPerGhs),
+        shippingRateId: aramexRate.id,
+        aramexService: aramexRate.service,
       },
     });
 
     await prisma.order.update({
       where: { id: order.id },
-      data: { stripeSessionId: session.id, paymentProvider: "stripe" },
+      data: {
+        stripeSessionId: session.id,
+        paymentProvider: "stripe",
+        ...(session.amount_total != null
+          ? {
+              chargeAmount: session.amount_total / 100,
+              chargeCurrency: (session.currency || "usd").toUpperCase(),
+            }
+          : {}),
+      },
     });
 
     if (!session.client_secret) {

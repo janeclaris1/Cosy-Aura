@@ -7,11 +7,23 @@ BEGIN;
 
 -- --------------------------------------------------------------------------
 -- 0. Backups (same transaction; also run scripts/backup-db.sh beforehand)
+-- Guarded for shadow DB replay when legacy Watch tables were never created.
 -- --------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS "_backup_Watch" AS SELECT * FROM "Watch";
-CREATE TABLE IF NOT EXISTS "_backup_WatchImage" AS SELECT * FROM "WatchImage";
-CREATE TABLE IF NOT EXISTS "_backup_OrderItem" AS SELECT * FROM "OrderItem";
-CREATE TABLE IF NOT EXISTS "_backup_WishlistItem" AS SELECT * FROM "WishlistItem";
+DO $$
+BEGIN
+  IF to_regclass('public."Watch"') IS NOT NULL THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS "_backup_Watch" AS SELECT * FROM "Watch"';
+  END IF;
+  IF to_regclass('public."WatchImage"') IS NOT NULL THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS "_backup_WatchImage" AS SELECT * FROM "WatchImage"';
+  END IF;
+  IF to_regclass('public."OrderItem"') IS NOT NULL THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS "_backup_OrderItem" AS SELECT * FROM "OrderItem"';
+  END IF;
+  IF to_regclass('public."WishlistItem"') IS NOT NULL THEN
+    EXECUTE 'CREATE TABLE IF NOT EXISTS "_backup_WishlistItem" AS SELECT * FROM "WishlistItem"';
+  END IF;
+END $$;
 
 -- --------------------------------------------------------------------------
 -- 1. New enums
@@ -43,14 +55,51 @@ ALTER TABLE IF EXISTS "Watch" RENAME TO "Fragrance";
 ALTER TABLE IF EXISTS "WatchImage" RENAME TO "FragranceImage";
 
 -- --------------------------------------------------------------------------
--- 3. Rename FK columns on related tables
+-- 3–9. Legacy data migration (skip when no Watch/Fragrance — shadow DB replay)
 -- --------------------------------------------------------------------------
-ALTER TABLE "FragranceImage" RENAME COLUMN "watchId" TO "fragranceId";
-ALTER TABLE "OrderItem" RENAME COLUMN "watchId" TO "fragranceId";
-ALTER TABLE "WishlistItem" RENAME COLUMN "watchId" TO "fragranceId";
+DO $$
+BEGIN
+  IF to_regclass('public."Watch"') IS NULL
+     AND to_regclass('public."Fragrance"') IS NULL THEN
+    RETURN;
+  END IF;
 
--- Rename unique constraint on wishlist if present
+  IF to_regclass('public."FragranceImage"') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'FragranceImage' AND column_name = 'watchId'
+     ) THEN
+    ALTER TABLE "FragranceImage" RENAME COLUMN "watchId" TO "fragranceId";
+  END IF;
+
+  IF to_regclass('public."OrderItem"') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'OrderItem' AND column_name = 'watchId'
+     ) THEN
+    ALTER TABLE "OrderItem" RENAME COLUMN "watchId" TO "fragranceId";
+  END IF;
+
+  IF to_regclass('public."WishlistItem"') IS NOT NULL
+     AND EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'WishlistItem' AND column_name = 'watchId'
+     ) THEN
+    ALTER TABLE "WishlistItem" RENAME COLUMN "watchId" TO "fragranceId";
+  END IF;
+
+  IF to_regclass('public."Fragrance"') IS NULL THEN
+    RETURN;
+  END IF;
+END $$;
+
 ALTER INDEX IF EXISTS "WishlistItem_userId_watchId_key" RENAME TO "WishlistItem_userId_fragranceId_key";
+
+DO $$
+BEGIN
+  IF to_regclass('public."Fragrance"') IS NULL THEN
+    RETURN;
+  END IF;
 
 -- --------------------------------------------------------------------------
 -- 4. Add new perfume columns (nullable first, then backfill)
@@ -171,7 +220,6 @@ DROP TYPE IF EXISTS "StrapMaterial" CASCADE;
 CREATE INDEX IF NOT EXISTS "Fragrance_fragranceFamily_idx" ON "Fragrance"("fragranceFamily");
 CREATE INDEX IF NOT EXISTS "Fragrance_concentration_idx" ON "Fragrance"("concentration");
 
-DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Watch_brandId_idx')
      AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'Fragrance_brandId_idx') THEN
     ALTER INDEX "Watch_brandId_idx" RENAME TO "Fragrance_brandId_idx";
@@ -220,9 +268,13 @@ DO $$ BEGIN
      AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'OrderItem_fragranceId_idx') THEN
     ALTER INDEX "OrderItem_watchId_idx" RENAME TO "OrderItem_fragranceId_idx";
   END IF;
-END $$;
 
-CREATE INDEX IF NOT EXISTS "FragranceImage_fragranceId_idx" ON "FragranceImage"("fragranceId");
-CREATE INDEX IF NOT EXISTS "OrderItem_fragranceId_idx" ON "OrderItem"("fragranceId");
+  IF to_regclass('public."FragranceImage"') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS "FragranceImage_fragranceId_idx" ON "FragranceImage"("fragranceId");
+  END IF;
+  IF to_regclass('public."OrderItem"') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS "OrderItem_fragranceId_idx" ON "OrderItem"("fragranceId");
+  END IF;
+END $$;
 
 COMMIT;

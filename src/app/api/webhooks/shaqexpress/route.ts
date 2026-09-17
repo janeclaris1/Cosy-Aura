@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isProductionEnv } from "@/lib/env-security";
 import { prisma } from "@/lib/prisma";
 
 function mapShaqStatus(
@@ -21,8 +22,12 @@ function mapShaqStatus(
 }
 
 export async function POST(req: Request) {
-  const secret = process.env.SHAQEXPRESS_WEBHOOK_SECRET;
-  if (secret) {
+  const secret = process.env.SHAQEXPRESS_WEBHOOK_SECRET?.trim();
+  if (!secret) {
+    if (isProductionEnv()) {
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+  } else {
     const header =
       req.headers.get("x-shaq-signature") ||
       req.headers.get("x-webhook-secret") ||

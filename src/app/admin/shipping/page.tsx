@@ -5,7 +5,7 @@ import { ShippingManager } from "@/components/admin/ShippingManager";
 import { AdminPageHeader, adminPageWrap } from "@/components/admin/admin-ui";
 
 export default async function AdminShippingPage() {
-  await requireAdminPage();
+  await requireAdminPage("shipping.write");
 
   await ensureDefaultShippingMethods();
 
@@ -18,7 +18,7 @@ export default async function AdminShippingPage() {
       <AdminPageHeader
         eyebrow="Store"
         title="Shipping"
-        description="Manage delivery options and prices shown at checkout."
+        description="Ghana uses local couriers at checkout. All other countries quote live Aramex rates — flat methods here are legacy only."
       />
       <ShippingManager initialMethods={methods} />
     </div>

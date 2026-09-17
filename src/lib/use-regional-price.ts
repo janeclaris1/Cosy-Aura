@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProductType } from "@prisma/client";
 import { useMemo } from "react";
 import { applyRegionalMarkup, isAfricanCountry } from "@/lib/regional-pricing";
 import {
@@ -9,11 +10,17 @@ import {
 } from "@/lib/locale-store";
 
 /** Applies regional markup to a GHS base price for the current shopper. */
-export function useRegionalPrice(baseGhs: number): number {
+export function useRegionalPrice(
+  baseGhs: number,
+  productType?: ProductType | null
+): number {
   const country = useShopperCountry();
   const rates = useShopperRates();
-  const { nonAfricaMarkupEnabled: enabled, nonAfricaMarkupUsd: markupUsd } =
-    useShopperStorePricing();
+  const {
+    nonAfricaMarkupEnabled: enabled,
+    nonAfricaMarkupUsd: markupUsd,
+    catalogMarkupUsd,
+  } = useShopperStorePricing();
 
   return useMemo(
     () =>
@@ -22,8 +29,10 @@ export function useRegionalPrice(baseGhs: number): number {
         rates,
         enabled,
         markupUsd,
+        productType,
+        catalogMarkupUsd,
       }),
-    [baseGhs, country, rates, enabled, markupUsd]
+    [baseGhs, country, rates, enabled, markupUsd, productType, catalogMarkupUsd]
   );
 }
 

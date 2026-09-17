@@ -3,11 +3,16 @@ import { stripe } from "@/lib/stripe";
 import { fulfillCheckoutSession } from "@/lib/fulfill-order";
 import { fulfillPaystackReference } from "@/lib/fulfill-paystack";
 import { fulfillFlutterwavePayment } from "@/lib/fulfill-flutterwave";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 /**
  * Backup to webhooks: verify Stripe, Paystack, or Flutterwave after redirect.
  */
 export async function POST(req: Request) {
+  if (await checkPublicRateLimit(req, "checkout-fulfill", 20)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = await req.json();
     const sessionId = String(body.sessionId || "").trim();
@@ -18,9 +23,7 @@ export async function POST(req: Request) {
     ).trim();
 
     const isFlutterwave =
-      provider === "flutterwave" ||
-      Boolean(transactionId) ||
-      reference.startsWith("flw_");
+      provider === "flutterwave" || reference.startsWith("flw_");
 
     if (isFlutterwave && (reference || transactionId)) {
       const result = await fulfillFlutterwavePayment({

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { SocialLinks } from "@/components/layout/SocialLinks";
@@ -33,8 +33,7 @@ const SHOP_CATALOG_LINKS = [
   })),
 ];
 
-const SHOP_LINKS = [
-  ...SHOP_CATALOG_LINKS,
+const SHOP_LINKS_MORE = [
   { key: "footer.finder", href: "/fragrance-finder" },
   { key: "footer.atelier", href: "/atelier" },
   { key: "footer.giftFinder", href: "/gift-finder" },
@@ -42,6 +41,7 @@ const SHOP_LINKS = [
   { key: "footer.collections", href: "/collections" },
   { key: "Chanel", href: "/fragrances/chanel" },
   { key: "Dior", href: "/fragrances/dior" },
+  { key: "nav.brands", href: "/brands" },
 ];
 
 const SUPPORT_LINKS = [
@@ -84,7 +84,9 @@ function FooterInfoSection({
 
 export function Footer() {
   const t = useT();
-  const label = (key: string) => (key.startsWith("footer.") ? t(key) : key);
+  const [shopMoreOpen, setShopMoreOpen] = useState(false);
+  const label = (key: string) =>
+    key.startsWith("footer.") || key.startsWith("nav.") ? t(key) : key;
 
   const storePins: StorePin[] = [
     {
@@ -168,7 +170,7 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider mb-4">{t("footer.shop")}</h3>
             <ul className="space-y-2.5">
-              {SHOP_LINKS.map((link) => (
+              {SHOP_CATALOG_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
@@ -178,18 +180,38 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li className="pt-3">
-                <Link
-                  href="/brands"
+              {shopMoreOpen ? (
+                <>
+                  {SHOP_LINKS_MORE.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-gray-400 hover:text-gold transition-colors"
+                      >
+                        {label(link.key)}
+                      </Link>
+                    </li>
+                  ))}
+                </>
+              ) : null}
+              <li className={shopMoreOpen ? "pt-1" : "pt-3"}>
+                <button
+                  type="button"
+                  onClick={() => setShopMoreOpen((open) => !open)}
+                  aria-expanded={shopMoreOpen}
                   className="group inline-flex items-center gap-2 px-4 py-2.5 text-xs font-medium uppercase tracking-[0.14em] text-[#FFD200] ring-1 ring-[#FFD200]/40 hover:bg-[#FFD200] hover:text-[#03045e] transition-colors"
                 >
-                  {t("footer.viewMore")}
+                  {shopMoreOpen ? t("footer.viewLess") : t("footer.viewMore")}
                   <ArrowRight
-                    className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5"
+                    className={`w-3.5 h-3.5 transition-transform ${
+                      shopMoreOpen
+                        ? "-rotate-90 group-hover:-translate-y-0.5"
+                        : "group-hover:translate-x-0.5"
+                    }`}
                     strokeWidth={2}
                     aria-hidden
                   />
-                </Link>
+                </button>
               </li>
             </ul>
           </div>

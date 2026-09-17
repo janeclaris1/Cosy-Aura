@@ -26,10 +26,15 @@ export function isPickupShippingMethod(method: {
   return slug === "pickup" || /\bpickup\b/.test(name);
 }
 
-/** Shop pickup is Accra-only — hide for customers outside Ghana. */
+/** International orders quote live Aramex rates — not flat DB methods. */
+export function usesAramexShipping(country: string | null | undefined): boolean {
+  return Boolean(country && country !== "GH");
+}
+
+/** Shop pickup is Accra-only. Outside Ghana, flat methods are replaced by Aramex. */
 export function filterShippingMethodsForCountry<
   T extends { name: string; slug?: string | null },
 >(methods: T[], country: string | null | undefined): T[] {
-  if (country === "GH") return methods;
-  return methods.filter((method) => !isPickupShippingMethod(method));
+  if (usesAramexShipping(country)) return [];
+  return methods;
 }

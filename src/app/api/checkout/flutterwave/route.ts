@@ -2,16 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkoutBaseUrl } from "@/lib/checkout-url";
 import {
+  aramexShippingLabel,
+  resolveAramexRateForCheckout,
+} from "@/lib/shipping";
+import {
   filterShippingMethodsForCountry,
   getActiveShippingMethods,
   isPickupShippingMethod,
+  usesAramexShipping,
 } from "@/lib/shipping-methods";
 import {
   cemacCountryName,
   flutterwaveCharge,
   flutterwaveSecret,
   initializeFlutterwavePayment,
-  isCemacCountry,
 } from "@/lib/flutterwave";
 import { parseDeliveryDate } from "@/lib/delivery-dates";
 import {
@@ -23,13 +27,20 @@ import {
 import { fetchRatesFromGhs, shippingUsdToGhs } from "@/lib/fx";
 import { resolveFulfillmentBranchId } from "@/lib/branches";
 import { assertCartSizeStockAvailable } from "@/lib/size-stock-server";
+import { linkCheckoutAbandonmentToOrder } from "@/lib/checkout-abandonment";
+import {
+  assertCheckoutGateway,
+  logCheckoutCountryHintMismatch,
+  resolveCheckoutCountry,
+  resolveServerCountry,
+} from "@/lib/geo-server";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
       items,
-      country,
+      country: countryRaw,
       email,
       name,
       phone,
@@ -37,6 +48,8 @@ export async function POST(req: Request) {
       city,
       postcode,
       shippingMethodId,
+      shippingRateId,
+      shippingPriceUsd,
       deliveryDate: deliveryDateRaw,
     } = body as {
       items?: Array<{
@@ -54,18 +67,22 @@ export async function POST(req: Request) {
       city?: string;
       postcode?: string;
       shippingMethodId?: string;
+      shippingRateId?: string;
+      shippingPriceUsd?: number;
       deliveryDate?: string;
     };
 
     if (!items?.length) {
       return NextResponse.json({ error: "Your cart is empty" }, { status: 400 });
     }
-    if (!isCemacCountry(country)) {
-      return NextResponse.json(
-        { error: "Flutterwave checkout is only available for CEMAC countries" },
-        { status: 400 }
-      );
+    const ipHint = await resolveServerCountry(req);
+    const checkoutCountry = resolveCheckoutCountry(countryRaw, ipHint);
+    const gateway = assertCheckoutGateway(checkoutCountry, "flutterwave");
+    if (!gateway.ok) {
+      return NextResponse.json({ error: gateway.error }, { status: gateway.status });
     }
+    logCheckoutCountryHintMismatch(gateway.country, ipHint, "flutterwave");
+    const country = gateway.country;
 
     try {
       await assertCartSizeStockAvailable(items, country);
@@ -106,16 +123,48 @@ export async function POST(req: Request) {
       );
     }
 
+    const useAramex = usesAramexShipping(country);
+    let aramexRate = null as Awaited<ReturnType<typeof resolveAramexRateForCheckout>> | null;
+
+    if (useAramex) {
+      try {
+        aramexRate = await resolveAramexRateForCheckout({
+          rateId: String(shippingRateId || shippingMethodId || ""),
+          to: {
+            name: String(name).trim(),
+            street1: String(address).trim(),
+            city: String(city).trim(),
+            zip: String(postcode || "").trim() || "00000",
+            country: country!,
+            phone: String(phone || "").trim(),
+            email: customerEmail,
+          },
+          quotedPriceUsd:
+            shippingPriceUsd != null ? Number(shippingPriceUsd) : undefined,
+        });
+      } catch (rateErr) {
+        return NextResponse.json(
+          {
+            error:
+              rateErr instanceof Error
+                ? rateErr.message
+                : "Could not confirm Aramex shipping rate",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const methods = filterShippingMethodsForCountry(
       await getActiveShippingMethods(),
       country
     );
     const shipping =
       methods.find((method) => method.id === shippingMethodId) || methods[0];
-    if (!shipping) {
+    if (!useAramex && !shipping) {
       return NextResponse.json({ error: "No shipping methods available" }, { status: 400 });
     }
-    if (isPickupShippingMethod(shipping)) {
+    if (!useAramex && shipping && isPickupShippingMethod(shipping)) {
       return NextResponse.json(
         { error: "Shop pickup is only available in Ghana." },
         { status: 400 }
@@ -141,7 +190,9 @@ export async function POST(req: Request) {
       fetchRatesFromGhs(),
     ]);
     const itemsTotal = cartLinesTotal(pricedItems);
-    const shippingGhs = shippingUsdToGhs(shipping.price, fx.rates);
+    const shippingGhs = useAramex
+      ? shippingUsdToGhs(aramexRate!.price, fx.rates)
+      : shippingUsdToGhs(shipping!.price, fx.rates);
     const total = itemsTotal + shippingGhs;
     const charge = flutterwaveCharge(total, fx.rates);
 
@@ -162,8 +213,11 @@ export async function POST(req: Request) {
         email: customerEmail,
         ...(member.userId ? { user: { connect: { id: member.userId } } } : {}),
         total,
-        shippingMethod: `${shipping.name} · ${shipping.eta}`,
+        shippingMethod: useAramex
+          ? aramexShippingLabel(aramexRate!)
+          : `${shipping!.name} · ${shipping!.eta}`,
         shippingCost: shippingGhs,
+        ...(useAramex ? { carrier: "Aramex" } : {}),
         shippingName: String(name).trim(),
         shippingPhone: String(phone || "").trim() || null,
         shippingAddress: String(address).trim(),
@@ -178,6 +232,8 @@ export async function POST(req: Request) {
         items: { create: orderItemRows },
       },
     });
+
+    void linkCheckoutAbandonmentToOrder(customerEmail, order.id);
 
     const txRef = `flw_${order.id}`;
     const baseUrl = checkoutBaseUrl(req);
@@ -213,7 +269,11 @@ export async function POST(req: Request) {
 
     await prisma.order.update({
       where: { id: order.id },
-      data: { flutterwaveTxRef: txRef },
+      data: {
+        flutterwaveTxRef: txRef,
+        chargeAmount: charge.amount,
+        chargeCurrency: charge.currency,
+      },
     });
 
     return NextResponse.json({

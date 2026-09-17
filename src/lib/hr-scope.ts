@@ -73,3 +73,42 @@ export function defaultMonthKey(): string {
   const now = new Date();
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** Prisma filter for pay runs visible to this admin. */
+export function hrPayRunWhere(ctx: AdminContext): Record<string, unknown> {
+  const country = hrCountryFilter(ctx);
+  if (country) return { country };
+  return {};
+}
+
+/** Staff directory list — country/branch scoped, includes inactive accounts. */
+export async function staffListUserWhere(ctx: AdminContext) {
+  const country = hrCountryFilter(ctx);
+  const branchScope = await hrScopedBranchIds(ctx);
+
+  const where: Record<string, unknown> = { role: "ADMIN" };
+
+  if (country) {
+    where.staffCountry = country;
+  }
+
+  if (branchScope !== "all") {
+    if (!branchScope.length) {
+      where.id = "__none__";
+    } else {
+      where.staffAssignments = { some: { branchId: { in: branchScope } } };
+    }
+  }
+
+  return where;
+}
+
+/** True when the admin may access HR data for this country. */
+export function hrCountryAccessible(
+  ctx: AdminContext,
+  resourceCountry: string | null | undefined
+): boolean {
+  const filter = hrCountryFilter(ctx);
+  if (!filter) return true;
+  return String(resourceCountry || "").toUpperCase() === filter.toUpperCase();
+}

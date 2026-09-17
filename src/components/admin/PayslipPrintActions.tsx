@@ -8,7 +8,7 @@ export function PayslipPrintActions({
   backHref,
   backLabel = "← Back to payroll",
 }: {
-  pdfHref: string;
+  pdfHref?: string;
   backHref: string;
   backLabel?: string;
 }) {
@@ -27,10 +27,12 @@ export function PayslipPrintActions({
           <Printer className="h-4 w-4" />
           Print
         </AdminButton>
-        <AdminButton href={pdfHref} variant="secondary" className="gap-1.5">
-          <Download className="h-4 w-4" />
-          Download PDF
-        </AdminButton>
+        {pdfHref ? (
+          <AdminButton href={pdfHref} variant="secondary" className="gap-1.5">
+            <Download className="h-4 w-4" />
+            Download PDF
+          </AdminButton>
+        ) : null}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { rateFromGhs } from "@/lib/fx";
 
 export const CEMAC_COUNTRIES = [
@@ -157,5 +158,8 @@ export async function verifyFlutterwaveTransaction(input: {
 export function verifyFlutterwaveSignature(signature: string | null): boolean {
   const hash = process.env.FLW_SECRET_HASH || process.env.FLUTTERWAVE_SECRET_HASH;
   if (!hash || !signature) return false;
-  return signature === hash;
+  const a = Buffer.from(String(hash));
+  const b = Buffer.from(String(signature));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }

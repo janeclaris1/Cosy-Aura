@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyContactEnquiry } from "@/lib/notifications";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 export async function POST(req: Request) {
+  if (await checkPublicRateLimit(req, "contact", 8)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = await req.json();
     const name = String(body.name || "").trim();

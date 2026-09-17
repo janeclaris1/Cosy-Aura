@@ -1,4 +1,5 @@
 import type { StaffRole } from "@prisma/client";
+import { isProductionEnv } from "@/lib/env-security";
 
 /** Capability codes used across admin APIs and UI. */
 export const PERMISSIONS = [
@@ -69,6 +70,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, Permission[]> = {
     "attendance.read",
     "attendance.write",
     "hr.self.read",
+    "shipping.write",
+    "settings.write",
   ],
   BRANCH_MANAGER: [
     "dashboard.read",
@@ -251,8 +254,13 @@ export function hasFullAdminAccess(input: {
   staffRole?: StaffRole | null;
 }): boolean {
   if (isSuperAdminEmail(input.email)) return true;
-  // Dev fallback when SUPER_ADMIN_EMAILS is unset: legacy ADMIN with no staff role.
-  if (!superAdminEmails().length && input.role === "ADMIN" && !input.staffRole) {
+  // Local dev only — production must list SUPER_ADMIN_EMAILS explicitly.
+  if (
+    !isProductionEnv() &&
+    !superAdminEmails().length &&
+    input.role === "ADMIN" &&
+    !input.staffRole
+  ) {
     return true;
   }
   return false;

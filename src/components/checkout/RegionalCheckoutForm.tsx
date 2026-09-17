@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { filterShippingMethodsForCountry } from "@/lib/shipping-method-utils";
+import {
+  filterShippingMethodsForCountry,
+  usesAramexShipping,
+} from "@/lib/shipping-method-utils";
 import { formatPrice } from "@/lib/utils";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { shippingUsdToGhs } from "@/lib/fx";
@@ -12,6 +15,17 @@ import { WhatsAppOrderButton } from "@/components/checkout/WhatsAppOrderButton";
 import { useWhatsAppCheckoutConfig } from "@/lib/whatsapp-checkout-client";
 import type { WhatsAppFulfillment } from "@/lib/store-config-client";
 import { PENDING_WHATSAPP_ORDER_KEY } from "@/lib/store-config-client";
+import {
+  checkoutFieldsetClass,
+  checkoutFormClass,
+  checkoutInputClass,
+  checkoutLabelClass,
+  checkoutLegendClass,
+  checkoutOptionClass,
+  checkoutSelectClass,
+  checkoutSelectedSummaryClass,
+} from "@/components/checkout/checkout-ui";
+import { useCheckoutAbandonSync } from "@/lib/use-checkout-abandon-sync";
 
 type Method = {
   id: string;
@@ -19,6 +33,15 @@ type Method = {
   eta: string;
   price: number;
   description?: string | null;
+};
+
+type AramexRate = {
+  id: string;
+  name: string;
+  eta: string;
+  price: number;
+  currency: string;
+  carrierId: string;
 };
 
 export type RegionalCartItem = {
@@ -118,6 +141,9 @@ export function RegionalCheckoutForm({
   const whatsappEnabled = Boolean(whatsappCfg?.enabled && whatsappCfg.waMeUrl);
   const [methods, setMethods] = useState<Method[]>([]);
   const [shippingId, setShippingId] = useState("");
+  const [aramexRates, setAramexRates] = useState<AramexRate[]>([]);
+  const [aramexRateId, setAramexRateId] = useState("");
+  const [quotingAramex, setQuotingAramex] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(() => earliestDeliveryIso());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +164,25 @@ export function RegionalCheckoutForm({
     postcode: "",
   });
 
+  const checkoutProvider = endpoint.includes("flutterwave")
+    ? "flutterwave"
+    : endpoint.includes("paystack")
+      ? "paystack"
+      : "regional";
+
+  useCheckoutAbandonSync({
+    email: form.email,
+    items,
+    subtotalGhs: subtotal,
+    displayCurrency: currency,
+    shippingCountry: country,
+    customerName: form.name,
+    customerPhone: form.phone,
+    checkoutProvider,
+  });
+
   const useGhanaCourier = country === "GH" && Boolean(ghanaDelivery?.enabled);
+  const useAramex = usesAramexShipping(country);
   const ghanaSplitPayment = useGhanaCourier;
   const checkoutMethods = useMemo(
     () => filterShippingMethodsForCountry(methods, country),
@@ -146,7 +190,11 @@ export function RegionalCheckoutForm({
   );
   const shipping =
     checkoutMethods.find((method) => method.id === shippingId) || checkoutMethods[0];
-  const flatShippingGhs = shippingUsdToGhs(shipping?.price || 0, rates);
+  const selectedAramexRate =
+    aramexRates.find((rate) => rate.id === aramexRateId) || aramexRates[0];
+  const flatShippingGhs = useAramex
+    ? shippingUsdToGhs(selectedAramexRate?.price || 0, rates)
+    : shippingUsdToGhs(shipping?.price || 0, rates);
   const isAccraRegion = /greater\s*accra/i.test(destinationRegion);
   const dawuroboOk = Boolean(ghanaDelivery?.providers?.dawurobo?.available) && isAccraRegion;
   // ShaQ Express: Accra (alongside Dawurobo) and all other Ghana regions
@@ -237,7 +285,9 @@ export function RegionalCheckoutForm({
         : activeCourier === "pickup"
           ? t("checkout.pickup")
           : undefined
-    : shipping?.name;
+    : useAramex
+      ? selectedAramexRate?.name || "Aramex"
+      : shipping?.name;
   const isStorePickup = activeCourier === "pickup";
   const pickupHoursLabel = t("checkout.pickupHours");
 
@@ -285,6 +335,7 @@ export function RegionalCheckoutForm({
   };
 
   useEffect(() => {
+    if (useAramex) return;
     let cancelled = false;
     (async () => {
       try {
@@ -299,9 +350,13 @@ export function RegionalCheckoutForm({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [useAramex]);
 
   useEffect(() => {
+    if (useAramex) {
+      setShippingId("");
+      return;
+    }
     const available = filterShippingMethodsForCountry(methods, country);
     if (available.length === 0) {
       setShippingId("");
@@ -313,7 +368,68 @@ export function RegionalCheckoutForm({
         available.find((method) => !/pickup/i.test(method.name)) || available[0];
       return defaultMethod.id;
     });
-  }, [methods, country]);
+  }, [methods, country, useAramex]);
+
+  useEffect(() => {
+    if (!useAramex) {
+      setAramexRates([]);
+      setAramexRateId("");
+      return;
+    }
+    if (!form.address.trim() || !form.city.trim()) {
+      setAramexRates([]);
+      setAramexRateId("");
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setQuotingAramex(true);
+      try {
+        const res = await fetch("/api/shipping/rates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            country,
+            address: form.address,
+            city: form.city,
+            postcode: form.postcode,
+            name: form.name,
+            phone: form.phone,
+            email: form.email,
+          }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setAramexRates([]);
+          setAramexRateId("");
+          setError(data.error || "Could not fetch Aramex rates");
+          return;
+        }
+        const nextRates = (data.rates || []) as AramexRate[];
+        setAramexRates(nextRates);
+        setError(null);
+        setAramexRateId((current) => {
+          if (current && nextRates.some((rate) => rate.id === current)) return current;
+          return nextRates[0]?.id || "";
+        });
+      } catch {
+        if (!cancelled) {
+          setAramexRates([]);
+          setAramexRateId("");
+          setError("Could not fetch Aramex rates");
+        }
+      } finally {
+        if (!cancelled) setQuotingAramex(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [useAramex, country, form.address, form.city, form.postcode, form.name, form.phone, form.email]);
 
   useEffect(() => {
     if (country !== "GH") {
@@ -484,6 +600,9 @@ export function RegionalCheckoutForm({
       if (useGhanaCourier && !activeCourier) {
         throw new Error("Select a delivery agency.");
       }
+      if (useAramex && !aramexRateId) {
+        throw new Error("Enter your address and select an Aramex shipping option.");
+      }
       if (
         useGhanaCourier &&
         activeCourier !== "pickup" &&
@@ -504,7 +623,9 @@ export function RegionalCheckoutForm({
         body: JSON.stringify({
           country,
           ...form,
-          shippingMethodId: shippingId,
+          shippingMethodId: useAramex ? undefined : shippingId,
+          shippingRateId: useAramex ? aramexRateId : undefined,
+          shippingPriceUsd: useAramex ? selectedAramexRate?.price : undefined,
           deliveryDate,
           items,
           ...(ghanaSplitPayment
@@ -564,7 +685,7 @@ export function RegionalCheckoutForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className={checkoutFormClass}>
       {onBack ? (
         <button
           type="button"
@@ -583,12 +704,12 @@ export function RegionalCheckoutForm({
       ) : null}
 
       {countryOptions && countryOptions.length > 1 && (
-        <label className="block text-sm">
+        <label className={checkoutLabelClass}>
           {t("form.country")}
           <select
             value={country}
             onChange={(e) => onCountryChange?.(e.target.value)}
-            className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+            className={checkoutSelectClass}
           >
             {countryOptions.map((option) => (
               <option key={option.code} value={option.code}>
@@ -599,26 +720,26 @@ export function RegionalCheckoutForm({
         </label>
       )}
 
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         {t("form.email")}
         <input
           required
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         {t("form.fullName")}
         <input
           required
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         {t("form.whatsapp")}
         <input
           required
@@ -626,10 +747,10 @@ export function RegionalCheckoutForm({
           placeholder={phonePlaceholder}
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         {t("form.address")}
         <input
           required={!(useGhanaCourier && activeCourier === "pickup")}
@@ -640,12 +761,12 @@ export function RegionalCheckoutForm({
               ? pickupInfo?.address || "15 Odaw Street, Kokomlemle, Accra"
               : undefined
           }
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
         />
       </label>
       <div className="grid grid-cols-2 gap-3">
         {useGhanaCourier && ghanaDelivery?.regions.length ? (
-          <label className="block text-sm col-span-2 sm:col-span-1">
+          <label className={checkoutLabelClass}>
             Region
             <select
               required
@@ -656,7 +777,7 @@ export function RegionalCheckoutForm({
                 setDestinationRegion(name);
                 setRegionId(match?.id ?? null);
               }}
-              className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+              className={checkoutSelectClass}
             >
               {ghanaDelivery.regions.map((region) => (
                 <option key={`${region.id}-${region.name}`} value={region.name}>
@@ -666,30 +787,30 @@ export function RegionalCheckoutForm({
             </select>
           </label>
         ) : null}
-        <label className="block text-sm">
+        <label className={checkoutLabelClass}>
           {t("form.city")}
           <input
             required
             value={form.city}
             onChange={(e) => setForm({ ...form, city: e.target.value })}
-            className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+            className={checkoutInputClass}
           />
         </label>
-        <label className="block text-sm">
+        <label className={checkoutLabelClass}>
           {t("form.postal")}
           <input
             value={form.postcode}
             onChange={(e) => setForm({ ...form, postcode: e.target.value })}
-            className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+            className={checkoutInputClass}
           />
         </label>
       </div>
 
       {useGhanaCourier ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">{t("checkout.delivery")}</legend>
+        <fieldset className={checkoutFieldsetClass}>
+          <legend className={checkoutLegendClass}>{t("checkout.delivery")}</legend>
           {dawuroboOk ? (
-            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className={checkoutOptionClass}>
               <input
                 type="radio"
                 name="courier"
@@ -709,7 +830,7 @@ export function RegionalCheckoutForm({
             </label>
           ) : null}
           {shaqOk ? (
-            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className={checkoutOptionClass}>
               <input
                 type="radio"
                 name="courier"
@@ -725,7 +846,7 @@ export function RegionalCheckoutForm({
             </label>
           ) : null}
           {pickupOk ? (
-            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className={checkoutOptionClass}>
               <input
                 type="radio"
                 name="courier"
@@ -742,13 +863,46 @@ export function RegionalCheckoutForm({
         </fieldset>
       ) : null}
 
-      {!useGhanaCourier && checkoutMethods.length > 0 ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">{t("checkout.shipping")}</legend>
+      {useAramex ? (
+        <fieldset className={checkoutFieldsetClass}>
+          <legend className={checkoutLegendClass}>Aramex shipping</legend>
+          {quotingAramex ? (
+            <p className="text-sm text-mocha px-1">Fetching Aramex rates…</p>
+          ) : aramexRates.length > 0 ? (
+            aramexRates.map((rate) => (
+              <label
+                key={rate.id}
+                className={checkoutOptionClass}
+              >
+                <input
+                  type="radio"
+                  name="aramex"
+                  checked={aramexRateId === rate.id}
+                  onChange={() => setAramexRateId(rate.id)}
+                />
+                <span className="flex-1 font-medium">
+                  {rate.name} · {rate.eta}
+                </span>
+                <span className="shrink-0">
+                  {formatPrice(shippingUsdToGhs(rate.price, rates), currency)}
+                </span>
+              </label>
+            ))
+          ) : (
+            <p className="text-sm text-mocha px-1">
+              Enter your full delivery address above to see Aramex rates.
+            </p>
+          )}
+        </fieldset>
+      ) : null}
+
+      {!useGhanaCourier && !useAramex && checkoutMethods.length > 0 ? (
+        <fieldset className={checkoutFieldsetClass}>
+          <legend className={checkoutLegendClass}>{t("checkout.shipping")}</legend>
           {checkoutMethods.map((method) => (
             <label
               key={method.id}
-              className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso"
+              className={checkoutOptionClass}
             >
               <input
                 type="radio"
@@ -768,9 +922,9 @@ export function RegionalCheckoutForm({
       ) : null}
 
       {ghanaSplitPayment ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">{t("checkout.payment")}</legend>
-          <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+        <fieldset className={checkoutFieldsetClass}>
+          <legend className={checkoutLegendClass}>{t("checkout.payment")}</legend>
+          <label className={checkoutOptionClass}>
             <input
               type="radio"
               name="deliveryPayer"
@@ -783,7 +937,7 @@ export function RegionalCheckoutForm({
             </span>
           </label>
           {codEnabled && activeCourier !== "pickup" ? (
-            <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+            <label className={checkoutOptionClass}>
               <input
                 type="radio"
                 name="deliveryPayer"
@@ -798,7 +952,7 @@ export function RegionalCheckoutForm({
               </span>
             </label>
           ) : null}
-          <label className="flex items-center gap-3 border border-wf-border px-3 py-2.5 text-sm cursor-pointer has-[:checked]:border-espresso">
+          <label className={checkoutOptionClass}>
             <input
               type="radio"
               name="deliveryPayer"
@@ -814,9 +968,9 @@ export function RegionalCheckoutForm({
           </label>
         </fieldset>
       ) : (
-        <fieldset className="space-y-2">
-          <legend className="text-sm mb-1">{t("checkout.payment")}</legend>
-          <div className="flex items-center gap-3 border border-espresso px-3 py-2.5 text-sm bg-white">
+        <fieldset className={checkoutFieldsetClass}>
+          <legend className={checkoutLegendClass}>{t("checkout.payment")}</legend>
+          <div className={checkoutSelectedSummaryClass}>
             <span className="flex-1 font-medium">{t("checkout.payInFull")}</span>
             <span className="shrink-0 font-medium">
               {formatPrice(subtotal + flatShippingGhs, currency)}

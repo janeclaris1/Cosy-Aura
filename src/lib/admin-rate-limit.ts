@@ -1,20 +1,20 @@
 /**
- * Simple in-memory rate limiter for admin APIs (per IP + route key).
- * Suitable for single-instance / low-traffic; use Redis in multi-instance prod if needed.
+ * Admin API rate limiting — delegates to shared store (memory or Upstash Redis).
  */
 
+import {
+  clientIp,
+  isRateLimited,
+  isRateLimitedSync,
+  isRequestRateLimited,
+} from "@/lib/rate-limit";
+
+export { clientIp, isRequestRateLimited };
+
 const WINDOW_MS = 60 * 1000;
-const MAX_HITS = 60; // 60 req/min per IP for admin APIs
-const hits = new Map<string, number[]>();
+const MAX_HITS = 60;
 
-export function clientIp(req: Request): string {
-  return (
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "local"
-  );
-}
-
+/** @deprecated Prefer isRequestRateLimited (async) for Redis-backed limits. */
 export function isAdminRateLimited(
   req: Request,
   key = "admin",
@@ -22,14 +22,25 @@ export function isAdminRateLimited(
   windowMs = WINDOW_MS
 ): boolean {
   const ip = clientIp(req);
-  const bucket = `${key}:${ip}`;
-  const now = Date.now();
-  const recent = (hits.get(bucket) || []).filter((t) => now - t < windowMs);
-  if (recent.length >= maxHits) {
-    hits.set(bucket, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(bucket, recent);
-  return false;
+  return isRateLimitedSync(`${key}:${ip}`, maxHits, windowMs);
 }
+
+export async function isAdminRateLimitedAsync(
+  req: Request,
+  key = "admin",
+  maxHits = MAX_HITS,
+  windowMs = WINDOW_MS
+): Promise<boolean> {
+  return isRequestRateLimited(req, key, maxHits, windowMs);
+}
+
+export async function isPublicRateLimitedAsync(
+  req: Request,
+  key: string,
+  maxHits = 30,
+  windowMs = WINDOW_MS
+): Promise<boolean> {
+  return isRequestRateLimited(req, `public:${key}`, maxHits, windowMs);
+}
+
+export { isRateLimited };

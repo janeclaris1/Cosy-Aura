@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { upsertMailchimpContact } from "@/lib/mailchimp";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 export async function POST(req: Request) {
+  if (await checkPublicRateLimit(req, "newsletter", 10)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = await req.json();
     const email = String(body.email || "")

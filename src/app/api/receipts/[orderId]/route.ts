@@ -17,7 +17,7 @@ export async function GET(
   const tokenOk = verifyReceiptToken(orderId, token);
 
   if (!tokenOk) {
-    const { error } = await requireAdminApi();
+    const { error } = await requireAdminApi("orders.read");
     if (error) return error;
   }
 

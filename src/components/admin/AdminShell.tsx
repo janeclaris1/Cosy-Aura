@@ -146,7 +146,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const navGroups = ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter((item) => {
-      if (!permissions) return true;
+      // Hide permission-gated links until we know the user's capabilities.
+      if (!permissions) return !item.permission;
       return canAccessNavItem(
         permissions,
         item.permission,

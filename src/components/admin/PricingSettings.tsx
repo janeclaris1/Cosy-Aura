@@ -63,7 +63,7 @@ export function PricingSettings({ initialConfig }: { initialConfig: PricingConfi
           <div>
             <AdminSectionTitle
               title="International markup"
-              description="When enabled, shoppers outside Africa see catalog prices plus a flat USD surcharge. African countries keep standard pricing. Checkout always recalculates server-side from the visitor's country."
+              description="When enabled, shoppers outside Africa see catalog prices plus a USD surcharge. Use the global amount below, or set per-catalog overrides in the table underneath. African countries keep standard pricing."
             />
           </div>
           <button

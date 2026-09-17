@@ -4,6 +4,9 @@ import { prisma } from "./prisma";
 import { hookOrderSalesJournal } from "./accounting-order-hook";
 import { ensureCustomerReceiptWhatsApp, notifyOrderPaid } from "./notifications";
 import { parseDeliveryDate } from "./delivery-dates";
+import { paymentProviderWhere, rejectWrongPaymentProvider } from "./fulfill-guards";
+import { verifyStripePaidAmount } from "./fulfill-amount";
+import { markCheckoutAbandonmentsConverted } from "./checkout-abandonment";
 
 const PLACEHOLDER_EMAIL = "pending@checkout.cosyaura.com";
 
@@ -59,7 +62,22 @@ export async function fulfillCheckoutSession(
     return { ok: false, reason: "Order not found", orderId };
   }
 
-  const alreadyPaid = existing.status !== "PENDING";
+  const providerError = rejectWrongPaymentProvider(existing, "stripe");
+  if (providerError) {
+    return { ok: false, reason: providerError, orderId };
+  }
+
+  const stripeAmountCheck = verifyStripePaidAmount(
+    existing,
+    session.amount_total != null ? session.amount_total / 100 : null,
+    session.currency,
+    Number(session.metadata?.usdPerGhs) || undefined
+  );
+  if (!stripeAmountCheck.ok) {
+    console.error("[fulfill-order] amount verification failed", orderId, stripeAmountCheck.reason);
+    return { ok: false, reason: stripeAmountCheck.reason, orderId };
+  }
+
   const shippingDetails = shippingFromSession(session);
 
   const chargeCurrency = (session.currency || "usd").toUpperCase();
@@ -95,45 +113,74 @@ export async function fulfillCheckoutSession(
   const deliveryDate =
     parseDeliveryDate(session.metadata?.deliveryDate) || existing.deliveryDate;
 
-  // Always sync Stripe customer/shipping onto the order - including when an
-  // admin marked PAID early and left the placeholder checkout email.
+  const syncData = {
+    ...(email ? { email } : {}),
+    total: totalGhs,
+    chargeAmount,
+    chargeCurrency: chargeAmount != null ? chargeCurrency : null,
+    shippingCost: shippingCostGhs,
+    shippingMethod: shippingMethod || existing.shippingMethod || "Stripe shipping",
+    stripeSessionId: session.id,
+    stripePaymentId:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? existing.stripePaymentId,
+    shippingName:
+      shippingDetails?.name ||
+      session.customer_details?.name ||
+      existing.shippingName,
+    shippingAddress:
+      shippingDetails?.address?.line1 || existing.shippingAddress,
+    shippingCity: shippingDetails?.address?.city || existing.shippingCity,
+    shippingPostcode:
+      shippingDetails?.address?.postal_code || existing.shippingPostcode,
+    shippingCountry:
+      shippingDetails?.address?.country || existing.shippingCountry,
+    shippingPhone:
+      session.customer_details?.phone || existing.shippingPhone,
+    ...(deliveryDate ? { deliveryDate } : {}),
+  };
+
   const previousStatus = existing.status;
+  let isNewlyPaid = existing.status === "PENDING";
 
-  await prisma.order.update({
-    where: { id: orderId },
-    data: {
-      status: alreadyPaid ? existing.status : "PAID",
-      ...(email ? { email } : {}),
-      total: totalGhs,
-      chargeAmount,
-      chargeCurrency: chargeAmount != null ? chargeCurrency : null,
-      shippingCost: shippingCostGhs,
-      shippingMethod: shippingMethod || existing.shippingMethod || "Stripe shipping",
-      stripeSessionId: session.id,
-      paymentProvider: "stripe",
-      stripePaymentId:
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id ?? existing.stripePaymentId,
-      shippingName:
-        shippingDetails?.name ||
-        session.customer_details?.name ||
-        existing.shippingName,
-      shippingAddress:
-        shippingDetails?.address?.line1 || existing.shippingAddress,
-      shippingCity: shippingDetails?.address?.city || existing.shippingCity,
-      shippingPostcode:
-        shippingDetails?.address?.postal_code || existing.shippingPostcode,
-      shippingCountry:
-        shippingDetails?.address?.country || existing.shippingCountry,
-      shippingPhone:
-        session.customer_details?.phone || existing.shippingPhone,
-      ...(deliveryDate ? { deliveryDate } : {}),
-    },
-  });
+  if (isNewlyPaid) {
+    const transitioned = await prisma.order.updateMany({
+      where: {
+        id: orderId,
+        status: "PENDING",
+        ...paymentProviderWhere("stripe"),
+      },
+      data: {
+        status: "PAID",
+        paymentProvider: "stripe",
+        ...syncData,
+      },
+    });
 
-  if (!alreadyPaid) {
-    hookOrderSalesJournal(orderId, { previousStatus });
+    if (transitioned.count === 0) {
+      const refetched = await prisma.order.findUnique({ where: { id: orderId } });
+      if (!refetched) {
+        return { ok: false, reason: "Order not found", orderId };
+      }
+      const retryError = rejectWrongPaymentProvider(refetched, "stripe");
+      if (retryError) {
+        return { ok: false, reason: retryError, orderId };
+      }
+      isNewlyPaid = false;
+    } else {
+      hookOrderSalesJournal(orderId, { previousStatus });
+      const paidEmail =
+        sessionCustomerEmail(session) || existing.email;
+      void markCheckoutAbandonmentsConverted(paidEmail, orderId);
+    }
+  }
+
+  if (!isNewlyPaid) {
+    await prisma.order.update({
+      where: { id: orderId },
+      data: syncData,
+    });
   }
 
   if (existing.confirmationEmailedAt) {
@@ -189,7 +236,7 @@ export async function fulfillCheckoutSession(
 
   return {
     ok: true,
-    reason: alreadyPaid ? "Already fulfilled" : undefined,
+    reason: isNewlyPaid ? undefined : "Already fulfilled",
     orderId,
     emailSent: true,
   };

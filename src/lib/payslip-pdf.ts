@@ -165,15 +165,12 @@ export async function buildPayslipPdf(
     centerText(page, `Tel: ${doc.company.phone}`, y, serif, 9, MUTED);
     y -= 14;
   }
-  if (doc.company.officialNumber) {
-    centerText(
-      page,
-      `${doc.company.officialNumberLabel}: ${doc.company.officialNumber}`,
-      y,
-      serif,
-      9,
-      MUTED
-    );
+  if (doc.company.email) {
+    centerText(page, doc.company.email, y, serif, 9, MUTED);
+    y -= 14;
+  }
+  for (const line of doc.company.registrationLines) {
+    centerText(page, line, y, serif, 9, MUTED);
     y -= 14;
   }
   y -= 14;

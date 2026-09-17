@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
+import { creditAgreementWhere } from "@/lib/credit-scope";
 import { creditBalanceRemaining } from "@/lib/credit-agreement";
 import { prisma } from "@/lib/prisma";
 
@@ -11,8 +12,12 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const status = url.searchParams.get("status");
 
+  const scope = creditAgreementWhere(ctx);
   const agreements = await prisma.creditAgreement.findMany({
-    where: status ? { status: status as never } : undefined,
+    where: {
+      ...scope,
+      ...(status ? { status: status as never } : {}),
+    },
     orderBy: [{ status: "asc" }, { dueDate: "asc" }],
     include: {
       order: {

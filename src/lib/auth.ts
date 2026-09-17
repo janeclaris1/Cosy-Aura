@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { writeAuditLog } from "./audit";
 import { upsertMailchimpContact } from "./mailchimp";
+import { hasFullAdminAccess } from "./rbac";
 
 const oauthProviders: NextAuthOptions["providers"] = [];
 
@@ -15,7 +16,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
     })
   );
 }
@@ -25,7 +25,6 @@ if (process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET) {
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID,
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
     })
   );
 }
@@ -113,7 +112,15 @@ export const authOptions: NextAuthOptions = {
           return fail("not admin");
         }
 
-        if (portal === "admin" && user.activeStaff === false) {
+        if (
+          user.role === "ADMIN" &&
+          user.activeStaff === false &&
+          !hasFullAdminAccess({
+            email: user.email,
+            role: user.role,
+            staffRole: user.staffRole,
+          })
+        ) {
           return fail("inactive");
         }
 
@@ -169,23 +176,43 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       const userId = user?.id || token.sub;
-      if (userId && (user || token.memberDiscount === undefined || !token.role)) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { memberDiscount: true, role: true, image: true, name: true },
-        });
-        if (dbUser) {
-          token.memberDiscount = Boolean(dbUser.memberDiscount);
-          token.role = dbUser.role;
-          token.picture = dbUser.image || undefined;
-          token.name = dbUser.name || token.name;
-        } else if (user) {
-          token.role = (user as { role?: string }).role || "USER";
-          token.memberDiscount = Boolean(
-            (user as { memberDiscount?: boolean }).memberDiscount
-          );
-        }
+      if (!userId) return token;
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          email: true,
+          memberDiscount: true,
+          role: true,
+          activeStaff: true,
+          staffRole: true,
+          image: true,
+          name: true,
+        },
+      });
+
+      if (dbUser) {
+        token.memberDiscount = Boolean(dbUser.memberDiscount);
+        token.picture = dbUser.image || undefined;
+        token.name = dbUser.name || token.name;
+
+        const adminActive =
+          dbUser.role !== "ADMIN" ||
+          dbUser.activeStaff !== false ||
+          hasFullAdminAccess({
+            email: dbUser.email,
+            role: dbUser.role,
+            staffRole: dbUser.staffRole,
+          });
+
+        token.role = adminActive ? dbUser.role : "USER";
+      } else if (user) {
+        token.role = (user as { role?: string }).role || "USER";
+        token.memberDiscount = Boolean(
+          (user as { memberDiscount?: boolean }).memberDiscount
+        );
       }
+
       return token;
     },
     async session({ session, token }) {

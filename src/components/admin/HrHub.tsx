@@ -6,12 +6,14 @@ import { AdminTabBar } from "@/components/admin/admin-ui";
 import { EmployeeProfilesManager } from "@/components/admin/EmployeeProfilesManager";
 import { LeaveManager } from "@/components/admin/LeaveManager";
 import { CommissionsHub } from "@/components/admin/CommissionsHub";
+import { HrDocumentsManager } from "@/components/admin/HrDocumentsManager";
 import { PayrollManager } from "@/components/admin/PayrollManager";
 import { StaffManager } from "@/components/admin/StaffManager";
 
 const TAB_DEFS = [
   { id: "staff", label: "Staff", accessKey: "staff" as const },
   { id: "employees", label: "Employees", accessKey: "hr" as const },
+  { id: "documents", label: "Documents", accessKey: "hr" as const },
   { id: "leave", label: "Leave", accessKey: "hr" as const },
   { id: "commissions", label: "Commissions", accessKey: "hr" as const },
   { id: "payroll", label: "Payroll", accessKey: "payroll" as const },
@@ -49,8 +51,12 @@ function HrHubInner({ access }: { access: HrHubAccess }) {
   useEffect(() => {
     if (paramTab && tabs.some((t) => t.id === paramTab)) {
       setTab(paramTab as TabId);
+      return;
     }
-  }, [paramTab, tabs]);
+    if (paramTab === "documents" && access.hr) {
+      setTab("documents" as TabId);
+    }
+  }, [paramTab, tabs, access.hr]);
 
   if (!tabs.length) {
     return (
@@ -66,6 +72,9 @@ function HrHubInner({ access }: { access: HrHubAccess }) {
 
       {tab === "staff" && access.staff && <StaffManager />}
       {tab === "employees" && access.hr && <EmployeeProfilesManager />}
+      {tab === "documents" && access.hr && (
+        <HrDocumentsManager canEdit={access.hrWrite} />
+      )}
       {tab === "leave" && access.hr && <LeaveManager />}
       {tab === "commissions" && access.hr && (
         <CommissionsHub canEditRules={access.hrWrite} />

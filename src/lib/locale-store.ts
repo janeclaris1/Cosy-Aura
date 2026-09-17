@@ -2,6 +2,7 @@
 
 import { useContext } from "react";
 import type { ProductType } from "@prisma/client";
+import type { CatalogMarkupUsd } from "@/lib/catalog-markup";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -30,6 +31,7 @@ type LocaleState = {
   rates: Record<string, number>;
   nonAfricaMarkupEnabled: boolean;
   nonAfricaMarkupUsd: number;
+  catalogMarkupUsd: CatalogMarkupUsd;
   guestHiddenPriceCatalogs: ProductType[];
   userOverrideLang: boolean;
   userOverrideCurrency: boolean;
@@ -44,6 +46,7 @@ type LocaleState = {
   setStorePricing: (config: {
     nonAfricaMarkupEnabled: boolean;
     nonAfricaMarkupUsd: number;
+    catalogMarkupUsd?: CatalogMarkupUsd;
     guestHiddenPriceCatalogs?: ProductType[];
   }) => void;
   setLanguage: (language: UiLang) => void;
@@ -104,6 +107,7 @@ export const useLocaleStore = create<LocaleState>()(
       rates: boot.rates ?? { GHS: 1 },
       nonAfricaMarkupEnabled: false,
       nonAfricaMarkupUsd: 10,
+      catalogMarkupUsd: {},
       guestHiddenPriceCatalogs: [],
       userOverrideLang: false,
       userOverrideCurrency: false,
@@ -137,6 +141,9 @@ export const useLocaleStore = create<LocaleState>()(
         set({
           nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
           nonAfricaMarkupUsd: Number(config.nonAfricaMarkupUsd) || 10,
+          ...(config.catalogMarkupUsd !== undefined
+            ? { catalogMarkupUsd: config.catalogMarkupUsd }
+            : {}),
           ...(config.guestHiddenPriceCatalogs !== undefined
             ? { guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs }
             : {}),
@@ -241,14 +248,20 @@ export function useShopperRates(): Record<string, number> {
 export function useShopperStorePricing(): {
   nonAfricaMarkupEnabled: boolean;
   nonAfricaMarkupUsd: number;
+  catalogMarkupUsd: CatalogMarkupUsd;
 } {
   const hydrated = useContext(LocaleHydratedContext);
   const enabled = useLocaleStore((s) => s.nonAfricaMarkupEnabled);
   const markupUsd = useLocaleStore((s) => s.nonAfricaMarkupUsd);
+  const catalogMarkupUsd = useLocaleStore((s) => s.catalogMarkupUsd);
   if (!hydrated) {
-    return { nonAfricaMarkupEnabled: false, nonAfricaMarkupUsd: 10 };
+    return { nonAfricaMarkupEnabled: false, nonAfricaMarkupUsd: 10, catalogMarkupUsd: {} };
   }
-  return { nonAfricaMarkupEnabled: enabled, nonAfricaMarkupUsd: markupUsd };
+  return {
+    nonAfricaMarkupEnabled: enabled,
+    nonAfricaMarkupUsd: markupUsd,
+    catalogMarkupUsd,
+  };
 }
 
 export function useGuestHiddenPriceCatalogs(): ProductType[] {

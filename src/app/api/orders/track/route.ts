@@ -5,8 +5,13 @@ import {
   orderStatusLabel,
   resolveTrackingUrl,
 } from "@/lib/order-tracking";
+import { checkPublicRateLimit, rateLimitResponse } from "@/lib/public-rate-limit";
 
 export async function POST(req: Request) {
+  if (await checkPublicRateLimit(req, "order-track", 15)) {
+    return rateLimitResponse();
+  }
+
   try {
     const body = await req.json();
     const orderRef = String(body.orderRef || body.orderId || "")

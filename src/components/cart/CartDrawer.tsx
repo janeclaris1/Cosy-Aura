@@ -11,6 +11,7 @@ import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
 import { useGuestPriceHiddenChecker } from "@/lib/use-catalog-price-visibility";
 import { useIsClientMounted } from "@/lib/use-is-client-mounted";
 import { CartCrossSell } from "@/components/cart/CartCrossSell";
+import { cartVariantLabel } from "@/lib/cart-variant-label";
 import Image from "next/image";
 
 export function CartDrawer() {
@@ -119,8 +120,10 @@ export function CartDrawer() {
                     <p className="text-[11px] text-wf-black truncate">
                       {inspiredByBrandLine(item.brand, item.model)}
                     </p>
-                    {item.bottleSize ? (
-                      <p className="text-xs text-wf-gray">{item.bottleSize} ml</p>
+                    {cartVariantLabel(item.productType, item.bottleSize) ? (
+                      <p className="text-xs text-wf-gray">
+                        {cartVariantLabel(item.productType, item.bottleSize)}
+                      </p>
                     ) : null}
                     {isPriceHidden(item.productType) ? (
                       <div className="mt-1">

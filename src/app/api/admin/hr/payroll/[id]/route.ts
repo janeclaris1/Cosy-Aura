@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 import { enrichPayRunLines } from "@/lib/payroll-present";
+import { hrCountryAccessible } from "@/lib/hr-scope";
 
 export async function GET(
   _req: Request,
@@ -26,6 +27,10 @@ export async function GET(
 
   if (!payRun) {
     return NextResponse.json({ error: "Pay run not found" }, { status: 404 });
+  }
+
+  if (!hrCountryAccessible(ctx, payRun.country)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   return NextResponse.json({

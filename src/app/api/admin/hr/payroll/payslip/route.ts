@@ -7,6 +7,8 @@ import {
   resolvePayslipAccountant,
 } from "@/lib/payslip-document";
 import { buildPayslipBatchPdf, buildPayslipPdf } from "@/lib/payslip-pdf";
+import { prisma } from "@/lib/prisma";
+import { hrCountryAccessible } from "@/lib/hr-scope";
 
 export async function GET(req: Request) {
   const { ctx, error } = await requireAdminApi("payroll.read");
@@ -22,6 +24,17 @@ export async function GET(req: Request) {
   }
 
   try {
+    const payRun = await prisma.payRun.findUnique({
+      where: { id: payRunId },
+      select: { country: true },
+    });
+    if (!payRun) {
+      return NextResponse.json({ error: "Pay run not found" }, { status: 404 });
+    }
+    if (!hrCountryAccessible(ctx, payRun.country)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     if (lineId) {
       const doc = await fetchPayslipDocument(payRunId, lineId);
       if (!doc) {

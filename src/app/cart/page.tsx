@@ -8,6 +8,7 @@ import { formatPrice, inspiredByBrandLine } from "@/lib/utils";
 import { SignInForPricingLink } from "@/components/products/SignInForPricingLink";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
 import { useGuestPriceHiddenChecker } from "@/lib/use-catalog-price-visibility";
+import { cartVariantLabel } from "@/lib/cart-variant-label";
 import Image from "next/image";
 
 export default function CartPage() {
@@ -72,8 +73,10 @@ export default function CartPage() {
                   {item.model}
                 </Link>
                 <p className="text-xs text-wf-black mt-0.5">{inspiredByBrandLine(item.brand, item.model)}</p>
-                {item.bottleSize ? (
-                  <p className="text-xs text-wf-gray mt-0.5">{item.bottleSize} ml</p>
+                {cartVariantLabel(item.productType, item.bottleSize) ? (
+                  <p className="text-xs text-wf-gray mt-0.5">
+                    {cartVariantLabel(item.productType, item.bottleSize)}
+                  </p>
                 ) : null}
                 {isPriceHidden(item.productType) ? (
                   <div className="mt-1">

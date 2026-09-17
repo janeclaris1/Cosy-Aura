@@ -101,14 +101,14 @@ export function PayslipSheet({
               <span className="font-semibold text-stone-800">{doc.company.phone}</span>
             </p>
           ) : null}
-          {doc.company.officialNumber ? (
-            <p className="text-sm text-stone-600 mt-1">
-              {doc.company.officialNumberLabel}:{" "}
-              <span className="font-semibold text-stone-800">
-                {doc.company.officialNumber}
-              </span>
-            </p>
+          {doc.company.email ? (
+            <p className="text-sm text-stone-600 mt-1">{doc.company.email}</p>
           ) : null}
+          {doc.company.registrationLines.map((line) => (
+            <p key={line} className="text-sm text-stone-600 mt-1">
+              <span className="font-semibold text-stone-800">{line}</span>
+            </p>
+          ))}
           <h2 className="text-lg font-bold mt-5 tracking-wide">Salary Slip</h2>
         </header>
 

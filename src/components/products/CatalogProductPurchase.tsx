@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ChevronDown, Bookmark, Shield, Truck, RotateCcw, Play } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
-import { useLocaleStore, useT } from "@/lib/locale-store";
+import { useShopperCountry, useShopperCurrency, useT } from "@/lib/locale-store";
 import { formatPrice, cn } from "@/lib/utils";
 import { TranslatedText } from "@/components/locale/TranslatedText";
 import { ProductPromises } from "@/components/ui/VerifiedBadge";
@@ -25,6 +25,11 @@ import {
 } from "@/lib/product-catalog";
 import { PdpSponsoredAd } from "@/components/products/PdpSponsoredAd";
 import type { PdpSponsoredAdConfig } from "@/lib/pdp-sponsored-ad";
+import {
+  SNEAKER_EU_SIZE_RANGE_LABEL,
+  SNEAKER_EU_SIZES,
+  type SneakerEuSize,
+} from "@/lib/sneaker-sizes";
 import type { ProductType } from "@prisma/client";
 
 export type CatalogPurchaseFragrance = {
@@ -205,7 +210,7 @@ function buildCatalogSpecs(
     case "SNEAKER":
       if (fragrance.bottleDetail) rows.push({ label: "Details", value: fragrance.bottleDetail });
       if (fragrance.liquidColor) rows.push({ label: "Colourway", value: fragrance.liquidColor });
-      if (fragrance.bottleSize) rows.push({ label: "Size (EU)", value: String(fragrance.bottleSize) });
+      rows.push({ label: "Available sizes", value: SNEAKER_EU_SIZE_RANGE_LABEL });
       break;
     case "SHIRT":
       if (fragrance.bottleMaterial) rows.push({ label: "Fabric", value: fragrance.bottleMaterial });
@@ -242,8 +247,8 @@ function CatalogSpecsAccordion({
 }) {
   const [open, setOpen] = useState(false);
   const t = useT();
-  const country = useLocaleStore((s) => s.country);
-  const currency = useLocaleStore((s) => s.currency);
+  const country = useShopperCountry();
+  const currency = useShopperCurrency();
   const inStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
     country,
@@ -328,16 +333,17 @@ function DetailAccordion({
 
 function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance }) {
   const t = useT();
-  const country = useLocaleStore((s) => s.country);
-  const currency = useLocaleStore((s) => s.currency);
-  useLocaleStore((s) => s.rates);
+  const country = useShopperCountry();
+  const currency = useShopperCurrency();
   const catalog = catalogForProductType(fragrance.productType);
   const member = useMemberDiscount();
-  const regionalPrice = useRegionalPrice(fragrance.price);
+  const regionalPrice = useRegionalPrice(fragrance.price, fragrance.productType);
   const displayPrice = member.apply(regionalPrice);
   const addItem = useCartStore((s) => s.addItem);
   const { toggleItem, hasItem } = useWishlistStore();
   const isWishlisted = hasItem(fragrance.id);
+  const isSneaker = fragrance.productType === "SNEAKER";
+  const [selectedEuSize, setSelectedEuSize] = useState<SneakerEuSize | null>(null);
   const primaryImage =
     fragrance.images[0]?.url || catalogPlaceholder(fragrance.productType);
   const inStock = isInStockForCountry(
@@ -346,19 +352,32 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
     currency
   );
   const priceHidden = useIsCatalogPriceHidden(fragrance.productType);
+  const sizeRequired = isSneaker && selectedEuSize == null;
+  const canAddToCart = inStock && !priceHidden && !sizeRequired;
 
   function handleAddToCart() {
-    if (!inStock || priceHidden) return;
+    if (!canAddToCart) return;
+    const sizeSuffix =
+      isSneaker && selectedEuSize != null ? ` · EU ${selectedEuSize}` : "";
     addItem({
       fragranceId: fragrance.id,
       slug: fragrance.slug,
       brand: fragrance.brand.name,
-      model: fragrance.model,
+      model: `${fragrance.model}${sizeSuffix}`,
       price: regionalPrice,
       image: primaryImage,
       productType: fragrance.productType,
+      ...(isSneaker && selectedEuSize != null
+        ? { bottleSize: selectedEuSize }
+        : {}),
     });
   }
+
+  const addToCartLabel = !inStock
+    ? t("pdp.outOfStock")
+    : sizeRequired
+      ? t("product.selectSize")
+      : t("product.addToCart");
 
   return (
     <div
@@ -445,16 +464,47 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
         </p>
       ) : null}
 
+      {isSneaker ? (
+        <div className="mb-6">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-mocha mb-2">
+            {t("pdp.size")} (EU)
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {SNEAKER_EU_SIZES.map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setSelectedEuSize(size)}
+                className={cn(
+                  "min-w-[3.25rem] px-4 py-2.5 text-sm border transition-colors duration-organic ease-organic",
+                  selectedEuSize === size
+                    ? "border-espresso bg-espresso text-ivory"
+                    : "border-wf-border bg-ivory text-espresso hover:border-espresso"
+                )}
+                aria-pressed={selectedEuSize === size}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+          {sizeRequired ? (
+            <p className="mt-2 text-xs text-mocha">{t("product.selectSizeHint")}</p>
+          ) : selectedEuSize != null ? (
+            <p className="mt-2 text-xs text-mocha">EU {selectedEuSize}</p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-3 mb-6">
         {priceHidden ? (
           <SignInForPricingLink variant="button" className="flex-1 min-w-[160px]" />
         ) : (
           <button
             onClick={handleAddToCart}
-            disabled={!inStock}
+            disabled={!canAddToCart}
             className="btn-primary flex-1 min-w-[160px] disabled:opacity-50"
           >
-            {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
+            {addToCartLabel}
           </button>
         )}
         <button
@@ -499,10 +549,10 @@ function CatalogProductInfo({ fragrance }: { fragrance: CatalogPurchaseFragrance
           <button
             type="button"
             onClick={handleAddToCart}
-            disabled={!inStock}
+            disabled={!canAddToCart}
             className="btn-primary shrink-0 px-5 disabled:opacity-50"
           >
-            {inStock ? t("product.addToCart") : t("pdp.outOfStock")}
+            {addToCartLabel}
           </button>
         )}
         <button

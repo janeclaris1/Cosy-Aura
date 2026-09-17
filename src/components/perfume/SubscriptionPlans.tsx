@@ -28,7 +28,7 @@ function PlanPrice({ samples }: { samples: number }) {
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const member = useMemberDiscount();
-  const price = member.apply(useRegionalPrice(subscriptionPlanPriceGhs(samples)));
+  const price = member.apply(useRegionalPrice(subscriptionPlanPriceGhs(samples), "PERFUME"));
   return (
     <>
       <p className="font-playfair text-2xl text-gold">
@@ -48,13 +48,13 @@ export function SubscriptionPlans() {
   const currency = useLocaleStore((s) => s.currency);
   useLocaleStore((s) => s.rates);
   const member = useMemberDiscount();
-  const sampleUnit = useRegionalPrice(sampleSalePrice());
+  const sampleUnit = useRegionalPrice(sampleSalePrice(), "PERFUME");
   const [selected, setSelected] = useState<SubscriptionPlanId>("discovery-5");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const plan = SUBSCRIPTION_PLANS.find((p) => p.id === selected)!;
   const displayPrice = member.apply(
-    useRegionalPrice(subscriptionPlanPriceGhs(plan.samples))
+    useRegionalPrice(subscriptionPlanPriceGhs(plan.samples), "PERFUME")
   );
 
   async function subscribe() {

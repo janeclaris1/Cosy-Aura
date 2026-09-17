@@ -10,6 +10,7 @@ export async function GET() {
     {
       nonAfricaMarkupEnabled: config.nonAfricaMarkupEnabled,
       nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
+      catalogMarkupUsd: config.catalogMarkupUsd,
       guestHiddenPriceCatalogs: config.guestHiddenPriceCatalogs,
     },
     {

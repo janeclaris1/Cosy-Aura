@@ -20,6 +20,7 @@ import {
   ScrollText,
   Settings,
   ShoppingBag,
+  ShoppingCart,
   Droplets,
   Shirt,
   Store,
@@ -116,6 +117,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         badge: "orders",
         permission: "orders.read",
       },
+      {
+        href: "/admin/abandoned-checkouts",
+        label: "Abandoned checkouts",
+        icon: ShoppingCart,
+        permission: "orders.read",
+      },
       { href: "/admin/pos", label: "Point of sale", icon: Store, permission: "pos.read" },
     ],
   },
@@ -171,7 +178,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: "Store",
     items: [
       { href: "/admin/shipping", label: "Shipping", icon: Truck, permission: "shipping.write" },
-      { href: "/admin/pricing", label: "Settings", icon: Settings, permission: "settings.write" },
+      {
+        href: "/admin/pricing",
+        label: "Store settings",
+        icon: Settings,
+        permission: "settings.write",
+      },
     ],
   },
   {

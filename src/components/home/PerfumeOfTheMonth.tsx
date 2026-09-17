@@ -23,7 +23,8 @@ export async function PerfumeOfTheMonth() {
 
   const displayPrice = await resolveRegionalPriceGhs(
     salePriceForSize(50, perfume.slug),
-    loc?.country
+    loc?.country,
+    "PERFUME"
   );
 
   return (

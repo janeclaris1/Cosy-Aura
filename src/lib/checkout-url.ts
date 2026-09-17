@@ -1,21 +1,19 @@
-/** Stay on the shopper's current host (localhost / preview / prod). */
+import {
+  allowedSiteOrigins,
+  isAllowedSiteOrigin,
+  originFromRequest,
+} from "@/lib/site-origin";
+
+/** Payment callback base URL — never trust arbitrary Origin headers. */
 export function checkoutBaseUrl(req: Request): string {
-  const origin = req.headers.get("origin");
-  if (origin && /^https?:\/\/[^\s/]+/i.test(origin)) {
-    return origin.replace(/\/$/, "");
+  const candidate = originFromRequest(req);
+
+  if (candidate && isAllowedSiteOrigin(candidate)) {
+    return candidate;
   }
-  const host =
-    req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
-    req.headers.get("host");
-  if (host) {
-    const proto =
-      req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
-      (host.includes("localhost") || host.startsWith("127.") ? "http" : "https");
-    return `${proto}://${host}`.replace(/\/$/, "");
-  }
-  return (
-    process.env.NEXTAUTH_URL?.replace(/\/$/, "") ||
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    "http://localhost:3000"
-  );
+
+  const allowed = allowedSiteOrigins();
+  if (allowed.length) return allowed[0];
+
+  return "http://localhost:3000";
 }

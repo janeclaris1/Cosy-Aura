@@ -8,6 +8,11 @@ import {
   listUpcomingDeliveryDates,
 } from "@/lib/delivery-dates";
 import { useT } from "@/lib/locale-store";
+import {
+  checkoutDayButtonClass,
+  checkoutIconButtonClass,
+  checkoutPopoverClass,
+} from "@/components/checkout/checkout-ui";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -109,7 +114,7 @@ export function DeliveryDateSelect({
             aria-expanded={open}
             aria-label="Choose a different delivery date"
             title="Choose a different delivery date"
-            className="shrink-0 p-2 border border-wf-border text-espresso hover:border-espresso transition-colors"
+            className={checkoutIconButtonClass}
           >
             <CalendarDays className="w-5 h-5" />
           </button>
@@ -117,7 +122,7 @@ export function DeliveryDateSelect({
       </div>
 
       {!nextDayOnly && open && (
-        <div className="absolute right-0 z-20 mt-2 w-[280px] border border-wf-border bg-white p-3 shadow-lg">
+        <div className={checkoutPopoverClass}>
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
@@ -171,13 +176,7 @@ export function DeliveryDateSelect({
                     onChange(cell.iso);
                     setOpen(false);
                   }}
-                  className={`h-8 text-sm ${
-                    isSelected
-                      ? "bg-espresso text-white"
-                      : enabled
-                        ? "hover:bg-wf-light text-espresso"
-                        : "text-wf-gray/40 cursor-not-allowed"
-                  }`}
+                  className={checkoutDayButtonClass({ selected: isSelected, enabled })}
                 >
                   {cell.day}
                 </button>

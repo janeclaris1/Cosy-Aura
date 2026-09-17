@@ -2,6 +2,7 @@ import type { ProductType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
 import { writeAuditLog } from "@/lib/audit";
+import { parseCatalogMarkupUsd } from "@/lib/catalog-markup";
 import { parseGuestHiddenPriceCatalogs } from "@/lib/catalog-price-visibility";
 import {
   parsePdpSponsoredAd,
@@ -30,6 +31,7 @@ export async function PATCH(req: Request) {
   const body = (await req.json()) as {
     nonAfricaMarkupEnabled?: boolean;
     nonAfricaMarkupUsd?: number;
+    catalogMarkupUsd?: unknown;
     whatsappCheckoutEnabled?: boolean;
     whatsappCheckoutNumbers?: WhatsAppCheckoutNumbers;
     maintenanceMode?: boolean;
@@ -67,6 +69,19 @@ export async function PATCH(req: Request) {
     );
   }
 
+  let catalogMarkupUsd;
+  if (body.catalogMarkupUsd !== undefined) {
+    catalogMarkupUsd = parseCatalogMarkupUsd(body.catalogMarkupUsd);
+    for (const value of Object.values(catalogMarkupUsd)) {
+      if (value != null && (!Number.isFinite(value) || value < 0)) {
+        return NextResponse.json(
+          { error: "Catalog markups must be non-negative numbers" },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   let pdpSponsoredAd;
   if (body.pdpSponsoredAd !== undefined) {
     pdpSponsoredAd = parsePdpSponsoredAd(body.pdpSponsoredAd);
@@ -79,6 +94,7 @@ export async function PATCH(req: Request) {
   const config = await upsertStoreConfig({
     nonAfricaMarkupEnabled: body.nonAfricaMarkupEnabled,
     nonAfricaMarkupUsd: body.nonAfricaMarkupUsd,
+    catalogMarkupUsd,
     whatsappCheckoutEnabled: body.whatsappCheckoutEnabled,
     whatsappCheckoutNumbers: body.whatsappCheckoutNumbers,
     maintenanceMode: body.maintenanceMode,

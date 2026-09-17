@@ -135,6 +135,8 @@ export async function priceCartLines(
       rates: fx.rates,
       enabled: config.nonAfricaMarkupEnabled,
       markupUsd: config.nonAfricaMarkupUsd,
+      productType: product?.productType,
+      catalogMarkupUsd: config.catalogMarkupUsd,
     });
 
     return {

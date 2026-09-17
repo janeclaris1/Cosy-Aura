@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
 import { processOverdueCreditDefaults } from "@/lib/credit-agreement";
+import { creditAgreementWhere } from "@/lib/credit-scope";
 import { writeAuditLog } from "@/lib/audit";
 
 export async function POST(req: Request) {
@@ -8,7 +9,10 @@ export async function POST(req: Request) {
   if (error) return error;
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const result = await processOverdueCreditDefaults(ctx.userId);
+  const result = await processOverdueCreditDefaults(
+    ctx.userId,
+    creditAgreementWhere(ctx)
+  );
 
   await writeAuditLog({
     actorId: ctx.userId,

@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { WhatsAppOrderButton } from "@/components/checkout/WhatsAppOrderButton";
+import {
+  checkoutFormClass,
+  checkoutInputClass,
+  checkoutLabelClass,
+} from "@/components/checkout/checkout-ui";
 
 type Line = {
   brand?: string;
@@ -36,58 +41,58 @@ export function WhatsAppDetailsCheckout({
     Boolean(form.address.trim());
 
   return (
-    <div className="space-y-4">
+    <div className={checkoutFormClass}>
       <p className="text-sm text-wf-gray">
         Enter your contact and delivery details, then submit on WhatsApp.
       </p>
 
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         Email
         <input
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
           required
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         Full name
         <input
           type="text"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
           required
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         Phone
         <input
           type="tel"
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
           required
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         Address
         <input
           type="text"
           value={form.address}
           onChange={(e) => setForm({ ...form, address: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
           required
         />
       </label>
-      <label className="block text-sm">
+      <label className={checkoutLabelClass}>
         City
         <input
           type="text"
           value={form.city}
           onChange={(e) => setForm({ ...form, city: e.target.value })}
-          className="mt-1 w-full px-3 py-2 border border-wf-border text-sm focus:outline-none focus:border-gold bg-white"
+          className={checkoutInputClass}
         />
       </label>
 

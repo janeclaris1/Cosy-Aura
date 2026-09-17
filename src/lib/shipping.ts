@@ -30,16 +30,16 @@ export interface LiveShippingRate {
   deliveryDays: number | null;
 }
 
-/** Fallback rates when EasyPost is not configured or returns no quotes. */
+/** Fallback when EasyPost is offline — single estimated Aramex quote. */
 export const FALLBACK_SHIPPING_RATES: LiveShippingRate[] = [
   {
-    id: "standard",
+    id: "aramex-fallback",
     carrierId: "aramex",
-    carrier: "Standard",
-    service: "Standard",
-    name: "Standard Shipping",
-    description: "Tracked delivery with discreet packaging",
-    price: 5,
+    carrier: "Aramex",
+    service: "International",
+    name: "Aramex International",
+    description: "Tracked international delivery via Aramex",
+    price: 25,
     currency: "USD",
     eta: "5-10 business days",
     deliveryDays: 7,
@@ -81,15 +81,15 @@ export function formatEta(deliveryDays: number | null | undefined): string {
 
 export function getShipFromAddress(): ShippingAddressInput {
   return {
-    name: process.env.SHIP_FROM_NAME || "COSY AURA",
-    street1: process.env.SHIP_FROM_STREET1 || "1 Market St",
+    name: process.env.SHIP_FROM_NAME || "COSY AURA LTD",
+    street1: process.env.SHIP_FROM_STREET1 || "15 Odaw Street, Kokomlemle",
     street2: process.env.SHIP_FROM_STREET2 || undefined,
-    city: process.env.SHIP_FROM_CITY || "San Francisco",
-    state: process.env.SHIP_FROM_STATE || "CA",
-    zip: process.env.SHIP_FROM_ZIP || "94105",
-    country: (process.env.SHIP_FROM_COUNTRY || "US").toUpperCase(),
-    phone: process.env.SHIP_FROM_PHONE || "4155550100",
-    email: process.env.SHIP_FROM_EMAIL || "shipping@cosyaura.com",
+    city: process.env.SHIP_FROM_CITY || "Accra",
+    state: process.env.SHIP_FROM_STATE || undefined,
+    zip: process.env.SHIP_FROM_ZIP || "00233",
+    country: (process.env.SHIP_FROM_COUNTRY || "GH").toUpperCase(),
+    phone: process.env.SHIP_FROM_PHONE || "0558660863",
+    email: process.env.SHIP_FROM_EMAIL || "info@cosyaura.com",
   };
 }
 
@@ -149,17 +149,11 @@ function normalizeRate(rate: EasyPostRate): LiveShippingRate | null {
   };
 }
 
-/** Keep the cheapest rate per carrier for a cleaner checkout UI. */
-export function pickBestRatesPerCarrier(rates: LiveShippingRate[]): LiveShippingRate[] {
-  const best = new Map<ShippingCarrierId, LiveShippingRate>();
-  for (const rate of rates) {
-    const existing = best.get(rate.carrierId);
-    if (!existing || rate.price < existing.price) {
-      best.set(rate.carrierId, rate);
-    }
-  }
-  const order: ShippingCarrierId[] = ["aramex", "fedex", "dhl"];
-  return order.map((id) => best.get(id)).filter(Boolean) as LiveShippingRate[];
+/** Aramex-only quotes for international checkout. */
+export function pickAramexRates(rates: LiveShippingRate[]): LiveShippingRate[] {
+  return rates
+    .filter((rate) => rate.carrierId === "aramex")
+    .sort((a, b) => a.price - b.price);
 }
 
 export async function fetchLiveShippingRates(
@@ -222,7 +216,7 @@ export async function fetchLiveShippingRates(
       .map(normalizeRate)
       .filter(Boolean) as LiveShippingRate[];
 
-    const filtered = pickBestRatesPerCarrier(live);
+    const filtered = pickAramexRates(live);
     if (filtered.length === 0) {
       const hints = (data.messages || [])
         .map((m) => `${m.carrier || "carrier"}: ${m.message || ""}`)
@@ -232,7 +226,7 @@ export async function fetchLiveShippingRates(
       return {
         rates: FALLBACK_SHIPPING_RATES,
         source: "fallback",
-        error: hints || "No Aramex/DHL/FedEx rates returned",
+        error: hints || "No Aramex rates returned",
       };
     }
 
@@ -256,6 +250,42 @@ export function getShippingMethod(id: string | undefined | null): { name: string
   if (!id) return undefined;
   const fallback = FALLBACK_SHIPPING_RATES.find((r) => r.id === id || r.carrierId === id);
   if (fallback) return { name: fallback.name };
-  // Stored as "FedEx · SERVICE" or carrier id
   return { name: id.replace(/_/g, " ") };
+}
+
+const RATE_PRICE_TOLERANCE_USD = 1.5;
+
+/** Re-quote destination and confirm the customer-selected Aramex rate. */
+export async function resolveAramexRateForCheckout(input: {
+  rateId: string;
+  to: ShippingAddressInput;
+  quotedPriceUsd?: number | null;
+}): Promise<LiveShippingRate> {
+  const rateId = input.rateId.trim();
+  if (!rateId) {
+    throw new Error("Select an Aramex shipping option.");
+  }
+  if (!input.to.street1?.trim() || !input.to.city?.trim() || !input.to.country?.trim()) {
+    throw new Error("A complete delivery address is required for Aramex shipping.");
+  }
+
+  const { rates } = await fetchLiveShippingRates(input.to);
+  const match = rates.find((rate) => rate.id === rateId);
+  if (!match) {
+    throw new Error("Shipping rate expired — refresh the page and select Aramex again.");
+  }
+
+  if (
+    input.quotedPriceUsd != null &&
+    Number.isFinite(input.quotedPriceUsd) &&
+    Math.abs(match.price - input.quotedPriceUsd) > RATE_PRICE_TOLERANCE_USD
+  ) {
+    throw new Error("Shipping price changed — please confirm the updated Aramex rate.");
+  }
+
+  return match;
+}
+
+export function aramexShippingLabel(rate: LiveShippingRate): string {
+  return `${rate.name} · ${rate.eta}`;
 }

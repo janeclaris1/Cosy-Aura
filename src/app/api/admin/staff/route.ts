@@ -11,6 +11,7 @@ import {
 } from "@/lib/rbac";
 import { sendEmail } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/audit";
+import { staffListUserWhere } from "@/lib/hr-scope";
 
 function isStaffRole(value: string): value is StaffRole {
   return (STAFF_ROLES as string[]).includes(value);
@@ -59,7 +60,7 @@ export async function GET() {
 
   try {
   const staff = await prisma.user.findMany({
-    where: { role: "ADMIN" },
+    where: await staffListUserWhere(ctx),
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

@@ -1,3 +1,9 @@
+import type { ProductType } from "@prisma/client";
+import {
+  type CatalogMarkupUsd,
+  resolveCatalogMarkupUsd,
+} from "@/lib/catalog-markup";
+
 /** ISO 3166-1 alpha-2 codes for African countries and territories. */
 export const AFRICAN_COUNTRY_CODES = new Set([
   "DZ",
@@ -73,6 +79,8 @@ export type RegionalPricingOptions = {
   rates: Record<string, number>;
   enabled: boolean;
   markupUsd: number;
+  productType?: ProductType | null;
+  catalogMarkupUsd?: CatalogMarkupUsd;
 };
 
 /**
@@ -88,7 +96,11 @@ export function applyRegionalMarkup(
     return base;
   }
 
-  const markupUsd = Math.max(0, Number(options.markupUsd) || 0);
+  const markupUsd = resolveCatalogMarkupUsd(
+    options.productType,
+    options.catalogMarkupUsd,
+    options.markupUsd
+  );
   if (markupUsd <= 0) return base;
 
   const usdRate = options.rates?.USD;

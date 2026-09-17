@@ -5,7 +5,12 @@ import Image from "next/image";
 import { ChevronDown, Bookmark, Shield, Truck, RotateCcw, Play } from "lucide-react";
 import { useCartStore, useWishlistStore } from "@/lib/store";
 import { usePremiumStore } from "@/lib/premium-store";
-import { useLocaleStore, useT } from "@/lib/locale-store";
+import {
+  useShopperCountry,
+  useShopperCurrency,
+  useT,
+  useUiLanguage,
+} from "@/lib/locale-store";
 import {
   formatPrice,
   fragranceFamilyLabel,
@@ -405,9 +410,9 @@ export function ProductSpecsAccordion({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const t = useT();
-  const language = useLocaleStore((s) => s.language);
-  const country = useLocaleStore((s) => s.country);
-  const currency = useLocaleStore((s) => s.currency);
+  const language = useUiLanguage();
+  const country = useShopperCountry();
+  const currency = useShopperCurrency();
   const inStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
     country,
@@ -559,8 +564,8 @@ export function ProductInfo({
   const setSelectedSize = onSizeChange ?? setInternalSize;
   const [sizeStock, setSizeStock] = useState<SizeStockMap>(emptySizeStock());
   const [sizeStockLoaded, setSizeStockLoaded] = useState(false);
-  const country = useLocaleStore((s) => s.country);
-  const currency = useLocaleStore((s) => s.currency);
+  const country = useShopperCountry();
+  const currency = useShopperCurrency();
 
   useEffect(() => {
     let cancelled = false;
@@ -594,20 +599,19 @@ export function ProductInfo({
     fragrance.slug
   );
   const member = useMemberDiscount();
-  const regionalSale = useRegionalPrice(baseDisplayPrice);
+  const regionalSale = useRegionalPrice(baseDisplayPrice, "PERFUME");
   const displayPrice = member.apply(regionalSale);
   const addItem = useCartStore((s) => s.addItem);
-  useLocaleStore((s) => s.rates);
   const t = useT();
   const { toggleItem, hasItem } = useWishlistStore();
   const isWishlisted = hasItem(fragrance.id);
   const primaryImage = fragrance.images[0]?.url || "";
   const concentration = cardConcentrationLabel(fragrance.concentration);
-  const originalPrice = useRegionalPrice(listPriceForSize(selectedSize, fragrance.slug));
-  const regionalSampleBase = useRegionalPrice(sampleSalePrice());
+  const originalPrice = useRegionalPrice(listPriceForSize(selectedSize, fragrance.slug), "PERFUME");
+  const regionalSampleBase = useRegionalPrice(sampleSalePrice(), "PERFUME");
   const regionalSamplePrice = member.apply(regionalSampleBase);
-  const regionalSampleList = useRegionalPrice(SAMPLE_LIST_GHS);
-  const regionalPrice30 = member.apply(useRegionalPrice(salePriceForSize(30, fragrance.slug)));
+  const regionalSampleList = useRegionalPrice(SAMPLE_LIST_GHS, "PERFUME");
+  const regionalPrice30 = member.apply(useRegionalPrice(salePriceForSize(30, fragrance.slug), "PERFUME"));
   const compareCount = usePremiumStore((s) => s.compare.length);
   const countryInStock = isInStockForCountry(
     { stock: fragrance.stock ?? 0, countryStocks: fragrance.countryStocks },
@@ -649,8 +653,8 @@ export function ProductInfo({
       bottleSize: selectedSize,
     });
   }
-  const regionalPrice50 = member.apply(useRegionalPrice(salePriceForSize(50, fragrance.slug)));
-  const regionalPrice100 = member.apply(useRegionalPrice(salePriceForSize(100, fragrance.slug)));
+  const regionalPrice50 = member.apply(useRegionalPrice(salePriceForSize(50, fragrance.slug), "PERFUME"));
+  const regionalPrice100 = member.apply(useRegionalPrice(salePriceForSize(100, fragrance.slug), "PERFUME"));
   const sizeSalePrices: Record<BottleSize, number> = {
     30: regionalPrice30,
     50: regionalPrice50,

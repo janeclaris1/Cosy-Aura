@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -8,56 +9,58 @@ import { useCartStore } from "@/lib/store";
 import { useLocaleStore, useT } from "@/lib/locale-store";
 import { formatPrice } from "@/lib/utils";
 import { useCartDisplayPricing } from "@/lib/use-cart-display-pricing";
-import { chargeCurrencyForDestination } from "@/lib/geo-locale";
+import { chargeCurrencyForDestination, currencyForCountry } from "@/lib/geo-locale";
 import { StripeEmbeddedCheckout } from "@/components/checkout/StripeEmbeddedCheckout";
+import {
+  InternationalAramexCheckout,
+  type InternationalAramexCheckoutPayload,
+} from "@/components/checkout/InternationalAramexCheckout";
 import { PaystackCheckoutForm } from "@/components/checkout/PaystackCheckoutForm";
 import { FlutterwaveCheckoutForm } from "@/components/checkout/FlutterwaveCheckoutForm";
 import { DeliveryDateSelect } from "@/components/checkout/DeliveryDateSelect";
 import { earliestDeliveryIso } from "@/lib/delivery-dates";
 import type { PaystackCountry } from "@/lib/paystack";
-import { cemacCountryName, type CemacCountry } from "@/lib/flutterwave";
-import type { GeoPaymentRoute, PaymentDestination } from "@/lib/geo-payment";
+import type { CemacCountry } from "@/lib/flutterwave";
+import { paymentRouteFromCountry, type GeoPaymentRoute, type PaymentDestination } from "@/lib/geo-payment";
 import { trackMetaInitiateCheckout } from "@/lib/meta-pixel";
 import { isBottleSize } from "@/lib/bottle-sizes";
 import { WhatsAppDetailsCheckout } from "@/components/checkout/WhatsAppDetailsCheckout";
+import { CheckoutCountrySelect } from "@/components/checkout/CheckoutCountrySelect";
 
-function detectBrowserCountry(timeoutMs = 4000): Promise<{ lat: number; lng: number } | null> {
-  if (typeof navigator === "undefined" || !navigator.geolocation) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const timer = window.setTimeout(() => resolve(null), timeoutMs);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        window.clearTimeout(timer);
-        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      () => {
-        window.clearTimeout(timer);
-        resolve(null);
-      },
-      { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 10 * 60 * 1000 }
-    );
-  });
+function cachedPaymentRoute(): GeoPaymentRoute {
+  return paymentRouteFromCountry(useLocaleStore.getState().country);
 }
 
 export default function CheckoutPage() {
-  const { items, clearCart } = useCartStore();
+  const searchParams = useSearchParams();
+  const { items, clearCart, addItem, updateQuantity } = useCartStore();
   const { member, subtotal, bundleActive, bundlePercent, priceFor } =
     useCartDisplayPricing(items);
   const currency = useLocaleStore((s) => s.currency);
+  const localeCountry = useLocaleStore((s) => s.country);
   const applyCheckoutRegion = useLocaleStore((s) => s.applyCheckoutRegion);
   useLocaleStore((s) => s.rates);
   const t = useT();
   const [viaWhatsApp, setViaWhatsApp] = useState(false);
-  const [destination, setDestination] = useState<PaymentDestination | null>(null);
-  const [cemacCountry, setCemacCountry] = useState<CemacCountry>("CM");
-  const [route, setRoute] = useState<GeoPaymentRoute | null>(null);
-  const [detecting, setDetecting] = useState(true);
+  const initialRoute = cachedPaymentRoute();
+  const [destination, setDestination] = useState<PaymentDestination | null>(
+    () => initialRoute.destination
+  );
+  const [cemacCountry, setCemacCountry] = useState<CemacCountry>(
+    () => initialRoute.cemacCountry || "CM"
+  );
+  const [route, setRoute] = useState<GeoPaymentRoute | null>(() => initialRoute);
+  const [detecting, setDetecting] = useState(() => !useLocaleStore.getState().country);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [aramexReady, setAramexReady] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(() => earliestDeliveryIso());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const checkoutTracked = useRef(false);
   const stripeRequestId = useRef(0);
+  const userSelectedCountryRef = useRef<string | null>(null);
+  const recoveryLoaded = useRef(false);
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
 
   const cartKey = items.map((i) => `${i.fragranceId}:${i.quantity}:${i.price}`).join("|");
 
@@ -66,6 +69,56 @@ export default function CheckoutPage() {
       new URLSearchParams(window.location.search).get("via") === "whatsapp"
     );
   }, []);
+
+  useEffect(() => {
+    const token = searchParams.get("recover")?.trim();
+    if (!token || recoveryLoaded.current) return;
+    recoveryLoaded.current = true;
+
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/checkout/recover?token=${encodeURIComponent(token)}`
+        );
+        const data = (await res.json()) as {
+          error?: string;
+          items?: Array<{
+            fragranceId: string;
+            slug: string;
+            brand: string;
+            model: string;
+            price: number;
+            quantity: number;
+            bottleSize?: number;
+            image: string;
+          }>;
+        };
+        if (!res.ok || !data.items?.length) {
+          setRecoveryNotice(data.error || "Could not restore your cart.");
+          return;
+        }
+
+        clearCart();
+        for (const line of data.items) {
+          addItem({
+            fragranceId: line.fragranceId,
+            slug: line.slug,
+            brand: line.brand,
+            model: line.model,
+            price: line.price,
+            image: line.image,
+            bottleSize: line.bottleSize,
+          });
+          if (line.quantity > 1) {
+            updateQuantity(line.fragranceId, line.quantity, line.bottleSize);
+          }
+        }
+        setRecoveryNotice("Your cart has been restored. Complete checkout below.");
+      } catch {
+        setRecoveryNotice("Could not restore your cart.");
+      }
+    })();
+  }, [searchParams, clearCart, addItem, updateQuantity]);
 
   useEffect(() => {
     if (!items.length || checkoutTracked.current) return;
@@ -92,13 +145,12 @@ export default function CheckoutPage() {
   }));
 
   const applyRoute = useCallback(
-    (next: GeoPaymentRoute) => {
+    (next: GeoPaymentRoute, opts?: { userSelected?: boolean }) => {
       setRoute(next);
       setDestination(next.destination);
       if (next.cemacCountry) setCemacCountry(next.cemacCountry);
       setDetecting(false);
 
-      const currencyCode = chargeCurrencyForDestination(next.destination);
       const countryCode =
         next.destination === "CEMAC"
           ? next.cemacCountry || next.country || "CM"
@@ -108,9 +160,22 @@ export default function CheckoutPage() {
               ? next.country
               : null;
 
+      const store = useLocaleStore.getState();
+      const currencyCode = countryCode
+        ? currencyForCountry(countryCode)
+        : chargeCurrencyForDestination(next.destination);
+
+      // Keep shop display currency when entering checkout — only change when user picks a country.
+      const keepShopCurrency =
+        !opts?.userSelected &&
+        store.country &&
+        countryCode &&
+        store.country === countryCode &&
+        store.currency;
+
       applyCheckoutRegion({
         country: countryCode,
-        currency: currencyCode,
+        currency: keepShopCurrency ? store.currency : currencyCode,
       });
     },
     [applyCheckoutRegion]
@@ -128,51 +193,42 @@ export default function CheckoutPage() {
     });
   }, [viaWhatsApp, detecting, destination, currency, applyRoute]);
 
+  // Sync payment route from shop geo — never replace with IP once a country is known.
   useEffect(() => {
+    if (!localeCountry || userSelectedCountryRef.current) return;
+    applyRoute(paymentRouteFromCountry(localeCountry));
+  }, [localeCountry, applyRoute]);
+
+  // Only call /api/geo when the shop never resolved a country (first visit / localhost).
+  useEffect(() => {
+    if (localeCountry) {
+      setDetecting(false);
+      return;
+    }
+
     let cancelled = false;
 
-    async function detect() {
-      setDetecting(true);
+    async function detectWhenUnknown() {
       try {
         const ipRes = await fetch("/api/geo");
-        const ipData = (await ipRes.json()) as GeoPaymentRoute & { source?: string };
-        if (cancelled) return;
-
-        if (ipData.country) {
-          applyRoute(ipData);
-          return;
-        }
-
-        const coords = await detectBrowserCountry();
-        if (cancelled) return;
-        if (coords) {
-          const gpsRes = await fetch(`/api/geo?lat=${coords.lat}&lng=${coords.lng}`);
-          const gpsData = (await gpsRes.json()) as GeoPaymentRoute;
-          if (cancelled) return;
-          applyRoute(gpsData);
-          return;
-        }
-
+        const ipData = (await ipRes.json()) as GeoPaymentRoute;
+        if (cancelled || userSelectedCountryRef.current) return;
+        if (useLocaleStore.getState().country) return;
         applyRoute(ipData);
       } catch {
-        if (!cancelled) {
-          applyRoute({
-            country: null,
-            destination: "OTHER",
-            provider: "stripe",
-            label: "location unknown",
-          });
+        if (!cancelled && !useLocaleStore.getState().country && !userSelectedCountryRef.current) {
+          applyRoute(paymentRouteFromCountry(null));
         }
       }
     }
 
-    void detect();
+    void detectWhenUnknown();
     return () => {
       cancelled = true;
     };
-  }, [applyRoute]);
+  }, [localeCountry, applyRoute]);
 
-  const startStripeCheckout = useCallback(async () => {
+  const startStripeCheckout = useCallback(async (aramex: InternationalAramexCheckoutPayload) => {
     if (items.length === 0) return;
     const date = deliveryDate || earliestDeliveryIso();
     const requestId = ++stripeRequestId.current;
@@ -182,14 +238,21 @@ export default function CheckoutPage() {
     setLoading(true);
     setError(null);
     try {
-      const country = useLocaleStore.getState().country;
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: paystackItems,
           deliveryDate: date,
-          shopperCountry: country,
+          shopperCountry: aramex.shopperCountry,
+          email: aramex.email,
+          name: aramex.name,
+          phone: aramex.phone,
+          address: aramex.address,
+          city: aramex.city,
+          postcode: aramex.postcode,
+          shippingRateId: aramex.shippingRateId,
+          shippingPriceUsd: aramex.shippingPriceUsd,
         }),
       });
       const data = await res.json();
@@ -197,6 +260,7 @@ export default function CheckoutPage() {
       if (!res.ok || !data.clientSecret) {
         throw new Error(data.error || "Could not start checkout");
       }
+      setAramexReady(true);
       setClientSecret(data.clientSecret);
     } catch (err) {
       if (requestId !== stripeRequestId.current) return;
@@ -206,11 +270,6 @@ export default function CheckoutPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartKey, deliveryDate]);
-
-  useEffect(() => {
-    if (destination !== "OTHER") return;
-    void startStripeCheckout();
-  }, [destination, startStripeCheckout]);
 
   if (items.length === 0 && !clientSecret) {
     return (
@@ -346,12 +405,27 @@ export default function CheckoutPage() {
         <div className="max-w-lg mx-auto lg:mr-auto lg:ml-0 px-4 sm:px-6 py-8 lg:py-12 lg:pl-12 lg:pr-8">
           {detecting && (
             <p className="text-sm text-wf-gray py-20 text-center">
-              {t("checkout.detecting")}
+              {t("checkout.loading")}
             </p>
           )}
 
           {!detecting && (
             <>
+              {recoveryNotice ? (
+                <p className="mb-4 rounded-lg border border-[#FFD200]/45 bg-[#FFD200]/12 px-3.5 py-2.5 text-sm text-espresso">
+                  {recoveryNotice}
+                </p>
+              ) : null}
+              <div className="mb-5">
+                <CheckoutCountrySelect
+                  value={route?.country || localeCountry || "US"}
+                  label={t("checkout.country")}
+                  onChange={(code) => {
+                    userSelectedCountryRef.current = code;
+                    applyRoute(paymentRouteFromCountry(code), { userSelected: true });
+                  }}
+                />
+              </div>
 
               {(destination === "GH" || destination === "NG") && (
                 <PaystackCheckoutForm
@@ -364,20 +438,6 @@ export default function CheckoutPage() {
               {destination === "CEMAC" && (
                 <FlutterwaveCheckoutForm
                   country={cemacCountry}
-                  onCountryChange={(code) => {
-                    setCemacCountry(code);
-                    setRoute((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            country: code,
-                            cemacCountry: code,
-                            label: cemacCountryName(code),
-                          }
-                        : prev
-                    );
-                    applyCheckoutRegion({ country: code, currency: "XAF" });
-                  }}
                   items={paystackItems}
                   subtotal={subtotal}
                 />
@@ -391,36 +451,43 @@ export default function CheckoutPage() {
                       total={subtotal}
                       countryOverride={whatsappCountry}
                     />
-                  ) : (
+                  ) : !aramexReady || !clientSecret ? (
                     <>
                       <div className="mb-5">
                         <DeliveryDateSelect value={deliveryDate} onChange={setDeliveryDate} />
                       </div>
+                      <InternationalAramexCheckout
+                        shopperCountry={route?.country || "US"}
+                        items={paystackItems}
+                        subtotalGhs={subtotal}
+                        loading={loading}
+                        error={error}
+                        onContinue={(payload) => void startStripeCheckout(payload)}
+                      />
+                    </>
+                  ) : (
+                    <>
                       <p className="text-xs text-wf-gray mb-4">
-                        You will be asked to accept our terms at the final payment step before
-                        your order is submitted.
+                        Aramex shipping confirmed. Complete payment below — you will be asked to
+                        accept our terms before your order is submitted.
                       </p>
                       {loading && (
-                        <p className="text-sm text-wf-gray py-20 text-center">
+                        <p className="text-sm text-wf-gray py-8 text-center">
                           Loading secure checkout…
                         </p>
                       )}
                       {error && (
-                        <div className="py-12 text-center space-y-4">
+                        <div className="py-8 text-center space-y-4">
                           <p className="text-sm text-red-600">{error}</p>
                           <button
                             type="button"
                             className="btn-gold"
-                            onClick={() => void startStripeCheckout()}
+                            onClick={() => {
+                              setAramexReady(false);
+                              setClientSecret(null);
+                            }}
                           >
-                            Try again
-                          </button>
-                          <button
-                            type="button"
-                            className="block mx-auto text-sm text-wf-gray"
-                            onClick={() => clearCart()}
-                          >
-                            Clear cart
+                            Back to shipping
                           </button>
                         </div>
                       )}

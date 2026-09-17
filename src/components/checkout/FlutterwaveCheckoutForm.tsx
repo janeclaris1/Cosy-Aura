@@ -1,17 +1,15 @@
 "use client";
 
 import { RegionalCheckoutForm, type RegionalCartItem } from "@/components/checkout/RegionalCheckoutForm";
-import { CEMAC_COUNTRIES, type CemacCountry } from "@/lib/flutterwave";
+import type { CemacCountry } from "@/lib/flutterwave";
 import { useT } from "@/lib/locale-store";
 
 export function FlutterwaveCheckoutForm({
   country,
-  onCountryChange,
   items,
   subtotal,
 }: {
   country: CemacCountry;
-  onCountryChange: (code: CemacCountry) => void;
   items: RegionalCartItem[];
   subtotal: number;
 }) {
@@ -19,8 +17,6 @@ export function FlutterwaveCheckoutForm({
   return (
     <RegionalCheckoutForm
       country={country}
-      onCountryChange={(code) => onCountryChange(code as CemacCountry)}
-      countryOptions={CEMAC_COUNTRIES}
       items={items}
       subtotal={subtotal}
       endpoint="/api/checkout/flutterwave"

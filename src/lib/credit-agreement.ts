@@ -6,6 +6,11 @@ import {
 } from "@/lib/credit-contract";
 import { prisma } from "@/lib/prisma";
 import type { AdminContext } from "@/lib/admin";
+import {
+  creditAgreementAccessibleToAdmin,
+  creditAgreementWhere,
+  orderAccessibleToAdmin,
+} from "@/lib/credit-scope";
 import { postCreditBalancePaymentJournal, postCreditDefaultJournal } from "@/lib/accounting-credit-post";
 import { restoreOrderInventory } from "@/lib/inventory";
 import { releaseCreditOrderFulfillment } from "@/lib/pos";
@@ -65,6 +70,10 @@ export async function recordCreditBalancePayment(
 
   const amount = roundCreditGhs(input.amountGhs);
   if (amount <= 0) return { ok: false, reason: "Amount must be greater than zero" };
+
+  if (!(await creditAgreementAccessibleToAdmin(ctx, agreementId))) {
+    return { ok: false, reason: "Forbidden" };
+  }
 
   let fullyPaid = false;
   let orderId: string | null = null;
@@ -145,7 +154,10 @@ export async function recordCreditBalancePayment(
   }
 }
 
-export async function processOverdueCreditDefaults(actorUserId: string) {
+export async function processOverdueCreditDefaults(
+  actorUserId: string,
+  scope: ReturnType<typeof creditAgreementWhere> = {}
+) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
@@ -153,6 +165,7 @@ export async function processOverdueCreditDefaults(actorUserId: string) {
     where: {
       status: "ACTIVE",
       dueDate: { lt: today },
+      ...scope,
     },
     select: { id: true },
   });
@@ -233,6 +246,10 @@ export async function recordCreditDownPayment(
     return { ok: false, reason: "Select how the down payment was collected" };
   }
 
+  if (!(await orderAccessibleToAdmin(ctx, orderId))) {
+    return { ok: false, reason: "Forbidden" };
+  }
+
   const agreement = await prisma.creditAgreement.findUnique({
     where: { orderId },
     include: {
@@ -306,6 +323,10 @@ export async function approveCreditContract(
   ctx: AdminContext,
   orderId: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (!(await orderAccessibleToAdmin(ctx, orderId))) {
+    return { ok: false, reason: "Forbidden" };
+  }
+
   const agreement = await prisma.creditAgreement.findUnique({
     where: { orderId },
     include: {

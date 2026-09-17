@@ -1,4 +1,5 @@
 import { requireAdminPage } from "@/lib/admin";
+import { CatalogMarkupSettings } from "@/components/admin/CatalogMarkupSettings";
 import { PricingSettings } from "@/components/admin/PricingSettings";
 import { WhatsAppCheckoutSettings } from "@/components/admin/WhatsAppCheckoutSettings";
 import { GuestPriceVisibilitySettings } from "@/components/admin/GuestPriceVisibilitySettings";
@@ -12,8 +13,12 @@ import {
 } from "@/components/admin/admin-ui";
 
 export default async function AdminPricingPage() {
-  await requireAdminPage();
-  await ensureDefaultStoreConfig();
+  await requireAdminPage("settings.write");
+  try {
+    await ensureDefaultStoreConfig();
+  } catch (error) {
+    console.error("[store-config] ensureDefaultStoreConfig failed", error);
+  }
   const config = await getStoreConfig();
   const envForced = isMaintenanceEnvForced();
 
@@ -55,6 +60,12 @@ export default async function AdminPricingPage() {
             nonAfricaMarkupUsd: config.nonAfricaMarkupUsd,
           }}
         />
+        <div className="mt-8">
+          <CatalogMarkupSettings
+            initialMarkups={config.catalogMarkupUsd}
+            globalMarkupUsd={config.nonAfricaMarkupUsd}
+          />
+        </div>
       </section>
 
       <section>
