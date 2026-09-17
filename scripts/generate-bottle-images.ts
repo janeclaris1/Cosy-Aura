@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import "../src/lib/sharp-heif-block";
 import sharp from "sharp";
 import { catalog } from "../prisma/oil-catalog";
 import { BOTTLE_SIZES } from "../src/lib/bottle-sizes";

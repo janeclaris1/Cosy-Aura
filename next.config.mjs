@@ -29,6 +29,7 @@ const nextConfig = {
   },
   // Keep native DB drivers out of the Next webpack bundle
   experimental: {
+    instrumentationHook: true,
     serverComponentsExternalPackages: [
       "pg",
       "@prisma/adapter-pg",

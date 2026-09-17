@@ -10,8 +10,6 @@ import type { PrismaClient } from "@prisma/client";
 import { BOTTLE_SIZES, type BottleSize } from "../src/lib/bottle-sizes";
 import { downloadWatchImagesFromShopify } from "./lib/catalog-image-import";
 import { createScriptPrisma } from "./lib/script-prisma";
-import { defaultCatalogCostPriceGhs } from "./lib/catalog-cost";
-import { upsertBranchStockWithReceipt } from "./lib/import-inventory";
 
 const apply = process.argv.includes("--apply");
 
@@ -234,7 +232,7 @@ async function main() {
   try {
     const branches = await prisma.branch.findMany({
       where: { active: true, country: "GH" },
-      select: { id: true, name: true, country: true },
+      select: { id: true, name: true },
     });
 
     const brand = await prisma.brand.upsert({
@@ -260,7 +258,7 @@ async function main() {
       description,
       conditionReport: CONDITION_REPORT,
       price: PRICE_GHS,
-      costPriceGhs: defaultCatalogCostPriceGhs("WATCH", data.bottleSize ?? 50),
+      costPriceGhs: 0,
       condition: "UNWORN" as const,
       year: 2026,
       fragranceFamily: "WOODY" as const,
@@ -290,9 +288,12 @@ async function main() {
     };
 
     const existing = await prisma.fragrance.findUnique({ where: { slug } });
-    const fragrance = existing
-      ? await prisma.fragrance.update({ where: { slug }, data })
-      : await prisma.fragrance.create({ data: { ...data, slug } });
+    let fragrance;
+    if (existing) {
+      fragrance = await prisma.fragrance.update({ where: { slug }, data });
+    } else {
+      fragrance = await prisma.fragrance.create({ data: { slug, ...data } });
+    }
 
     await prisma.fragranceImage.deleteMany({ where: { fragranceId: fragrance.id } });
     if (imageUrls.length) {
@@ -309,15 +310,22 @@ async function main() {
 
     await ensureBarcodes(prisma, fragrance.id);
 
-    const productLabel = `${brandName} ${model}`;
     for (const branch of branches) {
-      await upsertBranchStockWithReceipt(prisma, {
-        apply,
-        branch,
-        fragranceId: fragrance.id,
-        bottleSize: 50,
-        quantity: STOCK_PER_BRANCH,
-        productLabel,
+      await prisma.branchStock.upsert({
+        where: {
+          branchId_fragranceId_bottleSize: {
+            branchId: branch.id,
+            fragranceId: fragrance.id,
+            bottleSize: 50,
+          },
+        },
+        create: {
+          branchId: branch.id,
+          fragranceId: fragrance.id,
+          bottleSize: 50,
+          quantity: STOCK_PER_BRANCH,
+        },
+        update: { quantity: STOCK_PER_BRANCH },
       });
     }
 
@@ -326,7 +334,8 @@ async function main() {
     }
 
     console.log(`\n✓ Imported ${brandName} ${model}`);
-    console.log(`  Product page: /watches/${slug}`); 
+    console.log(`  Product page: /watches/${slug}`);
+
     console.log(`  Admin: /admin/fragrances/${fragrance.id}/edit`);
     console.log(`  Strap variants: ${product.variants.map((v) => v.option2).join(", ")}`);
   } finally {

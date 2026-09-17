@@ -68,7 +68,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "mongodb-memory-server": "^11.2.0",
-    "postcss": "^8",
+    "postcss": "8.5.28",
     "prisma": "^6.3.1",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.2",
@@ -76,5 +76,27 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "js-yaml": "4.3.2",
+    "deepmerge-ts": "8.0.2",
+    "eslint": {
+      "minimatch": {
+        "brace-expansion": "1.1.18"
+      }
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": {
+        "brace-expansion": "5.0.12"
+      }
+    },
+    "glob": {
+      "minimatch": {
+        "brace-expansion": "2.1.4"
+      }
+    },
+    "next": {
+      "postcss": "8.5.28"
+    }
   }
 }
