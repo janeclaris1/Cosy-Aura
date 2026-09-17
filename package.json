@@ -94,9 +94,6 @@
       "minimatch": {
         "brace-expansion": "2.1.4"
       }
-    },
-    "next": {
-      "postcss": "8.5.28"
     }
   }
 }
