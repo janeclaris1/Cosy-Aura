@@ -13,6 +13,8 @@ const nextConfig = {
     return [];
   },
   images: {
+    // GHSA-2xp9-vwfh-vxw4: do not optimize AVIF via sharp/libheif until upstream fix ships.
+    formats: ["image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
